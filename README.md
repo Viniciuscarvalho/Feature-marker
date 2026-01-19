@@ -61,9 +61,21 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 ---
 
-## 🆕 What's New (v1.0)
+## 🆕 What's New
 
-### Simplified Structure
+### v1.1.0 - Interactive Execution Panel 🎯
+
+**New Features:**
+- **Interactive CLI Panel**: Choose execution mode via beautiful interactive menu
+  - Full Workflow: Generate + Execute all phases
+  - Tasks Only: Skip generation, execute existing tasks
+  - Ralph Loop: Autonomous execution with ralph-wiggum
+- **Multiple Execution Modes**: Flexibility to run different workflows based on your needs
+- **Ralph Loop Integration**: Autonomous self-correcting execution for hands-off development
+
+### v1.0 - Initial Release
+
+**Simplified Structure:**
 - **No templates required**: All files are generated automatically via commands
 - **Streamlined paths**: Tasks now live in `./tasks/` (root level) instead of `./docs/tasks/`
 - **Smart detection**: Automatically detects existing files and skips regeneration
@@ -112,6 +124,9 @@ rm -rf docs/specs/  # Templates no longer needed
 
 # Then in Claude Code:
 /feature-marker prd-user-authentication
+
+# Or use interactive mode (v1.1.0+):
+/feature-marker --interactive prd-user-authentication
 ```
 
 That's it! The skill will guide you through the entire feature development process.
@@ -153,14 +168,15 @@ chmod +x ~/.claude/skills/feature-marker/lib/*.sh
 
 ## 📖 Usage
 
+### Basic Usage
+
 In Claude Code, simply invoke:
 
 ```
 /feature-marker <feature-slug>
 ```
 
-### Examples
-
+**Examples:**
 ```bash
 # Start a new feature
 /feature-marker prd-user-authentication
@@ -173,11 +189,67 @@ In Claude Code, simply invoke:
 /feature-marker prd-notification-system
 ```
 
+### 🎯 Interactive Mode (v1.1.0+)
+
+Launch the interactive panel to choose your execution mode:
+
+```bash
+/feature-marker --interactive prd-user-authentication
+```
+
+The panel offers **three execution modes**:
+
+#### 1️⃣  Full Workflow Mode (default)
+- **Best for**: New features or features with missing files
+- **What it does**:
+  - Validates existing files
+  - Generates missing PRD/TechSpec/Tasks
+  - Executes all 4 phases
+
+#### 2️⃣  Tasks Only Mode
+- **Best for**: When you already have PRD/TechSpec/Tasks ready
+- **What it does**:
+  - Skips file generation entirely
+  - Goes directly to implementation
+  - Requires all files to exist
+
+#### 3️⃣  Ralph Loop Mode
+- **Best for**: Autonomous execution with self-correction
+- **What it does**:
+  - Uses [ralph-wiggum](https://github.com/frankbria/ralph-claude-code) for continuous iteration
+  - Self-corrects errors automatically
+  - Runs until completion or manual stop
+- **Requires**: ralph-wiggum skill installed
+
+**Interactive Panel Preview:**
+```
+┌──────────────────────────────────────────────────────┐
+│         🚀 Feature Marker - Execution Mode           │
+└──────────────────────────────────────────────────────┘
+
+  Feature: prd-user-authentication
+
+  Select execution mode:
+
+  1) Full Workflow - Generate PRD/TechSpec/Tasks + Implementation
+     → Creates missing files and executes all phases
+
+  2) Execute Tasks Only - Skip generation, run implementation
+     → Use existing PRD/TechSpec/Tasks (must exist)
+
+  3) Ralph Loop Mode - Autonomous loop execution
+     → Uses ralph-wiggum for continuous iteration
+
+  0) Exit
+
+Select option [0-3]:
+```
+
 ---
 
 ## 🔧 Prerequisites
 
-### Required Commands
+### Required Commands (for Full Workflow mode)
 
 The following commands must exist in `~/.claude/commands/`:
 
@@ -188,6 +260,20 @@ The following commands must exist in `~/.claude/commands/`:
 | `generate-tasks.md` | Breaks down feature into implementable tasks |
 
 > 💡 **Tip:** You can get these commands from [mindkit](https://github.com/Viniciuscarvalho/mindkit) or create your own.
+
+### Optional: Ralph Loop Mode
+
+To use **Ralph Loop Mode** (option 3 in interactive panel):
+
+```bash
+# Install ralph-wiggum skill
+git clone https://github.com/frankbria/ralph-claude-code.git
+cd ralph-claude-code
+./install.sh
+```
+
+**What is Ralph Loop Mode?**
+Based on [Ralph Wiggum pattern](https://ghuntley.com/ralph/), this mode enables autonomous, self-correcting execution where the agent continuously iterates until the feature is complete or an error requires human intervention.
 
 ### Project Structure
 
