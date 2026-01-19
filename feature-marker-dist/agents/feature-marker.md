@@ -27,9 +27,14 @@ Before starting Phase 1, validate that required inputs exist. If missing, genera
 
 ### Gate Behavior
 
+**IMPORTANT**: This gate ONLY generates missing files. Existing files are NEVER overwritten or duplicated.
+
 1. Ensure `./tasks/` directory exists (create if missing).
-2. Check if required files exist in `./tasks/prd-{feature-name}/`.
-3. If files are missing, generate them using the available commands:
+2. Check each required file in `./tasks/prd-{feature-name}/`:
+   - ✅ `prd.md` exists → Skip generation
+   - ✅ `techspec.md` exists → Skip generation
+   - ✅ `tasks.md` exists → Skip generation
+3. **Only if a file is missing**, generate it using the corresponding command:
    - **Missing PRD**: Invoke `~/.claude/commands/create-prd.md`
      - This creates `./tasks/prd-{feature-name}/prd.md`
    - **Missing Tech Spec**: Invoke `~/.claude/commands/generate-spec.md {feature-name}`
@@ -37,6 +42,7 @@ Before starting Phase 1, validate that required inputs exist. If missing, genera
    - **Missing Tasks**: Invoke `~/.claude/commands/generate-tasks.md {feature-name}`
      - Creates `./tasks/prd-{feature-name}/tasks.md` and individual task files
 4. Re-validate after each command. If still missing, fail with a clear error explaining how to run the command manually.
+5. If all files exist, log success and proceed directly to Phase 1.
 
 ---
 
@@ -227,6 +233,7 @@ Projects can override behavior via `.feature-marker.json` in the repository root
 
 ## Example Session
 
+### Scenario 1: Some Files Missing
 ```
 User: /feature-marker prd-user-authentication
 
@@ -236,29 +243,50 @@ Agent: Checking for existing checkpoint...
        Phase 0: Inputs Gate
        ✓ ./tasks/prd-user-authentication/prd.md exists
        ✗ ./tasks/prd-user-authentication/techspec.md missing
-       
-       Generating Tech Spec using /generate-spec prd-user-authentication...
-       [Command executes, asks clarifying questions, generates techspec.md]
-       
+       ✓ ./tasks/prd-user-authentication/tasks.md exists
+
+       Generating only missing file: Tech Spec...
+       Invoking /generate-spec prd-user-authentication...
+       [Command executes, generates techspec.md]
+
        ✓ All inputs validated.
 
        Phase 1: Analysis & Planning
        Reading PRD, Tech Spec, and Tasks...
        [Creates analysis.md and plan.md]
        Checkpoint saved.
+       ...
+```
 
-       Phase 2: Implementation
-       Task 1/6: Create User entity...
-       [Implements task]
-       Task 2/6: Add authentication service...
-       [User interrupts with Ctrl+C]
+### Scenario 2: All Files Exist
+```
+User: /feature-marker prd-payment-integration
 
+Agent: Checking for existing checkpoint...
+       No checkpoint found. Starting new workflow.
+
+       Phase 0: Inputs Gate
+       ✓ ./tasks/prd-payment-integration/prd.md exists
+       ✓ ./tasks/prd-payment-integration/techspec.md exists
+       ✓ ./tasks/prd-payment-integration/tasks.md exists
+
+       ✓ All inputs validated. Skipping generation.
+
+       Phase 1: Analysis & Planning
+       Reading existing PRD, Tech Spec, and Tasks...
+       [Creates analysis.md and plan.md]
+       Checkpoint saved.
+       ...
+```
+
+### Scenario 3: Resume from Checkpoint
+```
 User: /feature-marker prd-user-authentication
 
 Agent: Checkpoint found!
        Phase 2 in progress (Task 2/6)
        Last updated: 2026-01-19T10:30:00Z
-       
+
        Resume from checkpoint? [Y/n]
 
 User: Y
@@ -269,7 +297,7 @@ Agent: Resuming from Task 2/6...
        Phase 4: Commit & PR
        Detected platform: GitHub
        Creating PR via /checking-pr...
-       
+
        ✓ Feature complete!
        PR URL: https://github.com/user/repo/pull/42
 ```

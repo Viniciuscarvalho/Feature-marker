@@ -64,12 +64,19 @@ Checkpoint and workflow state are stored in:
 When invoked, the skill:
 
 1. **Validates inputs** - Checks if `./tasks/prd-{feature-slug}/` contains required files
-2. **Generates missing files** - If files are missing, invokes the appropriate command:
+   - If all files exist → Skips to step 3
+   - If any file is missing → Proceeds to step 2
+2. **Generates ONLY missing files** - Existing files are never overwritten:
    - Missing PRD → `/create-prd`
    - Missing Tech Spec → `/generate-spec {feature-slug}`
    - Missing Tasks → `/generate-tasks {feature-slug}`
 3. **Executes 4-phase workflow** via the `feature-marker` agent
 4. **Persists state** - Saves checkpoints after each phase/task for resume capability
+
+**Important**: The workflow is smart about file detection:
+- ✅ Files exist → Uses them directly, no regeneration
+- ⚠️ Files missing → Generates only what's needed
+- 🔒 Never overwrites existing content
 
 ## Checkpoint & Resume
 
@@ -121,10 +128,35 @@ Override default behavior with `.feature-marker.json` in your repository root:
 | Unknown platform | Fallback to `checking-pr` |
 | PR skill unavailable | Commit only, log manual instructions |
 
-## Example Session
+## Example Sessions
 
+### Example 1: All Files Exist (No Generation Needed)
 ```
 > /feature-marker prd-user-authentication
+
+Checking for existing checkpoint...
+No checkpoint found. Starting new workflow.
+
+Phase 0: Inputs Gate
+✓ prd.md exists
+✓ techspec.md exists
+✓ tasks.md exists
+✅ All files present. Skipping generation.
+
+Phase 1: Analysis & Planning
+Reading existing documents...
+Creating implementation plan...
+Checkpoint saved.
+
+Phase 2: Implementation
+[1/6] Create User entity... ✓
+[2/6] Add authentication service... ✓
+...
+```
+
+### Example 2: Partial Files (Generates Only Missing)
+```
+> /feature-marker prd-payment-integration
 
 Checking for existing checkpoint...
 No checkpoint found. Starting new workflow.
@@ -134,10 +166,26 @@ Phase 0: Inputs Gate
 ✗ techspec.md missing → Generating via /generate-spec...
 ✓ tasks.md exists
 
+✅ Generated missing file. All inputs ready.
+
 Phase 1: Analysis & Planning
 Reading documents...
 Creating implementation plan...
 Checkpoint saved.
+...
+```
+
+### Example 3: Complete Workflow
+```
+> /feature-marker prd-new-feature
+
+Phase 0: Inputs Gate
+✗ prd.md missing → Generating via /create-prd...
+✗ techspec.md missing → Generating via /generate-spec...
+✗ tasks.md missing → Generating via /generate-tasks...
+
+Phase 1: Analysis & Planning
+...
 
 Phase 2: Implementation
 [1/6] Create User entity... ✓
