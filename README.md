@@ -61,6 +61,35 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 ---
 
+## 🆕 What's New (v1.0)
+
+### Simplified Structure
+- **No templates required**: All files are generated automatically via commands
+- **Streamlined paths**: Tasks now live in `./tasks/` (root level) instead of `./docs/tasks/`
+- **Smart detection**: Automatically detects existing files and skips regeneration
+
+### How It Works
+When you run `/feature-marker prd-{feature-name}`, the workflow:
+
+1. **Checks for existing files** in `./tasks/prd-{feature-name}/`
+   - ✅ If `prd.md`, `techspec.md`, and `tasks.md` exist → Proceeds directly to implementation
+   - ⚠️ If any file is missing → Generates only the missing files via commands
+
+2. **No duplicates**: Existing files are never overwritten or duplicated
+3. **Resume friendly**: You can stop and resume at any time with checkpoint support
+
+### Migration from Previous Versions
+If you're upgrading from an older version:
+
+```bash
+# Move your existing tasks from docs/tasks/ to tasks/
+mv docs/tasks/* tasks/
+rm -rf docs/tasks/
+rm -rf docs/specs/  # Templates no longer needed
+```
+
+---
+
 ## ✨ Features
 
 | Feature | Description |
@@ -189,8 +218,13 @@ your-project/
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  🚦 Phase 0: Inputs Gate                                        │
-│  ├── ✓ Validate prd.md, techspec.md, tasks.md                   │
-│  └── 🔧 Generate missing files via ~/.claude/commands/          │
+│  ├── 📂 Check ./tasks/prd-{feature-name}/ for existing files    │
+│  ├── ✅ All files exist? → Skip to Phase 1                      │
+│  ├── ⚠️  Files missing? → Generate ONLY missing files           │
+│  │   • prd.md → ~/.claude/commands/create-prd.md               │
+│  │   • techspec.md → ~/.claude/commands/generate-spec.md       │
+│  │   • tasks.md → ~/.claude/commands/generate-tasks.md         │
+│  └── 🔒 Never overwrites existing files                         │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -342,6 +376,41 @@ Git Platform Detection:
 
 ℹ To start/continue this workflow, use Claude Code:
   /feature-marker prd-user-authentication
+```
+
+---
+
+## ❓ Frequently Asked Questions
+
+### Q: What if my files already exist in `./tasks/prd-{feature-name}/`?
+**A:** The workflow automatically detects existing files and **never** overwrites them. It will:
+- ✅ Read existing `prd.md`, `techspec.md`, and `tasks.md`
+- ✅ Proceed directly to Phase 1 (Analysis & Planning)
+- ✅ Skip file generation entirely
+
+### Q: Can I have partial files (e.g., only PRD exists)?
+**A:** Yes! The workflow generates **only the missing files**. For example:
+- If you have `prd.md` but not `techspec.md` → Generates only `techspec.md`
+- If you have all three → Skips generation and proceeds to implementation
+
+### Q: Where should my task files be located?
+**A:** All task files should be in:
+```
+./tasks/prd-{feature-name}/
+├── prd.md
+├── techspec.md
+└── tasks.md
+```
+Note: The path is `./tasks/` in the project root, **not** `./docs/tasks/`
+
+### Q: Do I need template files?
+**A:** No! Templates are no longer required. All files are generated dynamically via commands in `~/.claude/commands/`
+
+### Q: How do I migrate from the old `docs/tasks/` structure?
+**A:** Simply move your files:
+```bash
+mv docs/tasks/* tasks/
+rm -rf docs/tasks/ docs/specs/
 ```
 
 ---
