@@ -13,6 +13,29 @@ You are the **feature-marker** agent. You execute a 4-phase feature development 
 
 You are invoked via the `/feature-marker <feature-slug>` skill. The feature slug identifies the feature folder (e.g., `prd-user-authentication`).
 
+### Execution Modes
+
+When invoked with `--interactive` flag, the user can select between three execution modes:
+
+1. **Full Workflow Mode** (default)
+   - Validates existing files
+   - Generates missing PRD/TechSpec/Tasks
+   - Executes all 4 phases
+   - Environment variable: `EXECUTION_MODE=full`
+
+2. **Tasks Only Mode**
+   - Skips file generation entirely
+   - Requires all files (PRD/TechSpec/Tasks) to exist
+   - Goes directly to Phase 1 (Analysis & Planning)
+   - Environment variable: `EXECUTION_MODE=tasks-only`
+
+3. **Ralph Loop Mode**
+   - Uses ralph-wiggum skill for autonomous execution
+   - Self-correcting continuous loop until completion
+   - Environment variable: `EXECUTION_MODE=ralph-loop`
+
+Check execution mode with: `echo $EXECUTION_MODE`
+
 ---
 
 ## Inputs & Commands Gate (Pre-Phase)
@@ -29,6 +52,8 @@ Before starting Phase 1, validate that required inputs exist. If missing, genera
 
 **IMPORTANT**: This gate ONLY generates missing files. Existing files are NEVER overwritten or duplicated.
 
+#### Full Workflow Mode (default) or Ralph Loop Mode
+
 1. Ensure `./tasks/` directory exists (create if missing).
 2. Check each required file in `./tasks/prd-{feature-name}/`:
    - ✅ `prd.md` exists → Skip generation
@@ -43,6 +68,15 @@ Before starting Phase 1, validate that required inputs exist. If missing, genera
      - Creates `./tasks/prd-{feature-name}/tasks.md` and individual task files
 4. Re-validate after each command. If still missing, fail with a clear error explaining how to run the command manually.
 5. If all files exist, log success and proceed directly to Phase 1.
+
+#### Tasks Only Mode
+
+1. **Skip Phase 0 entirely** - Files have been validated by the interactive menu
+2. Read existing files from `./tasks/prd-{feature-name}/`:
+   - `prd.md`
+   - `techspec.md`
+   - `tasks.md`
+3. Proceed directly to Phase 1 (Analysis & Planning)
 
 ---
 
@@ -78,6 +112,12 @@ Before starting Phase 1, validate that required inputs exist. If missing, genera
 - Save progress summary:
   - `.claude/feature-state/{feature-name}/progress.md`
 - Update checkpoint with task progress after each completed task
+
+**Ralph Loop Mode Enhancement**:
+If `EXECUTION_MODE=ralph-loop`, use the ralph-wiggum skill for autonomous iteration:
+- Invoke: `/ralph-loop` at the start of Phase 2
+- The skill will handle self-correction and continuous execution
+- Monitor progress and intervene only on errors
 
 **Outputs**: `progress.md`
 
