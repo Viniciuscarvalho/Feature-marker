@@ -35,21 +35,15 @@ The following commands must be available in `~/.claude/commands/`:
 - `generate-spec.md` - Generates technical specification from PRD
 - `generate-tasks.md` - Breaks down feature spec into implementable tasks
 
-### Project Structure (Docs-based)
+### Project Structure
 
 ```
-./docs/
-├── specs/
-│   ├── prd-template.md
-│   └── techspec-template.md
-├── tasks-template.md
-├── task-template.md
-└── tasks/
-    └── prd-{feature-name}/
-        ├── prd.md
-        ├── techspec.md
-        ├── tasks.md
-        └── {num}_task.md (individual tasks)
+./tasks/
+└── prd-{feature-name}/
+    ├── prd.md
+    ├── techspec.md
+    ├── tasks.md
+    └── {num}_task.md (individual tasks)
 ```
 
 ### State Directory
@@ -69,7 +63,7 @@ Checkpoint and workflow state are stored in:
 
 When invoked, the skill:
 
-1. **Validates inputs** - Checks if `./docs/tasks/prd-{feature-slug}/` contains required files
+1. **Validates inputs** - Checks if `./tasks/prd-{feature-slug}/` contains required files
 2. **Generates missing files** - If files are missing, invokes the appropriate command:
    - Missing PRD → `/create-prd`
    - Missing Tech Spec → `/generate-spec {feature-slug}`
@@ -111,7 +105,7 @@ Override default behavior with `.feature-marker.json` in your repository root:
   "pr_skill": "custom-pr-skill",
   "skip_pr": false,
   "test_command": "npm run test:ci",
-  "docs_path": "./docs/tasks",
+  "docs_path": "./tasks",
   "state_path": ".claude/feature-state"
 }
 ```
@@ -121,7 +115,6 @@ Override default behavior with `.feature-marker.json` in your repository root:
 | Scenario | Behavior |
 |----------|----------|
 | Missing files | Auto-generate via commands |
-| Missing templates | Fail with list of required templates |
 | No git repo | Fail early with helpful message |
 | No tests | Skip Phase 3 with warning |
 | Test failures | Report issues, allow fix, offer retry |
