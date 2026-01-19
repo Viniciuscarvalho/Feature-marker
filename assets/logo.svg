@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="feature-marker logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2B1B5A"/>
+      <stop offset="1" stop-color="#0E3A8A"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#A78BFA"/>
+      <stop offset="1" stop-color="#60A5FA"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#bg)"/>
+
+  <!-- rocket -->
+  <g transform="translate(58,54)">
+    <path d="M70 10 C100 30, 118 62, 122 100 C92 116, 62 120, 32 114 C38 78, 50 44, 70 10 Z"
+          fill="#FFFFFF" opacity="0.92"/>
+    <circle cx="78" cy="74" r="14" fill="#0B1020" opacity="0.9"/>
+    <circle cx="78" cy="74" r="8" fill="#60A5FA" opacity="0.95"/>
+    <path d="M38 96 L16 118 L46 122 Z" fill="#A78BFA" opacity="0.95"/>
+    <path d="M28 122 C16 142, 22 168, 44 186 C60 166, 60 144, 48 124 Z" fill="#F59E0B" opacity="0.95"/>
+    <path d="M38 128 C32 144, 34 160, 46 172 C54 160, 54 146, 48 132 Z" fill="#FDE68A" opacity="0.95"/>
+  </g>
+
+  <!-- accent underline -->
+  <rect x="56" y="198" width="144" height="10" rx="5" fill="url(#accent)" opacity="0.9"/>
+</svg>

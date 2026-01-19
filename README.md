@@ -2,7 +2,7 @@
 
 <!-- Banner -->
 <p align="center">
-  <img src="assets/banner.png" alt="feature-marker Banner" width="800">
+  <img src="assets/banner.svg" alt="feature-marker Banner" width="800">
 </p>
 
 <p align="center">
@@ -404,7 +404,7 @@ MIT © [Vinicius Carvalho](https://github.com/Viniciuscarvalho)
 ---
 
 <p align="center">
-  <img src="assets/logo.png" alt="feature-marker logo" width="100">
+  <img src="assets/logo.svg" alt="feature-marker logo" width="100">
   <br>
   Built with 🤖 for the AI-assisted development community
 </p>
