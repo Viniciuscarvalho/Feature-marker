@@ -8,6 +8,19 @@
 *.swp
 *.swo
 *~
+.idea/
+.vscode/
 
 # Logs
 *.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Build artifacts
+dist/
+build/
+
+# Node (if using any tooling)
+node_modules/
