@@ -1,4 +1,3 @@
-# feature-marker 🚀
 
 <!-- Banner -->
 <p align="center">
@@ -163,21 +162,15 @@ The following commands must exist in `~/.claude/commands/`:
 
 ### Project Structure
 
-Your project should follow this docs-based structure:
+Your project should follow this structure:
 
 ```
 your-project/
-├── docs/
-│   ├── specs/
-│   │   ├── prd-template.md       # PRD template
-│   │   └── techspec-template.md  # Tech spec template
-│   ├── tasks-template.md         # Task list template
-│   ├── task-template.md          # Individual task template
-│   └── tasks/
-│       └── prd-{feature-name}/
-│           ├── prd.md            # Generated PRD
-│           ├── techspec.md       # Generated tech spec
-│           └── tasks.md          # Generated task list
+├── tasks/
+│   └── prd-{feature-name}/
+│       ├── prd.md            # Generated PRD
+│       ├── techspec.md       # Generated tech spec
+│       └── tasks.md          # Generated task list
 └── .claude/
     └── feature-state/
         └── {feature-name}/
@@ -291,7 +284,7 @@ Override defaults with `.feature-marker.json` in your project root:
   "pr_skill": "custom-pr-skill",
   "skip_pr": false,
   "test_command": "npm run test:ci",
-  "docs_path": "./docs/tasks",
+  "docs_path": "./tasks",
   "state_path": ".claude/feature-state"
 }
 ```
@@ -303,7 +296,7 @@ Override defaults with `.feature-marker.json` in your project root:
 | `pr_skill` | Auto-detected | Override PR skill selection |
 | `skip_pr` | `false` | Skip PR creation, commit only |
 | `test_command` | Auto-detected | Custom test command |
-| `docs_path` | `./docs/tasks` | Path to task documents |
+| `docs_path` | `./tasks` | Path to task documents |
 | `state_path` | `.claude/feature-state` | Path for checkpoint storage |
 
 ---
@@ -335,7 +328,7 @@ The `feature-marker.sh` script can also be used directly:
 
 Feature: prd-user-authentication
 
-Checking feature files in ./docs/tasks/prd-user-authentication/...
+Checking feature files in ./tasks/prd-user-authentication/...
   ✓ prd.md exists
   ✓ techspec.md exists
   ✓ tasks.md exists
@@ -357,8 +350,6 @@ Git Platform Detection:
 
 | Issue | Solution |
 |-------|----------|
-| Missing templates | Ensure templates exist at `./docs/specs/` |
-| PRD created in wrong location | `create-prd.md` writes to `./tasks/`; workflow copies to `./docs/tasks/` |
 | Task generation needs approval | `generate-tasks.md` requires preview approval before writing |
 | No PR skill for platform | Falls back to `creating-pr`; if unavailable, commits only |
 | Checkpoint corrupted | Delete `.claude/feature-state/{feature}/checkpoint.json` |

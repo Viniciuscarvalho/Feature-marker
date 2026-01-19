@@ -19,33 +19,23 @@ You are invoked via the `/feature-marker <feature-slug>` skill. The feature slug
 
 Before starting Phase 1, validate that required inputs exist. If missing, generate them using commands in `~/.claude/commands/`.
 
-### Expected Paths (Docs-based)
+### Expected Paths
 
-- PRD: `./docs/tasks/prd-{feature-name}/prd.md`
-- Tech Spec: `./docs/tasks/prd-{feature-name}/techspec.md`
-- Tasks: `./docs/tasks/prd-{feature-name}/tasks.md`
-
-### Required Templates
-
-The following templates should exist in the repository:
-
-- `./docs/specs/prd-template.md`
-- `./docs/specs/techspec-template.md`
-- `./docs/tasks-template.md`
-- `./docs/task-template.md`
+- PRD: `./tasks/prd-{feature-name}/prd.md`
+- Tech Spec: `./tasks/prd-{feature-name}/techspec.md`
+- Tasks: `./tasks/prd-{feature-name}/tasks.md`
 
 ### Gate Behavior
 
-1. Ensure `./docs/` and `./docs/tasks/` directories exist (create if missing).
-2. Check if required files exist in `./docs/tasks/prd-{feature-name}/`.
+1. Ensure `./tasks/` directory exists (create if missing).
+2. Check if required files exist in `./tasks/prd-{feature-name}/`.
 3. If files are missing, generate them using the available commands:
    - **Missing PRD**: Invoke `~/.claude/commands/create-prd.md`
      - This creates `./tasks/prd-{feature-name}/prd.md`
-     - After generation, copy/move to `./docs/tasks/prd-{feature-name}/prd.md`
    - **Missing Tech Spec**: Invoke `~/.claude/commands/generate-spec.md {feature-name}`
-     - Creates `./docs/tasks/prd-{feature-name}/techspec.md`
+     - Creates `./tasks/prd-{feature-name}/techspec.md`
    - **Missing Tasks**: Invoke `~/.claude/commands/generate-tasks.md {feature-name}`
-     - Creates `./docs/tasks/prd-{feature-name}/tasks.md` and individual task files
+     - Creates `./tasks/prd-{feature-name}/tasks.md` and individual task files
 4. Re-validate after each command. If still missing, fail with a clear error explaining how to run the command manually.
 
 ---
@@ -55,7 +45,7 @@ The following templates should exist in the repository:
 **Objective**: Deeply understand the requirements and create an implementation plan.
 
 **Tasks**:
-- Read `prd.md`, `techspec.md`, and `tasks.md` from `./docs/tasks/prd-{feature-name}/`
+- Read `prd.md`, `techspec.md`, and `tasks.md` from `./tasks/prd-{feature-name}/`
 - Understand requirements deeply
 - Ask clarifying questions if needed (pause and wait for user input)
 - Create implementation plan with file mapping
@@ -209,7 +199,6 @@ On invocation:
 | Scenario | Behavior |
 |----------|----------|
 | Missing task files | Generate automatically via commands |
-| Missing templates | Fail with clear error listing required templates |
 | Git not configured | Fail early with helpful message |
 | Tests don't exist | Phase 3 gracefully skips with warning |
 | Test failures | Report issues, allow user to fix, offer to retry |
@@ -229,7 +218,7 @@ Projects can override behavior via `.feature-marker.json` in the repository root
   "pr_skill": "custom-pr-skill",
   "skip_pr": false,
   "test_command": "npm run test:ci",
-  "docs_path": "./docs/tasks",
+  "docs_path": "./tasks",
   "state_path": ".claude/feature-state"
 }
 ```
@@ -245,8 +234,8 @@ Agent: Checking for existing checkpoint...
        No checkpoint found. Starting new workflow.
 
        Phase 0: Inputs Gate
-       ✓ ./docs/tasks/prd-user-authentication/prd.md exists
-       ✗ ./docs/tasks/prd-user-authentication/techspec.md missing
+       ✓ ./tasks/prd-user-authentication/prd.md exists
+       ✗ ./tasks/prd-user-authentication/techspec.md missing
        
        Generating Tech Spec using /generate-spec prd-user-authentication...
        [Command executes, asks clarifying questions, generates techspec.md]

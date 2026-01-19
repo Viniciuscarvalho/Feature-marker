@@ -3,15 +3,14 @@
 set -euo pipefail
 
 # Default paths (can be overridden via .feature-marker.json)
-DOCS_PATH="./docs/tasks"
+DOCS_PATH="./tasks"
 STATE_PATH=".claude/feature-state"
-TEMPLATES_PATH="./docs/specs"
 
 # Load project-specific configuration if exists
 load_config() {
   local config_file=".feature-marker.json"
   if [[ -f "$config_file" ]]; then
-    DOCS_PATH=$(jq -r '.docs_path // "./docs/tasks"' "$config_file")
+    DOCS_PATH=$(jq -r '.docs_path // "./tasks"' "$config_file")
     STATE_PATH=$(jq -r '.state_path // ".claude/feature-state"' "$config_file")
     echo "Loaded configuration from $config_file"
   fi
@@ -31,11 +30,6 @@ validate_directories() {
   local feature_name="$1"
   local feature_path="${DOCS_PATH}/prd-${feature_name}"
 
-  if [[ ! -d "./docs" ]]; then
-    echo "Creating ./docs directory..."
-    mkdir -p "./docs"
-  fi
-
   if [[ ! -d "${DOCS_PATH}" ]]; then
     echo "Creating ${DOCS_PATH} directory..."
     mkdir -p "${DOCS_PATH}"
@@ -49,25 +43,6 @@ validate_directories() {
   return 0
 }
 
-# Check if required templates exist
-validate_templates() {
-  local missing=()
-
-  [[ ! -f "./docs/specs/prd-template.md" ]] && missing+=("./docs/specs/prd-template.md")
-  [[ ! -f "./docs/specs/techspec-template.md" ]] && missing+=("./docs/specs/techspec-template.md")
-  [[ ! -f "./docs/tasks-template.md" ]] && missing+=("./docs/tasks-template.md")
-  [[ ! -f "./docs/task-template.md" ]] && missing+=("./docs/task-template.md")
-
-  if [[ ${#missing[@]} -gt 0 ]]; then
-    echo "WARNING: Missing templates:" >&2
-    for t in "${missing[@]}"; do
-      echo "  - $t" >&2
-    done
-    return 1
-  fi
-
-  return 0
-}
 
 # Check if feature files exist
 check_feature_files() {
