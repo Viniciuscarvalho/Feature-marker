@@ -44,7 +44,7 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 ### 📹 Video Explainer (60s)
 
 <p align="center">
-  <img src="assets/demo.gif" alt="feature-marker Demo" width="700">
+  <img src="video-explainer/out/assets/feature-marker-demo.gif" alt="feature-marker Demo" width="700">
 </p>
 
 > **Note**: Full HD video available in `video-explainer/` directory. See [Video Generation Guide](#-video-generation) to create custom explainer videos.
