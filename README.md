@@ -41,9 +41,13 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 ## 🎬 Demo
 
+### 📹 Video Explainer (60s)
+
 <p align="center">
   <img src="assets/demo.gif" alt="feature-marker Demo" width="700">
 </p>
+
+> **Note**: Full HD video available in `video-explainer/` directory. See [Video Generation Guide](#-video-generation) to create custom explainer videos.
 
 <details>
 <summary>📸 <strong>See more screenshots</strong></summary>
@@ -528,6 +532,70 @@ git pull
 rm -rf ~/.claude/skills/feature-marker/
 rm ~/.claude/agents/feature-marker.md
 ```
+
+---
+
+## 🎥 Video Generation
+
+Want to create your own explainer video or customize the existing one?
+
+### Prerequisites
+
+```bash
+# Install Node.js 18+ and npm/bun/pnpm
+# Then navigate to video project
+cd video-explainer
+npm install  # or bun install / pnpm install
+```
+
+### Preview Video
+
+```bash
+npm start
+```
+
+Opens Remotion Studio at `http://localhost:3000` where you can:
+- Preview all scenes in real-time
+- Adjust timings and animations
+- Test different configurations
+
+### Render Video (MP4)
+
+```bash
+# Full HD quality
+npm run build -- FeatureMarkerExplainer --codec h264
+
+# Output: out/FeatureMarkerExplainer.mp4
+```
+
+### Create Optimized GIF for README
+
+```bash
+# 1. Render at smaller resolution
+npm run build -- FeatureMarkerExplainer --scale 0.5 --codec h264
+
+# 2. Convert to GIF (requires ffmpeg)
+ffmpeg -i out/FeatureMarkerExplainer.mp4 \
+  -vf "fps=15,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" \
+  -loop 0 out/feature-marker-demo.gif
+```
+
+### Customize Video
+
+All scenes are in `video-explainer/src/compositions/`:
+- `IntroScene.tsx` - Logo and tagline
+- `BasicCommandScene.tsx` - Command demonstration
+- `InteractivePanelScene.tsx` - Menu showcase
+- `WorkflowScene.tsx` - Progress indicators
+- `OutroScene.tsx` - CTA and GitHub link
+
+Edit these files to:
+- Change colors and branding
+- Adjust animation timing
+- Update text content
+- Add new scenes
+
+See full documentation: [`video-explainer/README.md`](video-explainer/README.md)
 
 ---
 
