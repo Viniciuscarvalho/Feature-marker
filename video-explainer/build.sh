@@ -51,7 +51,7 @@ case $choice in
             echo ""
             echo "🎨 Converting to GIF..."
             ffmpeg -i out/FeatureMarkerExplainer.mp4 \
-                -vf "fps=15,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" \
+                -vf "fps=15,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5" \
                 -loop 0 out/feature-marker-demo.gif -y
             echo "✅ Done!"
             echo "   MP4: out/FeatureMarkerExplainer.mp4"
@@ -74,7 +74,7 @@ case $choice in
             echo ""
             echo "🎨 Converting to GIF..."
             ffmpeg -i out/FeatureMarkerExplainer.mp4 \
-                -vf "fps=15,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" \
+                -vf "fps=15,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5" \
                 -loop 0 out/feature-marker-demo.gif -y
             echo "✅ All done!"
             echo "   MP4:  out/FeatureMarkerExplainer.mp4"

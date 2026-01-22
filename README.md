@@ -41,10 +41,10 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 ## 🎬 Demo
 
-### 📹 Video Explainer (60s)
+### 📹 Video Explainer (40s)
 
 <p align="center">
-  <img src="video-explainer/out/assets/feature-marker-demo.gif" alt="feature-marker Demo" width="700">
+  <img src="assets/feature-marker-demo.gif" alt="feature-marker Demo" width="700">
 </p>
 
 > **Note**: Full HD video available in `video-explainer/` directory. See [Video Generation Guide](#-video-generation) to create custom explainer videos.
@@ -571,14 +571,24 @@ npm run build -- FeatureMarkerExplainer --codec h264
 ### Create Optimized GIF for README
 
 ```bash
-# 1. Render at smaller resolution
+# 1. Render at smaller resolution (40 seconds, 1.5x faster)
 npm run build -- FeatureMarkerExplainer --scale 0.5 --codec h264
 
-# 2. Convert to GIF (requires ffmpeg)
+# 2. Convert to optimized GIF (requires ffmpeg)
+# 720px width, 128 colors, Bayer dithering for smaller file size
 ffmpeg -i out/FeatureMarkerExplainer.mp4 \
-  -vf "fps=15,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" \
+  -vf "fps=15,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5" \
   -loop 0 out/feature-marker-demo.gif
+
+# 3. Copy to assets folder
+cp out/feature-marker-demo.gif ../assets/feature-marker-demo.gif
 ```
+
+**Optimizations applied:**
+- **Faster playback**: 40s video (was 60s) for more engaging viewing
+- **Smaller file**: 720px width with 128-color palette (reduced from 960px/256 colors)
+- **Better compression**: Bayer dithering reduces banding artifacts
+- **Infinite loop**: Automatically replays in README
 
 ### Customize Video
 
