@@ -4,33 +4,34 @@ Professional explainer video created with Remotion for the feature-marker CLI to
 
 ## 📺 Video Specifications
 
-- **Duration**: 60 seconds (1800 frames at 30fps)
+- **Duration**: 40 seconds (1200 frames at 30fps) - 1.5x faster for engaging viewing
 - **Resolution**: 1920x1080 (Full HD)
 - **Format**: MP4 and optimized GIF
+- **GIF Optimization**: 720px width, 15fps, 128-color palette with Bayer dithering
 
 ## 🎬 Scenes
 
-### Scene 1: Intro (0-10s)
+### Scene 1: Intro (0-6.6s)
 - Feature-marker logo with gradient animation
 - Main tagline and subtitle
 - Smooth fade-in and spring animations
 
-### Scene 2: Basic Command (10-20s)
+### Scene 2: Basic Command (6.6-13.3s)
 - Terminal mockup with typing effect
 - Command demonstration
 - 4-phase workflow diagram
 
-### Scene 3: Interactive Panel (20-40s)
+### Scene 3: Interactive Panel (13.3-26.6s)
 - Interactive menu showcase
 - 3 execution modes explained
 - Sequential highlighting and descriptions
 
-### Scene 4: Workflow Execution (40-50s)
+### Scene 4: Workflow Execution (26.6-33.3s)
 - Progress indicators for each phase
 - Animated progress bars
 - Completion checkmarks
 
-### Scene 5: Outro (50-60s)
+### Scene 5: Outro (33.3-40s)
 - GitHub repository URL
 - Call-to-action with pulse effect
 - Installation command
@@ -75,8 +76,10 @@ Output: `out/FeatureMarkerExplainer.mp4`
 # First, render at smaller resolution for GIF
 npm run build -- FeatureMarkerExplainer --scale 0.5 --codec h264
 
-# Then convert to GIF using ffmpeg
-ffmpeg -i out/FeatureMarkerExplainer.mp4 -vf "fps=15,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 out/feature-marker-demo.gif
+# Then convert to optimized GIF using ffmpeg
+ffmpeg -i out/FeatureMarkerExplainer.mp4 \
+  -vf "fps=15,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5" \
+  -loop 0 out/feature-marker-demo.gif
 ```
 
 ### Render Multiple Formats
@@ -105,11 +108,12 @@ The video uses the feature-marker brand colors:
 ### Timing
 
 All timings are defined in frames (30fps):
-- Intro: frames 0-300
-- Basic Command: frames 300-600
-- Interactive Panel: frames 600-1200
-- Workflow: frames 1200-1500
-- Outro: frames 1500-1800
+- Intro: frames 0-200 (6.6s)
+- Basic Command: frames 200-400 (6.6s)
+- Interactive Panel: frames 400-800 (13.3s)
+- Workflow: frames 800-1000 (6.6s)
+- Outro: frames 1000-1200 (6.6s)
+- **Total**: 1200 frames (40 seconds at 30fps)
 
 To adjust, edit the `<Sequence>` components in `src/compositions/MainVideo.tsx`
 
@@ -139,8 +143,10 @@ npm install
 ### GIF is too large
 Reduce the scale factor in the ffmpeg command:
 ```bash
-# Smaller GIF
-ffmpeg -i out/FeatureMarkerExplainer.mp4 -vf "fps=10,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 out/feature-marker-demo.gif
+# Even smaller GIF (lower quality but < 1MB)
+ffmpeg -i out/FeatureMarkerExplainer.mp4 \
+  -vf "fps=10,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=64[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3" \
+  -loop 0 out/feature-marker-demo-tiny.gif
 ```
 
 ### Preview is slow
