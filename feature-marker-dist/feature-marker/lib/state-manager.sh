@@ -18,7 +18,7 @@ init_feature_state() {
   if [[ ! -f "$checkpoint" ]]; then
     cat > "$checkpoint" << EOF
 {
-  "version": "1.0",
+  "version": "1.1.0",
   "feature_name": "${feature_name}",
   "project_path": "$(pwd)",
   "current_phase": 0,
