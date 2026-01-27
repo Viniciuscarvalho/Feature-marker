@@ -67,22 +67,30 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 ## 🆕 What's New
 
+| Version | Date | Highlights |
+|---------|------|------------|
+| **v1.2.0** | 2026-01-26 | 🔧 Interactive menu TTY fix, template paths corrected |
+| **v1.1.0** | 2026-01-19 | 🎯 Interactive execution panel, Ralph Loop mode |
+| **v1.0.0** | 2026-01-18 | 🚀 Initial release with 4-phase workflow |
+
+<details>
+<summary>📋 <strong>Version Details</strong></summary>
+
+### v1.2.0 - Bug Fixes
+- **Interactive menu TTY detection**: Menu now detects non-terminal environments and provides guidance
+- **Template paths corrected**: Commands now use global templates from `~/.claude/docs/`
+
 ### v1.1.0 - Interactive Execution Panel 🎯
-
-**New Features:**
 - **Interactive CLI Panel**: Choose execution mode via beautiful interactive menu
-  - Full Workflow: Generate + Execute all phases
-  - Tasks Only: Skip generation, execute existing tasks
-  - Ralph Loop: Autonomous execution with ralph-wiggum
-- **Multiple Execution Modes**: Flexibility to run different workflows based on your needs
-- **Ralph Loop Integration**: Autonomous self-correcting execution for hands-off development
+- **Multiple Execution Modes**: Full Workflow, Tasks Only, Ralph Loop
+- **Ralph Loop Integration**: Autonomous self-correcting execution
 
-### v1.0 - Initial Release
+### v1.0.0 - Initial Release
+- **No templates required**: All files generated automatically via commands
+- **Streamlined paths**: Tasks in `./tasks/` instead of `./docs/tasks/`
+- **Smart detection**: Auto-detects existing files, never overwrites
 
-**Simplified Structure:**
-- **No templates required**: All files are generated automatically via commands
-- **Streamlined paths**: Tasks now live in `./tasks/` (root level) instead of `./docs/tasks/`
-- **Smart detection**: Automatically detects existing files and skips regeneration
+</details>
 
 ### How It Works
 When you run `/feature-marker prd-{feature-name}`, the workflow:
@@ -93,16 +101,6 @@ When you run `/feature-marker prd-{feature-name}`, the workflow:
 
 2. **No duplicates**: Existing files are never overwritten or duplicated
 3. **Resume friendly**: You can stop and resume at any time with checkpoint support
-
-### Migration from Previous Versions
-If you're upgrading from an older version:
-
-```bash
-# Move your existing tasks from docs/tasks/ to tasks/
-mv docs/tasks/* tasks/
-rm -rf docs/tasks/
-rm -rf docs/specs/  # Templates no longer needed
-```
 
 ---
 
