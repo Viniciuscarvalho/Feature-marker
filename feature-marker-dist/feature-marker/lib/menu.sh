@@ -2,6 +2,14 @@
 # menu.sh - Interactive menu for feature-marker
 set -euo pipefail
 
+# Check if TTY is available for interactive input
+check_tty_available() {
+  if [[ -t 0 ]] && [[ -t 1 ]]; then
+    return 0
+  fi
+  return 1
+}
+
 # Display main menu panel
 show_main_menu() {
   local feature_name="$1"
@@ -115,6 +123,21 @@ show_ralph_install_instructions() {
 select_execution_mode() {
   local feature_name="$1"
   local selected_mode=""
+
+  # Check if TTY is available
+  if ! check_tty_available; then
+    echo ""
+    error "Interactive mode requires a terminal (TTY)"
+    echo ""
+    echo "The --interactive flag cannot be used when running via Claude Code"
+    echo "or when stdin/stdout is not connected to a terminal."
+    echo ""
+    echo "Alternative options:"
+    echo "  1. Run directly in terminal: ./feature-marker.sh --interactive ${feature_name}"
+    echo "  2. Use non-interactive mode: /feature-marker ${feature_name}"
+    echo ""
+    exit 1
+  fi
 
   while true; do
     clear
