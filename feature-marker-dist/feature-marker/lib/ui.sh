@@ -142,7 +142,7 @@ separator() {
 banner() {
   echo ""
   echo -e "${BOLD}╔═══════════════════════════════════════╗${NC}"
-  echo -e "${BOLD}║        feature-marker v1.1.0          ║${NC}"
+  echo -e "${BOLD}║        feature-marker v1.2.0          ║${NC}"
   echo -e "${BOLD}╚═══════════════════════════════════════╝${NC}"
   echo ""
 }
