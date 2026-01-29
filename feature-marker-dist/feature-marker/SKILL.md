@@ -25,6 +25,26 @@ Automates feature development with a 4-phase workflow:
 /feature-marker prd-user-authentication
 ```
 
+### Interactive Mode
+
+```
+/feature-marker --interactive <feature-slug>
+```
+
+Opens a menu to select execution mode:
+- **Full Workflow** - Default, generates missing files and executes all phases
+- **Tasks Only** - Uses existing files, skips generation phase
+- **Ralph Loop** - Autonomous continuous execution with ralph-wiggum
+
+Works both in terminal (TTY menu) and Claude CLI (AskUserQuestion prompt).
+
+**Direct mode selection** (skip menu):
+```
+/feature-marker --mode full <feature-slug>
+/feature-marker --mode tasks-only <feature-slug>
+/feature-marker --mode ralph-loop <feature-slug>
+```
+
 ## Prerequisites
 
 ### Commands
