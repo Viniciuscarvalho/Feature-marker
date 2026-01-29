@@ -36,6 +36,48 @@ When invoked with `--interactive` flag, the user can select between three execut
 
 Check execution mode with: `echo $EXECUTION_MODE`
 
+### Interactive Mode via Claude CLI
+
+When invoked with `--interactive` and running inside Claude CLI (no TTY available),
+the script outputs `INTERACTIVE_MODE_REQUESTED` followed by `FEATURE_NAME=<name>` and exits with code 100.
+
+**Agent Detection & Handling**:
+
+1. Detect the marker `INTERACTIVE_MODE_REQUESTED` in script output
+2. Extract feature name from `FEATURE_NAME=<name>` line
+3. Use `AskUserQuestion` tool to present the three execution modes
+4. Based on user selection, re-invoke the script with `--mode <selected-mode>`:
+   - "Full Workflow" → `--mode full`
+   - "Tasks Only" → `--mode tasks-only`
+   - "Ralph Loop" → `--mode ralph-loop`
+
+**Example AskUserQuestion**:
+```json
+{
+  "questions": [{
+    "question": "Which execution mode do you want to use?",
+    "header": "Mode",
+    "options": [
+      {"label": "Full Workflow", "description": "Generates missing PRD/TechSpec/Tasks and executes all phases"},
+      {"label": "Tasks Only", "description": "Skips generation, executes implementation only (requires existing files)"},
+      {"label": "Ralph Loop", "description": "Autonomous execution with self-correction via ralph-wiggum"}
+    ],
+    "multiSelect": false
+  }]
+}
+```
+
+**Example Flow**:
+```
+1. User: /feature-marker --interactive prd-auth
+2. Script outputs: INTERACTIVE_MODE_REQUESTED\nFEATURE_NAME=prd-auth
+3. Script exits with code 100
+4. Agent detects marker, uses AskUserQuestion
+5. User selects "Tasks Only"
+6. Agent runs: ./feature-marker.sh --mode tasks-only prd-auth
+7. Workflow continues normally
+```
+
 ---
 
 ## Inputs & Commands Gate (Pre-Phase)

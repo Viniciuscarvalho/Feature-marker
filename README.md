@@ -69,12 +69,18 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **v1.3.0** | 2026-01-28 | 🤖 AskUserQuestion support in Claude CLI for interactive mode |
 | **v1.2.0** | 2026-01-26 | 🔧 Interactive menu TTY fix, template paths corrected |
 | **v1.1.0** | 2026-01-19 | 🎯 Interactive execution panel, Ralph Loop mode |
 | **v1.0.0** | 2026-01-18 | 🚀 Initial release with 4-phase workflow |
 
 <details>
 <summary>📋 <strong>Version Details</strong></summary>
+
+### v1.3.0 - Claude CLI Integration 🤖
+- **AskUserQuestion support**: Interactive mode now works seamlessly inside Claude CLI
+- **Direct mode selection**: New `--mode` flag to skip menu (`--mode full|tasks-only|ralph-loop`)
+- **Cross-environment UX**: Works both in terminal (TTY menu) and Claude CLI (AskUserQuestion)
 
 ### v1.2.0 - Bug Fixes
 - **Interactive menu TTY detection**: Menu now detects non-terminal environments and provides guidance
@@ -439,6 +445,11 @@ The `feature-marker.sh` script can also be used directly:
 
 # Show version
 ./feature-marker/feature-marker.sh --version
+
+# Direct mode selection (v1.3.0+) - skip interactive menu
+./feature-marker/feature-marker.sh --mode full prd-user-authentication
+./feature-marker/feature-marker.sh --mode tasks-only prd-user-authentication
+./feature-marker/feature-marker.sh --mode ralph-loop prd-user-authentication
 ```
 
 ### CLI Output Example

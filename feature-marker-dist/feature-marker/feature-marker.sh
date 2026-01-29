@@ -35,12 +35,17 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     --version|-V)
-      echo "feature-marker v1.2.0"
+      echo "feature-marker v1.3.0"
       exit 0
       ;;
     --interactive|-i)
       INTERACTIVE_MODE=true
       shift
+      ;;
+    --mode|-m)
+      EXECUTION_MODE="$2"
+      export EXECUTION_MODE
+      shift 2
       ;;
     -*)
       error "Unknown option: $1"
@@ -69,6 +74,7 @@ if [[ "${SHOW_HELP}" == "true" ]]; then
   echo "  -s, --status       Show status of a feature workflow"
   echo "  -p, --platform     Show detected git platform info"
   echo "  -i, --interactive  Launch interactive menu panel"
+  echo "  -m, --mode <mode>  Set execution mode (full|tasks-only|ralph-loop)"
   echo "  -V, --version      Show version"
   echo ""
   echo "Examples:"
@@ -116,7 +122,18 @@ fi
 
 # Show interactive menu if requested
 if [[ "${INTERACTIVE_MODE}" == "true" ]]; then
-  select_execution_mode "${FEATURE_NAME}"
+  # Capture output and exit code from menu
+  set +e
+  menu_output=$(select_execution_mode "${FEATURE_NAME}")
+  menu_exit_code=$?
+  set -e
+
+  # Check if menu requested agent interaction (no TTY)
+  if [[ $menu_exit_code -eq 100 ]]; then
+    # Pass marker to stdout for agent to detect
+    echo "$menu_output"
+    exit 100
+  fi
 
   # Store selected mode
   SELECTED_MODE=$(get_execution_mode)

@@ -126,17 +126,10 @@ select_execution_mode() {
 
   # Check if TTY is available
   if ! check_tty_available; then
-    echo ""
-    error "Interactive mode requires a terminal (TTY)"
-    echo ""
-    echo "The --interactive flag cannot be used when running via Claude Code"
-    echo "or when stdin/stdout is not connected to a terminal."
-    echo ""
-    echo "Alternative options:"
-    echo "  1. Run directly in terminal: ./feature-marker.sh --interactive ${feature_name}"
-    echo "  2. Use non-interactive mode: /feature-marker ${feature_name}"
-    echo ""
-    exit 1
+    # Output marker for agent to detect and use AskUserQuestion
+    echo "INTERACTIVE_MODE_REQUESTED"
+    echo "FEATURE_NAME=${feature_name}"
+    exit 100
   fi
 
   while true; do
