@@ -82,13 +82,31 @@ the script outputs `INTERACTIVE_MODE_REQUESTED` followed by `FEATURE_NAME=<name>
 
 ## Inputs & Commands Gate (Pre-Phase)
 
-Before starting Phase 1, validate that required inputs exist. If missing, generate them using commands in `~/.claude/commands/`.
+Before starting Phase 1, validate that required inputs exist. If missing, generate them using commands in `~/.claude/commands/`, which read templates from `~/.claude/docs/specs/`.
+
+### File Generation Flow
+
+```
+Missing prd.md
+  ↓
+Invoke ~/.claude/commands/create-prd.md
+  ↓
+Command reads ~/.claude/docs/specs/prd-template.md
+  ↓
+Generates ./tasks/prd-{feature-name}/prd.md
+```
 
 ### Expected Paths
 
-- PRD: `./tasks/prd-{feature-name}/prd.md`
-- Tech Spec: `./tasks/prd-{feature-name}/techspec.md`
-- Tasks: `./tasks/prd-{feature-name}/tasks.md`
+**Templates** (must exist in user's home):
+- `~/.claude/docs/specs/prd-template.md`
+- `~/.claude/docs/specs/techspec-template.md`
+- `~/.claude/docs/specs/tasks-template.md`
+
+**Generated Files** (created in project):
+- `./tasks/prd-{feature-name}/prd.md`
+- `./tasks/prd-{feature-name}/techspec.md`
+- `./tasks/prd-{feature-name}/tasks.md`
 
 ### Gate Behavior
 
@@ -102,14 +120,21 @@ Before starting Phase 1, validate that required inputs exist. If missing, genera
    - ✅ `techspec.md` exists → Skip generation
    - ✅ `tasks.md` exists → Skip generation
 3. **Only if a file is missing**, generate it using the corresponding command:
-   - **Missing PRD**: Invoke `~/.claude/commands/create-prd.md`
-     - This creates `./tasks/prd-{feature-name}/prd.md`
-   - **Missing Tech Spec**: Invoke `~/.claude/commands/generate-spec.md {feature-name}`
-     - Creates `./tasks/prd-{feature-name}/techspec.md`
-   - **Missing Tasks**: Invoke `~/.claude/commands/generate-tasks.md {feature-name}`
-     - Creates `./tasks/prd-{feature-name}/tasks.md` and individual task files
-4. Re-validate after each command. If still missing, fail with a clear error explaining how to run the command manually.
-5. If all files exist, log success and proceed directly to Phase 1.
+   - **Missing PRD**:
+     - Invoke: `~/.claude/commands/create-prd.md`
+     - Reads: `~/.claude/docs/specs/prd-template.md`
+     - Creates: `./tasks/prd-{feature-name}/prd.md`
+   - **Missing Tech Spec**:
+     - Invoke: `~/.claude/commands/generate-spec.md {feature-name}`
+     - Reads: `~/.claude/docs/specs/techspec-template.md`
+     - Creates: `./tasks/prd-{feature-name}/techspec.md`
+   - **Missing Tasks**:
+     - Invoke: `~/.claude/commands/generate-tasks.md {feature-name}`
+     - Reads: `~/.claude/docs/specs/tasks-template.md`
+     - Creates: `./tasks/prd-{feature-name}/tasks.md` and individual task files
+4. **Validation**: If templates are missing, commands will fail. Ensure `~/.claude/docs/specs/*.md` templates exist.
+5. Re-validate after each command. If still missing, fail with error explaining template setup requirements.
+6. If all files exist, log success and proceed to Phase 1.
 
 #### Tasks Only Mode
 
@@ -286,6 +311,7 @@ On invocation:
 
 | Scenario | Behavior |
 |----------|----------|
+| Missing templates in ~/.claude/docs/specs/ | Fail with message: "Template not found: ~/.claude/docs/specs/{template}.md. Please create templates before running feature-marker." |
 | Missing task files | Generate automatically via commands |
 | Git not configured | Fail early with helpful message |
 | Tests don't exist | Phase 3 gracefully skips with warning |
