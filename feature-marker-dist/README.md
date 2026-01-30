@@ -11,6 +11,46 @@ Feature-marker automates the complete feature development lifecycle:
 4. **Tests & Validation** - Runs test suites and validates build
 5. **Commit & PR** - Commits changes and creates Pull Request
 
+## What's New in v1.4.0
+
+This release focuses on **documentation clarity** to help users understand how feature-marker works:
+
+### 📚 Enhanced Documentation
+
+- **Templates Location Clarified**: Now clearly documented that templates live in `~/.claude/docs/specs/`
+  - `prd-template.md`
+  - `techspec-template.md`
+  - `tasks-template.md`
+
+- **File Generation Flow**: Added visual diagrams showing how the system works:
+  ```
+  Templates (~/.claude/docs/specs/)
+    → Commands (~/.claude/commands/)
+    → Generated Files (./tasks/prd-{feature-name}/)
+  ```
+
+- **Architecture Overview**: New diagram showing the complete file flow between user's `~/.claude` directory and project directory
+
+- **Template Setup Guide**: Complete guide explaining:
+  - Why templates are in `~/.claude/docs/specs/`
+  - How commands read and use templates
+  - Setup verification steps
+
+- **Error Handling**: Added documentation for missing templates scenario
+
+### 📖 New Files
+
+- **README.md**: Comprehensive project documentation with examples, troubleshooting, and architecture
+- **CHANGELOG.md**: Following Keep a Changelog format for version tracking
+
+### 🔧 What Changed
+
+Previously, the documentation mentioned commands but didn't explain where templates should be or how they're used. Now it's crystal clear:
+
+**Before v1.4.0**: "Commands must be in `~/.claude/commands/`" (where are templates? 🤔)
+
+**After v1.4.0**: "Templates in `~/.claude/docs/specs/` → Commands in `~/.claude/commands/` read templates → Generate files in `./tasks/prd-{feature-name}/`" (clear! ✅)
+
 ## Installation
 
 ```bash
