@@ -69,6 +69,7 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **v1.4.0** | 2026-01-30 | 📚 Documentation improvements - Templates location clarified |
 | **v1.3.0** | 2026-01-28 | 🤖 AskUserQuestion support in Claude CLI for interactive mode |
 | **v1.2.0** | 2026-01-26 | 🔧 Interactive menu TTY fix, template paths corrected |
 | **v1.1.0** | 2026-01-19 | 🎯 Interactive execution panel, Ralph Loop mode |
@@ -76,6 +77,15 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 <details>
 <summary>📋 <strong>Version Details</strong></summary>
+
+### v1.4.0 - Documentation Improvements 📚
+- **Templates Location Clarified**: Now clearly documented that templates live in `~/.claude/docs/specs/`
+- **File Generation Flow**: Added visual diagrams showing Templates → Commands → Generated Files flow
+- **Architecture Overview**: New diagram showing complete file flow between `~/.claude` and project directories
+- **Template Setup Guide**: Complete guide explaining why templates are in `~/.claude/docs/specs/` and how to verify setup
+- **README.md**: Comprehensive project documentation with examples, troubleshooting, and architecture
+- **CHANGELOG.md**: Following Keep a Changelog format for version tracking
+- **Error Handling**: Added documentation for missing templates scenario
 
 ### v1.3.0 - Claude CLI Integration 🤖
 - **AskUserQuestion support**: Interactive mode now works seamlessly inside Claude CLI
@@ -269,6 +279,30 @@ The following commands must exist in `~/.claude/commands/`:
 
 > 💡 **Tip:** You can get these commands from [mindkit](https://github.com/Viniciuscarvalho/mindkit) or create your own.
 
+### Required Templates (v1.4.0+)
+
+The following templates must exist in `~/.claude/docs/specs/`:
+
+| Template | Description |
+|----------|-------------|
+| `prd-template.md` | Product Requirements Document template |
+| `techspec-template.md` | Technical Specification template |
+| `tasks-template.md` | Tasks breakdown template |
+
+**Template Format**: Templates should be markdown files with placeholders and structure that commands will use to generate feature-specific documents.
+
+**Setup verification:**
+```bash
+# Check templates exist
+ls ~/.claude/docs/specs/
+
+# Check commands exist
+ls ~/.claude/commands/
+
+# Test feature-marker
+/feature-marker --version
+```
+
 ### Optional: Ralph Loop Mode
 
 To use **Ralph Loop Mode** (option 3 in interactive panel):
@@ -285,19 +319,39 @@ Based on [Ralph Wiggum pattern](https://ghuntley.com/ralph/), this mode enables 
 
 ### Project Structure
 
-Your project should follow this structure:
+Your setup should follow this structure:
 
 ```
-your-project/
-├── tasks/
-│   └── prd-{feature-name}/
-│       ├── prd.md            # Generated PRD
-│       ├── techspec.md       # Generated tech spec
-│       └── tasks.md          # Generated task list
-└── .claude/
-    └── feature-state/
-        └── {feature-name}/
-            └── checkpoint.json   # Workflow state
+User's ~/.claude directory              Project directory
+━━━━━━━━━━━━━━━━━━━━━━━━━              ━━━━━━━━━━━━━━━━
+~/.claude/
+├── commands/                           ./tasks/
+│   ├── create-prd.md        ─────┐    └── prd-{feature-name}/
+│   ├── generate-spec.md     ────┼┐       ├── prd.md
+│   └── generate-tasks.md    ───┼┼┐       ├── techspec.md
+│                                │││       └── tasks.md
+├── docs/                        │││
+│   └── specs/                   │││    .claude/feature-state/
+│       ├── prd-template.md   <──┘││    └── {feature-name}/
+│       ├── techspec-template.md <─┘│        ├── checkpoint.json
+│       └── tasks-template.md    <──┘        ├── analysis.md
+│                                            ├── plan.md
+├── skills/                                 ├── progress.md
+│   └── feature-marker/                     ├── test-results.md
+│                                            └── pr-url.txt
+└── agents/
+    └── feature-marker.md
+```
+
+**File Generation Flow:**
+```
+Missing prd.md
+  ↓
+Invoke ~/.claude/commands/create-prd.md
+  ↓
+Command reads ~/.claude/docs/specs/prd-template.md
+  ↓
+Generates ./tasks/prd-{feature-name}/prd.md
 ```
 
 ---
@@ -503,7 +557,32 @@ Git Platform Detection:
 Note: The path is `./tasks/` in the project root, **not** `./docs/tasks/`
 
 ### Q: Do I need template files?
-**A:** No! Templates are no longer required. All files are generated dynamically via commands in `~/.claude/commands/`
+**A:** Yes! As of v1.4.0, templates are required in `~/.claude/docs/specs/`:
+- `prd-template.md` - Product Requirements Document template
+- `techspec-template.md` - Technical Specification template
+- `tasks-template.md` - Tasks breakdown template
+
+Commands in `~/.claude/commands/` read these templates to generate feature-specific files.
+
+**Setup verification:**
+```bash
+ls ~/.claude/docs/specs/
+# Should show: prd-template.md, techspec-template.md, tasks-template.md
+```
+
+### Q: How does the file generation flow work?
+**A:** The flow is:
+```
+Templates (~/.claude/docs/specs/)
+  → Commands (~/.claude/commands/) read templates
+  → Generated Files (./tasks/prd-{feature-name}/)
+```
+
+For example:
+1. Missing `prd.md` detected
+2. Command `~/.claude/commands/create-prd.md` invoked
+3. Command reads `~/.claude/docs/specs/prd-template.md`
+4. Generates `./tasks/prd-{feature-name}/prd.md` in your project
 
 ### Q: How do I migrate from the old `docs/tasks/` structure?
 **A:** Simply move your files:
@@ -518,10 +597,28 @@ rm -rf docs/tasks/ docs/specs/
 
 | Issue | Solution |
 |-------|----------|
+| Templates not found | Create template directory: `mkdir -p ~/.claude/docs/specs` and add template files |
+| Commands not found | Ensure commands exist in `~/.claude/commands/` |
 | Task generation needs approval | `generate-tasks.md` requires preview approval before writing |
 | No PR skill for platform | Falls back to `creating-pr`; if unavailable, commits only |
 | Checkpoint corrupted | Delete `.claude/feature-state/{feature}/checkpoint.json` |
-| Commands not found | Ensure commands exist in `~/.claude/commands/` |
+
+### Templates Not Found
+
+If you see "Template not found" errors:
+
+```bash
+# 1. Create template directory
+mkdir -p ~/.claude/docs/specs
+
+# 2. Add your templates
+touch ~/.claude/docs/specs/prd-template.md
+touch ~/.claude/docs/specs/techspec-template.md
+touch ~/.claude/docs/specs/tasks-template.md
+
+# 3. Verify setup
+ls ~/.claude/docs/specs/
+```
 
 ---
 
