@@ -69,6 +69,7 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **v1.5.0** | 2026-01-30 | 🎯 XcodeBuildMCP integration - iOS simulator validation in Phase 3 |
 | **v1.4.0** | 2026-01-30 | 📚 Documentation improvements - Templates location clarified |
 | **v1.3.0** | 2026-01-28 | 🤖 AskUserQuestion support in Claude CLI for interactive mode |
 | **v1.2.0** | 2026-01-26 | 🔧 Interactive menu TTY fix, template paths corrected |
@@ -77,6 +78,15 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 <details>
 <summary>📋 <strong>Version Details</strong></summary>
+
+### v1.5.0 - iOS Simulator Integration 🎯
+- **XcodeBuildMCP Integration**: Phase 3 now validates iOS apps on simulator after tests pass
+- **Automatic Detection**: Checks for `~/.claude/skills/xcodebuildmcp/SKILL.md`
+- **Auto-Configuration**: Automatically runs `discover_projs` and `session_set_defaults`
+- **build_run_sim**: Builds and runs iOS app on simulator for real validation
+- **Non-Blocking**: Build failures log warnings but workflow continues
+- **Enhanced Reports**: test-results.md includes simulator build/run section
+- **iOS Only**: Integration only activates for Swift/Xcode projects
 
 ### v1.4.0 - Documentation Improvements 📚
 - **Templates Location Clarified**: Now clearly documented that templates live in `~/.claude/docs/specs/`

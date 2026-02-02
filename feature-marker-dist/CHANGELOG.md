@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-01-30
+
+### Added
+- XcodeBuildMCP integration in Phase 3 (Tests & Validation)
+- iOS simulator build and run validation after tests pass
+- Automatic XcodeBuildMCP skill detection (`~/.claude/skills/xcodebuildmcp/SKILL.md`)
+- Auto-configuration of XcodeBuildMCP session defaults
+- `build_run_sim` command integration for iOS projects
+- Enhanced test-results.md format with simulator validation section
+
+### Changed
+- Phase 3 now validates iOS apps on simulator when XcodeBuildMCP is available
+- Build failures are non-blocking - workflow continues to Phase 4 with warning
+- test-results.md includes simulator build/run results for iOS projects
+
+### Technical Details
+- XcodeBuildMCP integration is optional and only runs for Swift/Xcode projects
+- Automatic project discovery using `discover_projs`
+- Session defaults configured automatically with `session_set_defaults`
+- Simulator validation skipped gracefully if skill not found or project is not iOS
+
 ## [1.4.0] - 2026-01-30
 
 ### Added
