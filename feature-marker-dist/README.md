@@ -1,4 +1,4 @@
-# Feature-Marker v1.4.0
+# Feature-Marker v1.5.0
 
 Platform-agnostic workflow automation for feature development with checkpoints and resume capability.
 
@@ -8,12 +8,40 @@ Feature-marker automates the complete feature development lifecycle:
 1. **Inputs Gate** - Validates/generates PRD, Tech Spec, and Tasks
 2. **Analysis & Planning** - Creates implementation plan
 3. **Implementation** - Executes tasks with progress tracking
-4. **Tests & Validation** - Runs test suites and validates build
+4. **Tests & Validation** - Runs test suites, validates build, and runs iOS simulator (XcodeBuildMCP)
 5. **Commit & PR** - Commits changes and creates Pull Request
+
+## What's New in v1.5.0
+
+This release adds **iOS simulator integration** for better validation of iOS apps:
+
+### 🎯 XcodeBuildMCP Integration
+
+- **Automatic iOS Simulator Validation**: After tests pass, if project is iOS/Swift and XcodeBuildMCP is available, automatically builds and runs app on simulator
+- **Smart Detection**: Checks for `~/.claude/skills/xcodebuildmcp/SKILL.md` existence
+- **Auto-Configuration**: Automatically sets up XcodeBuildMCP session defaults
+- **Non-Blocking**: Build failures log warnings but workflow continues to Phase 4
+- **Enhanced Reports**: test-results.md now includes simulator build/run results
+
+### 📱 How It Works
+
+```
+Phase 3: Tests Pass
+  ↓
+Detect iOS/Swift Project
+  ↓
+Check XcodeBuildMCP Skill
+  ↓
+discover_projs → session_set_defaults → build_run_sim
+  ↓
+✅ App running on simulator → Continue to Phase 4
+```
+
+**Optional & Non-Blocking**: If XcodeBuildMCP not found or build fails, workflow continues normally.
 
 ## What's New in v1.4.0
 
-This release focuses on **documentation clarity** to help users understand how feature-marker works:
+Documentation clarity improvements:
 
 ### 📚 Enhanced Documentation
 

@@ -11,7 +11,7 @@ Automates feature development with a 4-phase workflow:
 1. **Inputs Gate** - Validates `prd.md`, `techspec.md`, `tasks.md` exist; generates them via `~/.claude/commands/` if missing.
 2. **Analysis & Planning** - Reads docs, creates implementation plan.
 3. **Implementation** - Executes tasks with progress tracking.
-4. **Tests & Validation** - Runs test suites, validates build.
+4. **Tests & Validation** - Runs test suites, validates build, and runs iOS simulator (XcodeBuildMCP) if available.
 5. **Commit & PR** - Commits changes and creates PR (auto-detects git platform).
 
 ## Usage

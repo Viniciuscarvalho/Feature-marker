@@ -192,7 +192,7 @@ If `EXECUTION_MODE=ralph-loop`, use the ralph-wiggum skill for autonomous iterat
 
 ## Phase 3: Tests & Validation
 
-**Objective**: Run tests and validate the implementation.
+**Objective**: Run tests, validate the implementation, and verify iOS app functionality.
 
 **Tasks**:
 - Identify test commands based on project type:
@@ -206,13 +206,29 @@ If `EXECUTION_MODE=ralph-loop`, use the ralph-wiggum skill for autonomous iterat
 - Run build validation
 - Check for errors/warnings
 - If tests fail, report issues and allow user to fix before continuing
+- **If tests pass AND project is iOS/Swift AND XcodeBuildMCP available**:
+  - **Check for XcodeBuildMCP skill**: Verify `~/.claude/skills/xcodebuildmcp/SKILL.md` exists
+  - **Discover Xcode project**: Use `/xcodebuildmcp discover_projs` to find .xcodeproj or .xcworkspace
+  - **Configure session**: Use `/xcodebuildmcp session_set_defaults` to auto-configure (if needed)
+  - **Build and run**: Invoke `/xcodebuildmcp build_run_sim` to build and run on iOS simulator
+  - **Capture output**: Monitor build output and simulator launch status
+  - **Report status**:
+    - Success: Log "✅ App built and running on simulator"
+    - Failure: Log "⚠️ Build failed: [error details]" and continue anyway (optional validation)
 - Save test results:
   - `.claude/feature-state/{feature-name}/test-results.md`
+  - Include simulator build/run results if XcodeBuildMCP was used
 - Update checkpoint to phase 3 complete
 
-**Outputs**: `test-results.md`
+**Outputs**: `test-results.md` (includes simulator validation section for iOS projects)
 
-**Note**: If no tests exist, Phase 3 gracefully skips with a warning.
+**XcodeBuildMCP Integration** (iOS projects only):
+- This is **optional validation** - if XcodeBuildMCP skill not found or build fails, workflow continues
+- Skill detection: Check if `~/.claude/skills/xcodebuildmcp/SKILL.md` exists
+- Only runs for Swift/Xcode projects (detected by test command type)
+- Build failures are non-blocking - logs warning and proceeds to Phase 4
+
+**Note**: If no tests exist, Phase 3 gracefully skips tests with a warning.
 
 ---
 
