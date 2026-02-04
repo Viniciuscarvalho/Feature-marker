@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "╔═══════════════════════════════════════╗"
-echo "║   Installing feature-marker v1.5.0   ║"
+echo "║   Installing feature-marker v1.6.0   ║"
 echo "╚═══════════════════════════════════════╝"
 echo ""
 
@@ -110,6 +110,11 @@ echo "Setting permissions..."
 chmod +x "${SKILL_DST}/feature-marker.sh" 2>/dev/null || true
 chmod +x "${SKILL_DST}/install.sh" 2>/dev/null || true
 chmod +x "${SKILL_DST}/lib/"*.sh 2>/dev/null || true
+
+# Verify resources were copied
+if [[ -f "${SKILL_DST}/resources/commit.md" ]]; then
+  echo "  ✓ Commit command bundled in resources"
+fi
 
 echo ""
 echo "╔═══════════════════════════════════════╗"

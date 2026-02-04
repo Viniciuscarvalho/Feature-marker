@@ -11,6 +11,56 @@ Feature-marker automates the complete feature development lifecycle:
 4. **Tests & Validation** - Runs test suites, validates build, and runs iOS simulator (XcodeBuildMCP)
 5. **Commit & PR** - Commits changes and creates Pull Request
 
+## What's New in v1.6.0
+
+This release adds **auto-installation of product manager skill and enhanced commit workflow**:
+
+### 🚀 Smart Dependency Management
+
+- **Phase 1: Product Manager Skill Auto-Install**
+  - Checks for `product-manager` skill in `~/.claude/skills/`
+  - Auto-installs via `npx skills add` if missing and Node.js available
+  - Uses skill for enhanced PRD analysis and requirements management
+  - Non-blocking: continues without it if unavailable
+
+- **Phase 4: Enhanced Commit Command Auto-Install**
+  - Checks for `/commit` command in `~/.claude/commands/`
+  - Auto-installs bundled professional commit workflow if missing
+  - Features:
+    - Pre-commit validation (lint, build, docs)
+    - Intelligent commit splitting
+    - Conventional commits with semantic emojis
+    - Smart staging
+  - Falls back to standard commit if unavailable
+
+### 📦 Bundled Resources
+
+- **Commit Command**: Bundled in `resources/commit.md`
+- **Auto-Installation**: Copies to `~/.claude/commands/commit.md` if missing
+- **User Priority**: Always uses user's existing commands/skills if present
+
+### 🔄 Installation Flow
+
+```
+Phase 1 Start
+  ↓
+Check ~/.claude/skills/product-manager/
+  ↓
+Missing? → Install via npx skills add
+  ↓
+Continue with enhanced PM capabilities
+
+Phase 4 Start
+  ↓
+Check ~/.claude/commands/commit.md
+  ↓
+Missing? → Copy from bundled resources
+  ↓
+Use /commit for professional commit workflow
+```
+
+**Smart & Non-Intrusive**: Only installs what's missing, always prefers user's existing setup.
+
 ## What's New in v1.5.0
 
 This release adds **iOS simulator integration** for better validation of iOS apps:
@@ -87,8 +137,27 @@ cd feature-marker
 ```
 
 This will install:
-- Skill: `~/.claude/skills/feature-marker.md`
+- Skill: `~/.claude/skills/feature-marker/`
 - Agent: `~/.claude/agents/feature-marker.md`
+- Bundled Resources: `~/.claude/skills/feature-marker/resources/commit.md`
+
+### Auto-Installed Dependencies
+
+Feature-marker automatically installs missing dependencies during workflow execution:
+
+**Phase 1**: Product Manager Skill
+- Checks: `~/.claude/skills/product-manager/`
+- Installs via: `npx skills add https://github.com/aj-geddes/claude-code-bmad-skills --skill product-manager`
+- Priority: Uses user's existing skill if already installed
+- Fallback: Continues without it if unavailable
+
+**Phase 4**: Enhanced Commit Command
+- Checks: `~/.claude/commands/commit.md`
+- Installs from: Bundled `resources/commit.md`
+- Priority: Uses user's existing command if already installed
+- Fallback: Uses standard commit workflow if unavailable
+
+**You don't need to install these manually** - they'll be auto-installed when needed. If you already have them, feature-marker will use your versions.
 
 ## How It Works
 
@@ -408,6 +477,8 @@ rm -rf .claude/feature-state/{feature-name}
 
 ## Version History
 
+- **v1.6.0** - Auto-install product-manager skill (Phase 1) and enhanced commit command (Phase 4)
+- **v1.5.0** - Added XcodeBuildMCP integration for iOS simulator validation
 - **v1.4.0** - Clarified documentation for templates and commands
 - **v1.3.0** - Added AskUserQuestion support for interactive mode
 - **v1.2.0** - Menu interactive works and path for templates
