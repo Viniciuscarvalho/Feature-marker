@@ -6,13 +6,13 @@ tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill
 
 # feature-marker
 
-Automates feature development with a 4-phase workflow:
+Automates feature development with a 5-phase workflow:
 
 1. **Inputs Gate** - Validates `prd.md`, `techspec.md`, `tasks.md` exist; generates them via `~/.claude/commands/` if missing.
-2. **Analysis & Planning** - Reads docs, creates implementation plan.
+2. **Analysis & Planning** - Auto-installs product-manager skill if missing; reads docs, creates implementation plan.
 3. **Implementation** - Executes tasks with progress tracking.
 4. **Tests & Validation** - Runs test suites, validates build, and runs iOS simulator (XcodeBuildMCP) if available.
-5. **Commit & PR** - Commits changes and creates PR (auto-detects git platform).
+5. **Commit & PR** - Auto-installs enhanced commit command if missing; commits changes using professional workflow and creates PR (auto-detects git platform).
 
 ## Usage
 
@@ -122,13 +122,84 @@ When invoked, the skill:
    - Missing PRD → `/create-prd`
    - Missing Tech Spec → `/generate-spec {feature-slug}`
    - Missing Tasks → `/generate-tasks {feature-slug}`
-3. **Executes 4-phase workflow** via the `feature-marker` agent
-4. **Persists state** - Saves checkpoints after each phase/task for resume capability
+3. **Auto-installs missing dependencies**:
+   - **Phase 1**: Checks for `product-manager` skill
+     - If missing: Installs via `npx skills add https://github.com/aj-geddes/claude-code-bmad-skills --skill product-manager`
+     - If user already has it: Uses user's version
+     - If installation fails: Continues without it (non-blocking)
+   - **Phase 4**: Checks for `/commit` command
+     - If missing: Copies from bundled `resources/commit.md` to `~/.claude/commands/commit.md`
+     - If user already has it: Uses user's version
+     - If installation fails: Falls back to standard commit workflow
+4. **Executes 5-phase workflow** via the `feature-marker` agent
+5. **Persists state** - Saves checkpoints after each phase/task for resume capability
 
-**Important**: The workflow is smart about file detection:
-- ✅ Files exist → Uses them directly, no regeneration
-- ⚠️ Files missing → Generates only what's needed
+**Important**: The workflow is smart about file detection and dependencies:
+- ✅ Files/skills/commands exist → Uses them directly, no regeneration or reinstallation
+- ⚠️ Missing → Installs/generates only what's needed
 - 🔒 Never overwrites existing content
+- 👤 **User's versions always have priority** over bundled/auto-installed versions
+
+## Auto-Installed Dependencies
+
+Feature-marker automatically installs missing dependencies to enhance the workflow:
+
+### Product Manager Skill (Phase 1)
+
+**What it does**: Provides advanced PRD analysis, requirements validation, and product management capabilities.
+
+**Installation**:
+- **Check**: Phase 1 checks for `~/.claude/skills/product-manager/SKILL.md`
+- **Install**: If missing and `npx` available, runs:
+  ```bash
+  npx skills add https://github.com/aj-geddes/claude-code-bmad-skills --skill product-manager
+  ```
+- **Priority**: Uses user's existing skill if already installed
+- **Fallback**: Continues without it if installation fails (non-blocking)
+
+**Benefits**:
+- Enhanced requirement analysis
+- Better PRD validation
+- Improved feature planning
+
+### Enhanced Commit Command (Phase 4)
+
+**What it does**: Professional commit workflow with validation, splitting, and conventional commit format.
+
+**Installation**:
+- **Check**: Phase 4 checks for `~/.claude/commands/commit.md`
+- **Install**: If missing, copies from bundled `resources/commit.md` to `~/.claude/commands/commit.md`
+- **Priority**: Uses user's existing command if already installed
+- **Fallback**: Uses standard commit workflow if installation fails
+
+**Features**:
+- Pre-commit validation (lint, build, docs)
+- Intelligent commit splitting
+- Conventional commit format with emojis
+- Smart file staging
+- No Co-Authored-By footer (as per command design)
+
+**Example Output**:
+```bash
+✨ feat: add user authentication system
+🐛 fix: resolve memory leak in rendering process
+📝 docs: update API documentation
+♻️ refactor: simplify error handling logic
+```
+
+### Manual Installation
+
+If auto-installation fails, you can install manually:
+
+**Product Manager Skill**:
+```bash
+npx skills add https://github.com/aj-geddes/claude-code-bmad-skills --skill product-manager
+```
+
+**Commit Command**:
+```bash
+cp ~/.claude/skills/feature-marker/resources/commit.md ~/.claude/commands/commit.md
+```
 
 ## Template Setup Guide
 
@@ -273,7 +344,7 @@ Checkpoint saved.
 ...
 ```
 
-### Example 3: Complete Workflow
+### Example 3: Complete Workflow with Auto-Install
 ```
 > /feature-marker prd-new-feature
 
@@ -283,7 +354,11 @@ Phase 0: Inputs Gate
 ✗ tasks.md missing → Generating via /generate-tasks...
 
 Phase 1: Analysis & Planning
-...
+⚙️  Installing product-manager skill...
+✓ product-manager skill installed successfully
+Reading PRD, Tech Spec, and Tasks...
+Creating implementation plan...
+Checkpoint saved.
 
 Phase 2: Implementation
 [1/6] Create User entity... ✓
@@ -300,9 +375,29 @@ All tests passed.
 Checkpoint saved.
 
 Phase 4: Commit & PR
+⚙️  Installing commit command...
+✓ commit command installed successfully
+Using enhanced commit workflow (/commit)...
+✨ feat: implement user authentication system
 Detected platform: GitHub
 Creating PR via /checking-pr...
 
 ✓ Feature complete!
 PR URL: https://github.com/user/repo/pull/42
+```
+
+### Example 4: Using Existing User Tools
+```
+> /feature-marker prd-payment-feature
+
+Phase 0: Inputs Gate
+✓ All inputs validated.
+
+Phase 1: Analysis & Planning
+✓ product-manager skill already installed (using user's version)
+...
+
+Phase 4: Commit & PR
+✓ commit command already exists (using user's version)
+...
 ```

@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-02-04
+
+### Added
+- **Smart Dependency Management**: Auto-installation of missing skills and commands
+- **Phase 1**: Product Manager skill auto-install
+  - Checks for `~/.claude/skills/product-manager/SKILL.md`
+  - Auto-installs via `npx skills add https://github.com/aj-geddes/claude-code-bmad-skills --skill product-manager`
+  - Non-blocking: continues without it if unavailable
+  - Always uses user's existing skill if already installed
+- **Phase 4**: Enhanced commit command auto-install
+  - Checks for `~/.claude/commands/commit.md`
+  - Auto-installs from bundled `resources/commit.md`
+  - Professional commit workflow with pre-commit validation, commit splitting, and conventional commits with emojis
+  - Falls back to standard commit if unavailable
+  - Always uses user's existing command if already installed
+- **Bundled Resources**: `resources/commit.md` included in installation
+- **dependency-installer.sh**: New helper script for managing skills and commands
+- Enhanced documentation in README.md and SKILL.md explaining auto-installation
+
+### Changed
+- Phase 1 now checks and installs product-manager skill before analysis
+- Phase 4 now checks and installs enhanced commit command before committing
+- Installation script now copies resources directory
+- Updated agent documentation with detailed auto-install workflow
+- Updated version to v1.6.0 in install.sh
+
+### Technical Details
+- Auto-installation is non-intrusive: user's existing tools always have priority
+- Product Manager skill enhances PRD analysis and requirements management
+- Enhanced commit command provides:
+  - Pre-commit checks (lint, build, docs generation)
+  - Intelligent commit splitting for multiple logical changes
+  - Conventional commit format with semantic emojis
+  - Smart staging (uses staged files or auto-stages all)
+  - No Co-Authored-By footer (as per command design)
+- All auto-installations are optional and non-blocking
+- Graceful fallbacks ensure workflow continues even if installations fail
+
 ## [1.5.0] - 2026-01-30
 
 ### Added
