@@ -152,6 +152,14 @@ Generates ./tasks/prd-{feature-name}/prd.md
 **Objective**: Deeply understand the requirements and create an implementation plan.
 
 **Tasks**:
+- **Ensure Product Manager Skill** (if available):
+  - Check if `~/.claude/skills/product-manager/SKILL.md` exists
+  - If missing and `npx` is available, install via:
+    ```bash
+    npx skills add https://github.com/aj-geddes/claude-code-bmad-skills --skill product-manager
+    ```
+  - If installation fails or `npx` unavailable, log warning and continue without it
+  - If skill exists (user's or newly installed), it will be available for use throughout the workflow
 - Read `prd.md`, `techspec.md`, and `tasks.md` from `./tasks/prd-{feature-name}/`
 - Understand requirements deeply
 - Ask clarifying questions if needed (pause and wait for user input)
@@ -163,6 +171,11 @@ Generates ./tasks/prd-{feature-name}/prd.md
 - Update checkpoint to phase 1 complete
 
 **Outputs**: `analysis.md`, `plan.md`
+
+**Product Manager Skill Integration**:
+- The product-manager skill provides advanced PRD analysis and requirements management
+- If installed, it enhances requirement understanding and validation
+- Non-blocking: workflow continues normally if skill is unavailable
 
 ---
 
@@ -234,22 +247,38 @@ If `EXECUTION_MODE=ralph-loop`, use the ralph-wiggum skill for autonomous iterat
 
 ## Phase 4: Commit & PR
 
-**Objective**: Commit changes and create a Pull Request.
+**Objective**: Commit changes and create a Pull Request using enhanced commit workflow.
 
 **Tasks**:
-1. Generate meaningful commit message from `progress.md`
-2. Stage all changes: `git add -A`
-3. Create commit with Co-Authored-By:
-   ```
-   git commit -m "feat: <description>
+1. **Ensure Enhanced Commit Command** (if available):
+   - Check if `~/.claude/commands/commit.md` exists
+   - If missing, try to install from bundled resources:
+     - Source: `~/.claude/skills/feature-marker/resources/commit.md`
+     - Destination: `~/.claude/commands/commit.md`
+   - If installation fails, fall back to standard commit workflow
+2. **Create Commit**:
+   - **If commit command exists** (user's or newly installed):
+     - Invoke `/commit` skill which provides:
+       - Automatic pre-commit checks (lint, build, docs generation)
+       - Intelligent commit splitting for multiple logical changes
+       - Enhanced conventional commit format with emojis
+       - Smart staging (uses staged files or auto-stages all changes)
+     - **IMPORTANT**: The `/commit` command does NOT add Co-Authored-By footer
+     - The command handles all commit creation automatically
+   - **If commit command unavailable** (fallback):
+     - Generate meaningful commit message from `progress.md`
+     - Stage all changes: `git add -A`
+     - Create commit with Co-Authored-By:
+       ```
+       git commit -m "feat: <description>
 
-   Co-Authored-By: Claude <noreply@anthropic.com>"
-   ```
-4. Detect git platform from remote URL:
+       Co-Authored-By: Claude <noreply@anthropic.com>"
+       ```
+3. Detect git platform from remote URL:
    ```bash
    remote_url=$(git remote get-url origin)
    ```
-5. Select appropriate PR skill based on platform:
+4. Select appropriate PR skill based on platform:
    | Platform | Remote Pattern | Skill |
    |----------|---------------|-------|
    | GitHub | `github.com` | `checking-pr` |
@@ -258,13 +287,20 @@ If `EXECUTION_MODE=ralph-loop`, use the ralph-wiggum skill for autonomous iterat
    | Bitbucket | `bitbucket.org` | `checking-pr` |
    | Other | (any) | `checking-pr` (fallback) |
 
-6. Invoke selected skill via the Skill tool
-7. Capture PR/MR URL from output
-8. Save PR URL:
+5. Invoke selected skill via the Skill tool
+6. Capture PR/MR URL from output
+7. Save PR URL:
    - `.claude/feature-state/{feature-name}/pr-url.txt`
-9. Mark feature complete in checkpoint
+8. Mark feature complete in checkpoint
 
 **Outputs**: `pr-url.txt`
+
+**Enhanced Commit Integration**:
+- The bundled commit command provides professional-grade commit workflow
+- Includes pre-commit validation (lint, build, docs)
+- Supports commit splitting for better change organization
+- Uses conventional commit format with semantic emojis
+- Non-blocking: falls back to standard commit if unavailable
 
 **Fallback**: If PR skill is not available, commit changes and log instructions for manual PR creation.
 
