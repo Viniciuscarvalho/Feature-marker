@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.6.0] - 2026-02-04
 
 ### Added
-- **Smart Dependency Management**: Auto-installation of missing skills and commands
+- **Smart Dependency Management**: Auto-installation of missing skills and commands (includes Product Manager skill integration)
 - **Phase 1**: Product Manager skill auto-install
   - Checks for `~/.claude/skills/product-manager/SKILL.md`
   - Auto-installs via `npx skills add https://github.com/aj-geddes/claude-code-bmad-skills --skill product-manager`
