@@ -1,4 +1,4 @@
-# Feature-Marker v1.5.0
+# Feature-Marker v1.6.0
 
 Platform-agnostic workflow automation for feature development with checkpoints and resume capability.
 
@@ -475,15 +475,43 @@ rm -rf .claude/feature-state/{feature-name}
 /feature-marker prd-{feature-name}
 ```
 
-## Version History
+## Changelog
 
-- **v1.6.0** - Auto-install product-manager skill (Phase 1) and enhanced commit command (Phase 4)
-- **v1.5.0** - Added XcodeBuildMCP integration for iOS simulator validation
-- **v1.4.0** - Clarified documentation for templates and commands
-- **v1.3.0** - Added AskUserQuestion support for interactive mode
-- **v1.2.0** - Menu interactive works and path for templates
-- **v1.1.0** - Added TTY detection for interactive menu mode
-- **v1.0.0** - Initial release
+### [1.6.0] - 2026-02-04
+
+#### Added
+- **Smart Dependency Management**: Auto-installation of missing skills and commands (includes Product Manager skill integration)
+- **Phase 1**: Product Manager skill auto-install via `npx skills add`
+- **Phase 4**: Enhanced commit command auto-install from bundled resources
+- Bundled `resources/commit.md` with professional commit workflow
+- New `dependency-installer.sh` helper script
+
+#### Changed
+- Phase 1 now checks and installs product-manager skill before analysis
+- Phase 4 now checks and installs enhanced commit command before committing
+- Installation script now copies resources directory
+
+### [1.5.0] - 2026-01-30
+
+#### Added
+- XcodeBuildMCP integration in Phase 3 for iOS simulator validation
+- Automatic iOS app build and run after tests pass
+- Enhanced test-results.md with simulator validation section
+
+### [1.4.0] - 2026-01-30
+
+#### Added
+- Comprehensive documentation for template locations and usage
+- Template Setup Guide with verification steps
+
+### Previous Versions
+
+- **v1.3.0** - AskUserQuestion support for interactive mode
+- **v1.2.0** - Interactive menu and template paths
+- **v1.1.0** - TTY detection for interactive menu
+- **v1.0.0** - Initial release with 4-phase workflow
+
+For complete changelog, see [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
