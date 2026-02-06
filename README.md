@@ -645,7 +645,7 @@ The `feature-marker.sh` script can also be used directly:
 
 ```
 ╔═══════════════════════════════════════╗
-║         feature-marker v1.0           ║
+║         feature-marker v2.0           ║
 ╚═══════════════════════════════════════╝
 
 Feature: prd-user-authentication
