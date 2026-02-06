@@ -5,7 +5,7 @@ import {V2Explainer} from './compositions/V2Explainer';
 export const RemotionRoot: React.FC = () => {
 	return (
 		<>
-			<Folder name="v2.0">
+			<Folder name="v2">
 				<Composition
 					id="FeatureMarkerV2"
 					component={V2Explainer}
