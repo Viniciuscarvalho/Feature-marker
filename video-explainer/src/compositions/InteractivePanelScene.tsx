@@ -9,14 +9,16 @@ export const InteractivePanelScene: React.FC = () => {
 	});
 
 	// Options highlight sequentially
-	const option1Highlight = frame >= 80 && frame < 200;
-	const option2Highlight = frame >= 200 && frame < 350;
-	const option3Highlight = frame >= 350 && frame < 500;
+	const option1Highlight = frame >= 80 && frame < 160;
+	const option2Highlight = frame >= 160 && frame < 240;
+	const option3Highlight = frame >= 240 && frame < 320;
+	const option4Highlight = frame >= 320;
 
 	// Descriptions fade in
 	const desc1Opacity = interpolate(frame, [100, 120], [0, 1], {extrapolateRight: 'clamp'});
-	const desc2Opacity = interpolate(frame, [220, 240], [0, 1], {extrapolateRight: 'clamp'});
-	const desc3Opacity = interpolate(frame, [370, 390], [0, 1], {extrapolateRight: 'clamp'});
+	const desc2Opacity = interpolate(frame, [180, 200], [0, 1], {extrapolateRight: 'clamp'});
+	const desc3Opacity = interpolate(frame, [260, 280], [0, 1], {extrapolateRight: 'clamp'});
+	const desc4Opacity = interpolate(frame, [340, 360], [0, 1], {extrapolateRight: 'clamp'});
 
 	return (
 		<AbsoluteFill
@@ -32,29 +34,29 @@ export const InteractivePanelScene: React.FC = () => {
 					transform: `translateX(${panelX}px)`,
 					backgroundColor: '#1e1e1e',
 					borderRadius: 16,
-					padding: 50,
+					padding: 45,
 					boxShadow: '0 25px 70px rgba(147, 51, 234, 0.3)',
 					border: '2px solid #9333ea',
-					minWidth: 800,
+					minWidth: 850,
 				}}
 			>
 				{/* Header */}
 				<div
 					style={{
-						fontSize: 40,
+						fontSize: 36,
 						fontWeight: 'bold',
 						color: '#ffffff',
-						marginBottom: 40,
+						marginBottom: 30,
 						textAlign: 'center',
 						borderBottom: '2px solid #374151',
-						paddingBottom: 20,
+						paddingBottom: 18,
 					}}
 				>
 					🚀 Feature Marker - Execution Mode
 				</div>
 
 				{/* Options */}
-				<div style={{display: 'flex', flexDirection: 'column', gap: 30}}>
+				<div style={{display: 'flex', flexDirection: 'column', gap: 18}}>
 					<MenuOption
 						number="1"
 						title="Full Workflow"
@@ -81,6 +83,16 @@ export const InteractivePanelScene: React.FC = () => {
 						isHighlighted={option3Highlight}
 						descriptionOpacity={desc3Opacity}
 					/>
+
+					<MenuOption
+						number="4"
+						title="Spec-Driven Mode"
+						subtitle="Multi-agent review + worktree isolation"
+						description="Uses spec-workflow for rigorous spec review"
+						isHighlighted={option4Highlight}
+						descriptionOpacity={desc4Opacity}
+						isNew
+					/>
 				</div>
 			</div>
 		</AbsoluteFill>
@@ -94,20 +106,20 @@ const MenuOption: React.FC<{
 	description: string;
 	isHighlighted: boolean;
 	descriptionOpacity: number;
-}> = ({number, title, subtitle, description, isHighlighted, descriptionOpacity}) => (
+	isNew?: boolean;
+}> = ({number, title, subtitle, description, isHighlighted, descriptionOpacity, isNew}) => (
 	<div
 		style={{
 			backgroundColor: isHighlighted ? 'rgba(147, 51, 234, 0.2)' : 'transparent',
 			border: isHighlighted ? '2px solid #9333ea' : '2px solid transparent',
 			borderRadius: 12,
-			padding: 20,
-			transition: 'all 0.3s ease',
+			padding: 16,
 		}}
 	>
-		<div style={{display: 'flex', alignItems: 'flex-start', gap: 20}}>
+		<div style={{display: 'flex', alignItems: 'flex-start', gap: 18}}>
 			<div
 				style={{
-					fontSize: 32,
+					fontSize: 28,
 					fontWeight: 'bold',
 					color: isHighlighted ? '#9333ea' : '#6b7280',
 				}}
@@ -115,28 +127,44 @@ const MenuOption: React.FC<{
 				{number})
 			</div>
 			<div style={{flex: 1}}>
-				<div
-					style={{
-						fontSize: 28,
-						fontWeight: 'bold',
-						color: '#ffffff',
-						marginBottom: 5,
-					}}
-				>
-					{title}
+				<div style={{display: 'flex', alignItems: 'center', gap: 12}}>
+					<div
+						style={{
+							fontSize: 24,
+							fontWeight: 'bold',
+							color: '#ffffff',
+						}}
+					>
+						{title}
+					</div>
+					{isNew && (
+						<div
+							style={{
+								backgroundColor: '#10b981',
+								color: '#ffffff',
+								fontSize: 12,
+								fontWeight: 'bold',
+								padding: '4px 10px',
+								borderRadius: 20,
+							}}
+						>
+							NEW v2.0
+						</div>
+					)}
 				</div>
 				<div
 					style={{
-						fontSize: 20,
+						fontSize: 18,
 						color: '#9ca3af',
-						marginBottom: 10,
+						marginBottom: 6,
+						marginTop: 3,
 					}}
 				>
 					{subtitle}
 				</div>
 				<div
 					style={{
-						fontSize: 18,
+						fontSize: 16,
 						color: '#6b7280',
 						opacity: descriptionOpacity,
 						fontStyle: 'italic',
