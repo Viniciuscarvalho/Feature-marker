@@ -69,6 +69,8 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **v2.0.0** | 2026-02-05 | 🔬 **Spec-Driven Mode** - Multi-agent review + worktree isolation (Spec Kit Pattern) |
+| **v1.6.0** | 2026-02-01 | 📦 Smart Dependency Management |
 | **v1.5.0** | 2026-01-30 | 🎯 XcodeBuildMCP integration - iOS simulator validation in Phase 3 |
 | **v1.4.0** | 2026-01-30 | 📚 Documentation improvements - Templates location clarified |
 | **v1.3.0** | 2026-01-28 | 🤖 AskUserQuestion support in Claude CLI for interactive mode |
@@ -78,6 +80,35 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 <details>
 <summary>📋 <strong>Version Details</strong></summary>
+
+### v2.0.0 - Spec-Driven Mode 🔬
+
+Major release introducing the **Spec Kit Pattern** - a rigorous approach to feature development with multi-agent review.
+
+**New Features:**
+- **Spec-Driven Mode (Option 4)**: New execution mode with multi-agent spec review
+- **Bundled spec-workflow skills**: All skills included - no external installation needed
+- **Multi-agent review**: 6 built-in reviewer personas (Pragmatic Architect, Paranoid Engineer, Operator, Simplifier, User Advocate, Product Strategist)
+- **Isolated worktree**: Safe development in separate git branches
+- **Automatic conversion**: Spec artifacts converted to Feature-Marker format (prd.md, techspec.md, tasks.md)
+- **Spec-to-FM bridge**: New bridge script for artifact conversion
+
+**Bundled Skills:**
+| Skill | Purpose |
+|-------|---------|
+| `/idea-explorer` | Collaborative idea refinement with YAGNI |
+| `/spec-writer` | Transform ideas into detailed specs |
+| `/spec-orchestrator` | Write specs with multi-agent review |
+| `/spec-executor` | Implement specs with checkpoints |
+| `/create-worktree` | Setup isolated git worktree |
+| `/spec-workflow-init` | Scaffold configuration structure |
+
+**Breaking Changes:** None - all existing modes continue to work.
+
+### v1.6.0 - Smart Dependency Management 📦
+- Automatic dependency detection and installation
+- Bundled commit command for enhanced commit workflow
+- Improved error handling for missing dependencies
 
 ### v1.5.0 - iOS Simulator Integration 🎯
 - **XcodeBuildMCP Integration**: Phase 3 now validates iOS apps on simulator after tests pass
@@ -225,7 +256,7 @@ Launch the interactive panel to choose your execution mode:
 /feature-marker --interactive prd-user-authentication
 ```
 
-The panel offers **three execution modes**:
+The panel offers **four execution modes**:
 
 #### 1️⃣  Full Workflow Mode (default)
 - **Best for**: New features or features with missing files
@@ -249,6 +280,15 @@ The panel offers **three execution modes**:
   - Runs until completion or manual stop
 - **Requires**: ralph-wiggum skill installed
 
+#### 4️⃣  Spec-Driven Mode (v2.0.0+) 🔬
+- **Best for**: Rigorous feature development with multi-agent review
+- **What it does**:
+  - Multi-agent spec review (6 reviewer personas)
+  - Creates isolated worktree for safe development
+  - Converts spec to PRD/TechSpec/Tasks format
+  - Executes implementation with checkpoints
+- **Skills bundled**: All spec-workflow skills included
+
 **Interactive Panel Preview:**
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -268,10 +308,94 @@ The panel offers **three execution modes**:
   3) Ralph Loop Mode - Autonomous loop execution
      → Uses ralph-wiggum for continuous iteration
 
+  4) Spec-Driven Mode - Multi-agent review + worktree isolation
+     → Uses spec-workflow for rigorous spec review
+
   0) Exit
 
-Select option [0-3]:
+Select option [0-4]:
 ```
+
+---
+
+## 🔬 Spec-Driven Mode (v2.0.0+)
+
+The **Spec-Driven Mode** introduces a rigorous approach to feature development using the **Spec Kit Pattern**.
+
+### What is Spec-Driven Mode?
+
+This mode combines **multi-agent review** with **isolated worktrees** for safer, more rigorous feature development:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Phase 0: Spec Generation with Multi-Agent Review        │
+│                                                         │
+│ 1. Idea exploration (if no PRD exists)                  │
+│    └─ /idea-explorer for collaborative refinement       │
+│                                                         │
+│ 2. Spec generation with review cycle                    │
+│    └─ /spec-orchestrator invokes 2-6 reviewer personas  │
+│    └─ Iterative feedback → revision cycle               │
+│    └─ Auto-approval at 80% consensus                    │
+│                                                         │
+│ 3. Worktree creation                                    │
+│    └─ /create-worktree for isolated development         │
+│                                                         │
+│ 4. Spec conversion to Feature-Marker format             │
+│    └─ Generates prd.md, techspec.md, tasks.md           │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│ Phase 1-2: Implementation via /spec-executor            │
+│ Phase 3-4: Standard FM Tests & Commit/PR                │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Built-in Reviewer Personas
+
+The spec-orchestrator uses 6 built-in personas to review your specifications:
+
+| Persona | Focus |
+|---------|-------|
+| **Pragmatic Architect** | Overall design and maintainability |
+| **Paranoid Engineer** | Edge cases and failure modes |
+| **Operator** | Operational concerns and monitoring |
+| **Simplifier** | Challenges unnecessary complexity |
+| **User Advocate** | User experience considerations |
+| **Product Strategist** | Alignment with product goals |
+
+### Usage
+
+```bash
+# Via interactive menu
+/feature-marker --interactive my-feature
+# Select option 4) Spec-Driven Mode
+
+# Via direct mode flag
+/feature-marker --mode spec-driven my-feature
+```
+
+### Configuration (Optional)
+
+Create `.claude/spec-workflow/config.yaml` in your project:
+
+```yaml
+paths:
+  specs: "./specs"
+  worktrees: "./worktrees"
+
+review:
+  maxIterations: 3
+  autoApproveThreshold: 0.8
+
+execution:
+  batchSize: 5
+  checkpoint:
+    behavior: "smart"  # pause, continue, or smart
+```
+
+See `~/.claude/skills/feature-marker/resources/spec-workflow/ABSTRACTION_PLAN.md` for full configuration options.
 
 ---
 
@@ -514,6 +638,7 @@ The `feature-marker.sh` script can also be used directly:
 ./feature-marker/feature-marker.sh --mode full prd-user-authentication
 ./feature-marker/feature-marker.sh --mode tasks-only prd-user-authentication
 ./feature-marker/feature-marker.sh --mode ralph-loop prd-user-authentication
+./feature-marker/feature-marker.sh --mode spec-driven prd-user-authentication  # v2.0.0+
 ```
 
 ### CLI Output Example

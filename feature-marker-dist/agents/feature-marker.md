@@ -34,6 +34,13 @@ When invoked with `--interactive` flag, the user can select between three execut
    - Self-correcting continuous loop until completion
    - Environment variable: `EXECUTION_MODE=ralph-loop`
 
+4. **Spec-Driven Mode**
+   - Uses spec-workflow skills for rigorous multi-agent review
+   - Creates isolated worktree for safe development
+   - Converts spec to PRD/TechSpec/Tasks format
+   - Executes standard FM phases 3-4 after implementation
+   - Environment variable: `EXECUTION_MODE=spec-driven`
+
 Check execution mode with: `echo $EXECUTION_MODE`
 
 ### Interactive Mode via Claude CLI
@@ -45,11 +52,12 @@ the script outputs `INTERACTIVE_MODE_REQUESTED` followed by `FEATURE_NAME=<name>
 
 1. Detect the marker `INTERACTIVE_MODE_REQUESTED` in script output
 2. Extract feature name from `FEATURE_NAME=<name>` line
-3. Use `AskUserQuestion` tool to present the three execution modes
+3. Use `AskUserQuestion` tool to present the four execution modes
 4. Based on user selection, re-invoke the script with `--mode <selected-mode>`:
    - "Full Workflow" → `--mode full`
    - "Tasks Only" → `--mode tasks-only`
    - "Ralph Loop" → `--mode ralph-loop`
+   - "Spec-Driven" → `--mode spec-driven`
 
 **Example AskUserQuestion**:
 ```json
@@ -60,7 +68,8 @@ the script outputs `INTERACTIVE_MODE_REQUESTED` followed by `FEATURE_NAME=<name>
     "options": [
       {"label": "Full Workflow", "description": "Generates missing PRD/TechSpec/Tasks and executes all phases"},
       {"label": "Tasks Only", "description": "Skips generation, executes implementation only (requires existing files)"},
-      {"label": "Ralph Loop", "description": "Autonomous execution with self-correction via ralph-wiggum"}
+      {"label": "Ralph Loop", "description": "Autonomous execution with self-correction via ralph-wiggum"},
+      {"label": "Spec-Driven", "description": "Multi-agent review + isolated worktree via spec-workflow"}
     ],
     "multiSelect": false
   }]
@@ -303,6 +312,190 @@ If `EXECUTION_MODE=ralph-loop`, use the ralph-wiggum skill for autonomous iterat
 - Non-blocking: falls back to standard commit if unavailable
 
 **Fallback**: If PR skill is not available, commit changes and log instructions for manual PR creation.
+
+---
+
+## Spec-Driven Mode (EXECUTION_MODE=spec-driven)
+
+This mode integrates the **spec-workflow** methodology for rigorous multi-agent review and isolated development.
+
+### Overview
+
+Spec-Driven Mode provides:
+- **Multi-agent spec review**: Multiple AI personas review your specification
+- **Isolated worktree**: Safe development in a separate git branch
+- **Rigorous validation**: Specs are reviewed iteratively until approved
+- **Automatic conversion**: Spec artifacts are converted to Feature-Marker format
+
+### Spec-Driven Workflow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Phase 0: Spec Generation with Multi-Agent Review        │
+│                                                         │
+│ 1. Check for existing spec or PRD                       │
+│    - If no PRD: invoke /idea-explorer for refinement    │
+│                                                         │
+│ 2. Generate spec with review cycle                      │
+│    - Invoke /spec-orchestrator                          │
+│    - Multi-agent review (2-6 personas)                  │
+│    - Iterative feedback → revision cycle                │
+│    - Auto-approval at consensus threshold               │
+│                                                         │
+│ 3. Create isolated worktree                             │
+│    - Invoke /create-worktree                            │
+│    - New branch for safe development                    │
+│    - Spec copied to worktree                            │
+│                                                         │
+│ 4. Convert spec to Feature-Marker format                │
+│    - Extract sections from approved spec                │
+│    - Generate prd.md, techspec.md, tasks.md             │
+│    - Create individual task files                       │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│ Phase 1-2: Implementation via Spec-Executor             │
+│                                                         │
+│ - Invoke /spec-executor to implement approved spec      │
+│ - Step-by-step execution with checkpoints               │
+│ - Batched execution (configurable batch size)           │
+│ - Build/test/lint verification after each batch         │
+│ - Track progress using TodoWrite                        │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│ Phase 3-4: Tests & Commit/PR (Standard FM)              │
+│                                                         │
+│ - Continue with standard Feature-Marker phases          │
+│ - Validate tests, run builds                            │
+│ - Create commit and PR from worktree branch             │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Bundled Spec-Workflow Skills
+
+Feature-Marker includes the following spec-workflow skills:
+
+| Skill | Purpose |
+|-------|---------|
+| `/idea-explorer` | Collaborative idea refinement with YAGNI |
+| `/spec-writer` | Transform ideas into detailed specs |
+| `/spec-orchestrator` | Write specs with multi-agent review |
+| `/spec-executor` | Implement specs with checkpoints |
+| `/create-worktree` | Setup isolated git worktree |
+| `/spec-workflow-init` | Scaffold configuration structure |
+
+### Built-in Reviewer Personas
+
+The spec-orchestrator uses these default personas:
+
+1. **Pragmatic Architect** - Evaluates overall design and maintainability
+2. **Paranoid Engineer** - Focuses on edge cases and failure modes
+3. **Operator** - Considers operational concerns and monitoring
+4. **Simplifier** - Challenges unnecessary complexity
+5. **User Advocate** - Ensures user experience is considered
+6. **Product Strategist** - Validates alignment with product goals
+
+### Spec-to-Feature-Marker Conversion
+
+The bridge script converts spec-workflow specs to Feature-Marker format:
+
+```
+Spec-Workflow Spec                    Feature-Marker Files
+─────────────────                     ────────────────────
+Purpose / Problem Statement    →      prd.md
+Goals / Non-Goals              →
+Requirements                   →
+
+Architecture & Design          →      techspec.md
+Data Model / API Changes       →
+Component Design / Error Handling →
+
+Implementation Steps Table     →      tasks.md
+Validation & Testing Plan      →      Individual task files
+```
+
+### Example Session: Spec-Driven Mode
+
+```
+User: /feature-marker --mode spec-driven user-notifications
+
+Agent: 🔬 Spec-Driven Mode activated
+
+       Phase 0: Spec Generation with Multi-Agent Review
+
+       No existing PRD found. Starting idea exploration...
+       Invoking /idea-explorer user-notifications
+
+       [Collaborative exploration with user]
+
+       Invoking /spec-orchestrator...
+       Writing spec autonomously...
+
+       Starting multi-agent review cycle...
+
+       📋 Review Round 1/3
+       ├─ Pragmatic Architect: ✓ Approved with minor suggestions
+       ├─ Paranoid Engineer: ⚠️ Requests error handling clarification
+       ├─ Simplifier: ✓ Approved
+       └─ Consensus: 75% (threshold: 80%)
+
+       Revising spec based on feedback...
+
+       📋 Review Round 2/3
+       ├─ Pragmatic Architect: ✓ Approved
+       ├─ Paranoid Engineer: ✓ Approved
+       ├─ Simplifier: ✓ Approved
+       └─ Consensus: 100% ✓
+
+       Spec approved!
+
+       Creating worktree for isolated development...
+       Invoking /create-worktree user-notifications
+       ✓ Worktree created at: ./worktrees/user-notifications
+       ✓ Branch: feature/user-notifications
+
+       Converting spec to Feature-Marker format...
+       ✓ Generated prd.md
+       ✓ Generated techspec.md
+       ✓ Generated tasks.md (8 tasks)
+
+       Phase 1-2: Implementation
+       Invoking /spec-executor...
+       [Implementation proceeds with checkpoints]
+
+       Phase 3: Tests & Validation
+       [Standard FM testing]
+
+       Phase 4: Commit & PR
+       Creating PR from worktree branch...
+
+       ✓ Feature complete!
+       PR URL: https://github.com/user/repo/pull/43
+```
+
+### Configuration for Spec-Driven Mode
+
+Projects can configure spec-workflow via `.claude/spec-workflow/config.yaml`:
+
+```yaml
+paths:
+  specs: "./specs"
+  worktrees: "./worktrees"
+
+review:
+  maxIterations: 3
+  autoApproveThreshold: 0.8
+
+execution:
+  batchSize: 5
+  checkpoint:
+    behavior: "smart"  # pause, continue, or smart
+```
+
+See `resources/spec-workflow/ABSTRACTION_PLAN.md` for full configuration options.
 
 ---
 
