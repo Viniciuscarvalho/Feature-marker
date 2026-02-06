@@ -35,6 +35,7 @@ Opens a menu to select execution mode:
 - **Full Workflow** - Default, generates missing files and executes all phases
 - **Tasks Only** - Uses existing files, skips generation phase
 - **Ralph Loop** - Autonomous continuous execution with ralph-wiggum
+- **Spec-Driven** - Multi-agent review + worktree isolation via spec-workflow
 
 Works both in terminal (TTY menu) and Claude CLI (AskUserQuestion prompt).
 
@@ -43,6 +44,7 @@ Works both in terminal (TTY menu) and Claude CLI (AskUserQuestion prompt).
 /feature-marker --mode full <feature-slug>
 /feature-marker --mode tasks-only <feature-slug>
 /feature-marker --mode ralph-loop <feature-slug>
+/feature-marker --mode spec-driven <feature-slug>
 ```
 
 ## Prerequisites
