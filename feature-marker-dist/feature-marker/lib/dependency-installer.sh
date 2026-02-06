@@ -72,6 +72,101 @@ ensure_commit_command() {
   fi
 }
 
+# Check if spec-workflow skills exist
+check_spec_workflow_skills() {
+  local skills_dir="${HOME}/.claude/skills"
+  local required_skills=("spec-orchestrator" "spec-executor")
+
+  for skill in "${required_skills[@]}"; do
+    if [[ ! -f "${skills_dir}/${skill}/SKILL.md" ]]; then
+      return 1
+    fi
+  done
+
+  return 0
+}
+
+# Get bundled spec-workflow skills path
+get_bundled_spec_workflow_path() {
+  local bundled_path=""
+
+  # Priority 1: Installed feature-marker skill location
+  if [[ -d "${HOME}/.claude/skills/feature-marker/resources/spec-workflow/skills" ]]; then
+    bundled_path="${HOME}/.claude/skills/feature-marker/resources/spec-workflow/skills"
+  # Priority 2: FEATURE_MARKER_ROOT environment variable
+  elif [[ -n "${FEATURE_MARKER_ROOT:-}" ]] && [[ -d "${FEATURE_MARKER_ROOT}/resources/spec-workflow/skills" ]]; then
+    bundled_path="${FEATURE_MARKER_ROOT}/resources/spec-workflow/skills"
+  # Priority 3: Script directory (for development)
+  elif [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -d "${script_dir}/../resources/spec-workflow/skills" ]]; then
+      bundled_path="${script_dir}/../resources/spec-workflow/skills"
+    fi
+  fi
+
+  echo "$bundled_path"
+}
+
+# Install spec-workflow skills from bundled resources
+ensure_spec_workflow_skills() {
+  local target_dir="${HOME}/.claude/skills"
+  local skills=("idea-explorer" "spec-writer" "spec-orchestrator" "spec-executor" "create-worktree" "spec-workflow-init")
+  local installed=0
+
+  # Check if already installed
+  if check_spec_workflow_skills; then
+    echo "✓ spec-workflow skills already installed"
+    return 0
+  fi
+
+  # Get bundled path (from feature-marker installation)
+  local source_dir
+  source_dir="$(get_bundled_spec_workflow_path)"
+
+  # Fallback to environment variable if set
+  if [[ -z "$source_dir" ]] && [[ -n "${SPEC_WORKFLOW_SOURCE:-}" ]]; then
+    source_dir="${SPEC_WORKFLOW_SOURCE}"
+  fi
+
+  # Check if source exists
+  if [[ -z "$source_dir" ]] || [[ ! -d "$source_dir" ]]; then
+    echo "⚠️  spec-workflow skills not found in bundled resources" >&2
+    echo "   Expected location: ~/.claude/skills/feature-marker/resources/spec-workflow/skills" >&2
+    echo "   Please reinstall feature-marker or set SPEC_WORKFLOW_SOURCE" >&2
+    return 1
+  fi
+
+  echo "⚙️  Installing spec-workflow skills from bundled resources..."
+  echo "   Source: ${source_dir}"
+  mkdir -p "$target_dir"
+
+  for skill in "${skills[@]}"; do
+    if [[ -d "${source_dir}/${skill}" ]]; then
+      if [[ ! -d "${target_dir}/${skill}" ]]; then
+        if cp -r "${source_dir}/${skill}" "${target_dir}/"; then
+          echo "  ✓ Installed: ${skill}"
+          ((installed++)) || true
+        else
+          echo "  ⚠️  Failed to install: ${skill}" >&2
+        fi
+      else
+        echo "  ✓ Already exists: ${skill}"
+      fi
+    else
+      echo "  ⚠️  Not found in source: ${skill}" >&2
+    fi
+  done
+
+  if [[ $installed -gt 0 ]] || check_spec_workflow_skills; then
+    echo "✓ spec-workflow skills installation complete"
+    return 0
+  else
+    echo "⚠️  Failed to install spec-workflow skills" >&2
+    return 1
+  fi
+}
+
 # Check both dependencies
 check_all_dependencies() {
   local pm_ok=0
@@ -87,7 +182,25 @@ check_all_dependencies() {
   fi
 }
 
+# Check all dependencies including spec-workflow (for spec-driven mode)
+check_all_dependencies_with_spec_workflow() {
+  local base_ok=0
+  local spec_ok=0
+
+  check_all_dependencies || base_ok=$?
+  ensure_spec_workflow_skills || spec_ok=$?
+
+  if [[ $base_ok -eq 0 ]] && [[ $spec_ok -eq 0 ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
 # Export functions for use in other scripts
 export -f ensure_product_manager_skill
 export -f ensure_commit_command
 export -f check_all_dependencies
+export -f check_spec_workflow_skills
+export -f ensure_spec_workflow_skills
+export -f check_all_dependencies_with_spec_workflow

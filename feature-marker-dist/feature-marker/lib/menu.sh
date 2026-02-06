@@ -32,6 +32,9 @@ show_main_menu() {
   echo -e "  ${GREEN}3)${NC} ${BOLD}Ralph Loop Mode${NC} - Autonomous loop execution"
   echo -e "     ${BLUE}→${NC} Uses ralph-claude-code for continuous iteration"
   echo ""
+  echo -e "  ${GREEN}4)${NC} ${BOLD}Spec-Driven Mode${NC} - Multi-agent review + worktree isolation"
+  echo -e "     ${BLUE}→${NC} Uses spec-workflow for rigorous spec review"
+  echo ""
   echo -e "  ${YELLOW}0)${NC} Exit"
   echo ""
 }
@@ -60,6 +63,13 @@ confirm_mode() {
       echo "  • Autonomous continuous execution"
       echo "  • Self-correcting with ralph-claude-code"
       echo "  • Runs until completion or manual stop"
+      ;;
+    4)
+      echo -e "${BOLD}🔬 Spec-Driven Mode${NC}"
+      echo "  • Multi-agent review of specifications"
+      echo "  • Isolated worktree for safe development"
+      echo "  • Converts spec to PRD/TechSpec/Tasks format"
+      echo "  • Then executes standard FM phases 3-4"
       ;;
   esac
   echo ""
@@ -119,6 +129,89 @@ show_ralph_install_instructions() {
   echo ""
 }
 
+# Check if spec-workflow skills are available
+check_spec_workflow_available() {
+  local skills_dir="${HOME}/.claude/skills"
+
+  # Check for core spec-workflow skills
+  if [[ -f "${skills_dir}/spec-orchestrator/SKILL.md" ]] && \
+     [[ -f "${skills_dir}/spec-executor/SKILL.md" ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
+# Get bundled spec-workflow skills path
+get_bundled_spec_workflow_path() {
+  local bundled_path=""
+
+  # Priority 1: Installed feature-marker skill location
+  if [[ -d "${HOME}/.claude/skills/feature-marker/resources/spec-workflow/skills" ]]; then
+    bundled_path="${HOME}/.claude/skills/feature-marker/resources/spec-workflow/skills"
+  # Priority 2: FEATURE_MARKER_ROOT environment variable
+  elif [[ -n "${FEATURE_MARKER_ROOT:-}" ]] && [[ -d "${FEATURE_MARKER_ROOT}/resources/spec-workflow/skills" ]]; then
+    bundled_path="${FEATURE_MARKER_ROOT}/resources/spec-workflow/skills"
+  # Priority 3: Script directory (for development)
+  elif [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -d "${script_dir}/../resources/spec-workflow/skills" ]]; then
+      bundled_path="${script_dir}/../resources/spec-workflow/skills"
+    fi
+  fi
+
+  echo "$bundled_path"
+}
+
+# Install spec-workflow skills from bundled resources
+install_spec_workflow_skills() {
+  local target_dir="${HOME}/.claude/skills"
+  local skills=("idea-explorer" "spec-writer" "spec-orchestrator" "spec-executor" "create-worktree" "spec-workflow-init")
+
+  # Get bundled path
+  local source_dir
+  source_dir="$(get_bundled_spec_workflow_path)"
+
+  # Fallback to environment variable
+  if [[ -z "$source_dir" ]] && [[ -n "${SPEC_WORKFLOW_SOURCE:-}" ]]; then
+    source_dir="${SPEC_WORKFLOW_SOURCE}"
+  fi
+
+  if [[ -z "$source_dir" ]] || [[ ! -d "$source_dir" ]]; then
+    error "spec-workflow skills not found in bundled resources"
+    echo "Expected location: ~/.claude/skills/feature-marker/resources/spec-workflow/skills"
+    return 1
+  fi
+
+  info "Installing spec-workflow skills from bundled resources..."
+
+  mkdir -p "$target_dir"
+  for skill in "${skills[@]}"; do
+    if [[ -d "${source_dir}/${skill}" ]] && [[ ! -d "${target_dir}/${skill}" ]]; then
+      cp -r "${source_dir}/${skill}" "${target_dir}/"
+      success "Installed: ${skill}"
+    fi
+  done
+
+  return 0
+}
+
+# Show spec-workflow installation instructions
+show_spec_workflow_install_instructions() {
+  echo ""
+  error "Spec-Driven Mode requires spec-workflow skills"
+  echo ""
+  echo "Required skills:"
+  echo "  • spec-orchestrator"
+  echo "  • spec-executor"
+  echo "  • idea-explorer"
+  echo "  • spec-writer"
+  echo "  • create-worktree"
+  echo ""
+  echo "Would you like to install them automatically?"
+}
+
 # Interactive menu selection
 select_execution_mode() {
   local feature_name="$1"
@@ -137,7 +230,7 @@ select_execution_mode() {
     banner
     show_main_menu "$feature_name"
 
-    read -p "Select option [0-3]: " selected_mode
+    read -p "Select option [0-4]: " selected_mode
 
     case "$selected_mode" in
       1)
@@ -169,13 +262,41 @@ select_execution_mode() {
           read -p "Press Enter to continue..."
         fi
         ;;
+      4)
+        if check_spec_workflow_available; then
+          confirm_mode 4 "$feature_name"
+          if ask_yes_no "Proceed with Spec-Driven mode?"; then
+            export EXECUTION_MODE="spec-driven"
+            return 0
+          fi
+        else
+          show_spec_workflow_install_instructions
+          if ask_yes_no "Install spec-workflow skills now?"; then
+            if install_spec_workflow_skills; then
+              success "Spec-workflow skills installed successfully!"
+              confirm_mode 4 "$feature_name"
+              if ask_yes_no "Proceed with Spec-Driven mode?"; then
+                export EXECUTION_MODE="spec-driven"
+                return 0
+              fi
+            else
+              error "Failed to install spec-workflow skills."
+              echo "Please check that the source exists at:"
+              echo "  ${HOME}/Documents/claude-plugins/plugins/spec-workflow/skills"
+              echo ""
+              echo "Or set SPEC_WORKFLOW_SOURCE environment variable."
+            fi
+          fi
+          read -p "Press Enter to continue..."
+        fi
+        ;;
       0)
         echo ""
         info "Exiting feature-marker"
         exit 0
         ;;
       *)
-        error "Invalid option. Please select 0-3."
+        error "Invalid option. Please select 0-4."
         sleep 1
         ;;
     esac
@@ -200,4 +321,9 @@ is_ralph_loop_mode() {
 # Check if mode is full workflow
 is_full_workflow_mode() {
   [[ "${EXECUTION_MODE:-full}" == "full" ]]
+}
+
+# Check if mode is spec-driven
+is_spec_driven_mode() {
+  [[ "${EXECUTION_MODE:-full}" == "spec-driven" ]]
 }
