@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "╔═══════════════════════════════════════╗"
-echo "║   Installing feature-marker v1.6.0   ║"
+echo "║   Installing feature-marker v2.0.0   ║"
 echo "╚═══════════════════════════════════════╝"
 echo ""
 
