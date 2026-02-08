@@ -1,0 +1,10 @@
+/Users/viniciuscarvalho/Documents/Feature-marker/feature-marker-tui/target/release/deps/foldhash-74bcdb7d5493d8f5.d: /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/lib.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/fast.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/quality.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/seed.rs
+
+/Users/viniciuscarvalho/Documents/Feature-marker/feature-marker-tui/target/release/deps/libfoldhash-74bcdb7d5493d8f5.rlib: /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/lib.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/fast.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/quality.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/seed.rs
+
+/Users/viniciuscarvalho/Documents/Feature-marker/feature-marker-tui/target/release/deps/libfoldhash-74bcdb7d5493d8f5.rmeta: /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/lib.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/fast.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/quality.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/seed.rs
+
+/Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/lib.rs:
+/Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/fast.rs:
+/Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/quality.rs:
+/Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/foldhash-0.1.5/src/seed.rs:

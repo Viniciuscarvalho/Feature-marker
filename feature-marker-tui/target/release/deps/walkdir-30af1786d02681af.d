@@ -1,0 +1,10 @@
+/Users/viniciuscarvalho/Documents/Feature-marker/feature-marker-tui/target/release/deps/walkdir-30af1786d02681af.d: /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/lib.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/dent.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/error.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/util.rs
+
+/Users/viniciuscarvalho/Documents/Feature-marker/feature-marker-tui/target/release/deps/libwalkdir-30af1786d02681af.rlib: /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/lib.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/dent.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/error.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/util.rs
+
+/Users/viniciuscarvalho/Documents/Feature-marker/feature-marker-tui/target/release/deps/libwalkdir-30af1786d02681af.rmeta: /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/lib.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/dent.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/error.rs /Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/util.rs
+
+/Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/lib.rs:
+/Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/dent.rs:
+/Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/error.rs:
+/Users/viniciuscarvalho/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/walkdir-2.5.0/src/util.rs:
