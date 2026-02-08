@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-02-08
+
+### Added
+- **Feature-Marker TUI** - New Terminal User Interface application built with Rust + Ratatui
+  - Rich visual interface with multi-pane layout (sidebar + main content)
+  - Real-time progress visualization for phases and tasks
+  - Live output streaming with auto-scroll and manual scrolling
+  - Keyboard-driven navigation (j/k, Enter, Esc, Tab)
+  - Four screens: Welcome, Feature Selection, Mode Selection, Execution Dashboard
+  - Async shell integration with Tokio runtime
+  - File watcher for external checkpoint changes (via notify crate)
+  - Full compatibility with existing checkpoint.json format
+  - Pause/resume execution support
+  - Color themes matching Feature-Marker branding
+- **TUI Installation** - New `--with-tui` flag in install.sh to build and install the TUI
+- **Standalone TUI installer** - `feature-marker-tui/install.sh` for independent TUI installation
+- **Integration tests** - 20 automated tests covering checkpoint, model, and config modules
+
+### Technical Details
+- TUI built with Rust 2021 edition
+- Dependencies: ratatui 0.29, crossterm 0.28, tokio 1.x, serde, notify 7, chrono
+- Release binary optimized with LTO and strip (~1.8 MB)
+- MVU (Model-View-Update) architecture pattern
+- Async event loop with multi-channel message passing
+
+### Changed
+- Updated install.sh version banner to v3.0.0
+- Install script now supports `--with-tui` option for optional TUI installation
+
 ## [2.0.0] - 2026-02-05
 
 ### Added
@@ -141,6 +170,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated from template-based to command-based file generation
 - Simplified directory structure (./tasks instead of ./docs/tasks)
 
+[3.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v1.6.0...v2.0.0
 [1.6.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v1.4.0...v1.5.0
