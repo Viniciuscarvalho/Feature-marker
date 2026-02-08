@@ -58,11 +58,19 @@ echo ""
 
 # Check for Rust
 check_rust() {
+  # Try to source cargo env if not in PATH
+  if ! command -v cargo &> /dev/null; then
+    if [[ -f "${HOME}/.cargo/env" ]]; then
+      source "${HOME}/.cargo/env"
+    fi
+  fi
+
   if ! command -v cargo &> /dev/null; then
     echo -e "${RED}ERROR: Rust/Cargo not found.${NC}"
     echo ""
     echo "Please install Rust first:"
     echo "  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    echo "  source ~/.cargo/env"
     echo ""
     exit 1
   fi

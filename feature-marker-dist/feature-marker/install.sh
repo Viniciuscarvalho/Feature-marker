@@ -138,12 +138,20 @@ if [[ "${INSTALL_TUI}" == "true" ]]; then
   echo ""
   echo "Installing TUI application..."
 
+  # Try to source cargo env if not in PATH
+  if ! command -v cargo &> /dev/null; then
+    if [[ -f "${HOME}/.cargo/env" ]]; then
+      source "${HOME}/.cargo/env"
+    fi
+  fi
+
   if [[ ! -d "${TUI_SRC}" ]]; then
     echo "WARNING: TUI source not found at ${TUI_SRC}"
     echo "Skipping TUI installation."
   elif ! command -v cargo &> /dev/null; then
     echo "WARNING: Rust/Cargo not found. TUI requires Rust to build."
     echo "Install Rust: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    echo "Then run: source ~/.cargo/env"
     echo "Skipping TUI installation."
   else
     (
