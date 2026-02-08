@@ -69,6 +69,7 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **v3.0.0** | 2026-02-08 | 🖥️ **Feature-Marker TUI** - Rich terminal UI built with Rust + Ratatui |
 | **v2.0.0** | 2026-02-05 | 🔬 **Spec-Driven Mode** - Multi-agent review + worktree isolation (Spec Kit Pattern) |
 | **v1.6.0** | 2026-02-01 | 📦 Smart Dependency Management |
 | **v1.5.0** | 2026-01-30 | 🎯 XcodeBuildMCP integration - iOS simulator validation in Phase 3 |
@@ -80,6 +81,38 @@ Designed to be **platform-agnostic** and compose with existing skills like `crea
 
 <details>
 <summary>📋 <strong>Version Details</strong></summary>
+
+### v3.0.0 - Feature-Marker TUI 🖥️
+
+Major release introducing the **Terminal User Interface** - a rich visual interface for managing Feature-Marker workflows.
+
+**New Features:**
+- **Feature-Marker TUI**: Full terminal UI built with Rust + Ratatui
+  - Multi-pane layout with sidebar (phases/tasks) and main content (output stream)
+  - Real-time progress visualization for phases and tasks
+  - Live output streaming with auto-scroll
+  - Keyboard-driven navigation (j/k, Enter, Esc, Tab)
+  - Four screens: Welcome, Feature Selection, Mode Selection, Execution Dashboard
+- **Async Shell Integration**: Tokio-powered async execution
+- **File Watcher**: Detects external checkpoint changes via notify crate
+- **20 Integration Tests**: Comprehensive test coverage
+
+**Installation:**
+```bash
+# Install with TUI
+./install.sh --with-tui
+
+# Or standalone TUI installation
+cd feature-marker-tui && ./install.sh
+
+# Launch TUI
+feature-marker-tui
+```
+
+**Technical Details:**
+- Rust 2021 edition with ratatui 0.29, crossterm 0.28, tokio 1.x
+- Release binary ~1.8 MB (LTO + strip optimized)
+- MVU (Model-View-Update) architecture pattern
 
 ### v2.0.0 - Spec-Driven Mode 🔬
 
@@ -178,14 +211,20 @@ When you run `/feature-marker prd-{feature-name}`, the workflow:
 ## 🚀 Quick Start
 
 ```bash
-# Install
-./feature-marker/install.sh
+# Install (skill + agent)
+./feature-marker-dist/feature-marker/install.sh
+
+# Install with TUI (v3.0.0+)
+./feature-marker-dist/feature-marker/install.sh --with-tui
 
 # Then in Claude Code:
 /feature-marker prd-user-authentication
 
 # Or use interactive mode (v1.1.0+):
 /feature-marker --interactive prd-user-authentication
+
+# Or launch the TUI (v3.0.0+):
+feature-marker-tui
 ```
 
 That's it! The skill will guide you through the entire feature development process.
@@ -202,21 +241,37 @@ git clone https://github.com/Viniciuscarvalho/Feature-marker.git
 cd Feature-marker
 
 # Run install script
-./feature-marker/install.sh
+./feature-marker-dist/feature-marker/install.sh
 
 # Verify installation
 ls ~/.claude/skills/feature-marker/
 ls ~/.claude/agents/feature-marker.md
 ```
 
+### With TUI (v3.0.0+)
+
+```bash
+# Install skill + agent + TUI (requires Rust)
+./feature-marker-dist/feature-marker/install.sh --with-tui
+
+# Or install TUI standalone
+cd feature-marker-tui
+./install.sh
+
+# Launch TUI
+feature-marker-tui
+```
+
+> **Note**: The TUI requires Rust to compile. Install Rust with: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+
 ### Manual installation
 
 ```bash
 # 1. Copy the skill folder
-cp -R feature-marker/ ~/.claude/skills/feature-marker/
+cp -R feature-marker-dist/feature-marker/ ~/.claude/skills/feature-marker/
 
 # 2. Copy the agent
-cp agents/feature-marker.md ~/.claude/agents/feature-marker.md
+cp feature-marker-dist/agents/feature-marker.md ~/.claude/agents/feature-marker.md
 
 # 3. Set permissions
 chmod +x ~/.claude/skills/feature-marker/*.sh
@@ -486,6 +541,80 @@ Invoke ~/.claude/commands/create-prd.md
 Command reads ~/.claude/docs/specs/prd-template.md
   ↓
 Generates ./tasks/prd-{feature-name}/prd.md
+```
+
+---
+
+## 🖥️ Terminal User Interface (v3.0.0+)
+
+The **Feature-Marker TUI** provides a rich visual interface for managing workflows directly in your terminal.
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| 📊 **Multi-pane layout** | Sidebar with phases/tasks + main output stream |
+| ⚡ **Real-time updates** | Live progress visualization and output streaming |
+| ⌨️ **Keyboard navigation** | Vim-style navigation (j/k, Enter, Esc, Tab) |
+| 🔄 **Auto-scroll** | Output stream follows latest content |
+| ⏸️ **Pause/Resume** | Control execution flow |
+| 👁️ **File watching** | Detects external checkpoint changes |
+
+### TUI Preview
+
+```
+┌────────────────────────────────────────────────────────────┐
+│              FEATURE-MARKER TUI v3.0                       │
+├──────────────┬─────────────────────────────────────────────┤
+│   SIDEBAR    │              MAIN AREA                      │
+│    (25%)     │               (75%)                         │
+│              │                                             │
+│ ┌──────────┐ │  ┌───────────────────────────────────────┐ │
+│ │ Phases   │ │  │         Output Stream                 │ │
+│ │          │ │  │                                       │ │
+│ │ ✓ 0.Gate │ │  │  $ npm test                           │ │
+│ │ ✓ 1.Plan │ │  │  > Running 42 tests...                │ │
+│ │ → 2.Impl │ │  │  ✓ auth.test.ts passed                │ │
+│ │   [██░░] │ │  │  ✓ api.test.ts passed                 │ │
+│ │ ○ 3.Test │ │  │                                       │ │
+│ │ ○ 4.PR   │ │  └───────────────────────────────────────┘ │
+│ └──────────┘ │                                             │
+│              │                                             │
+│ ┌──────────┐ │                                             │
+│ │ Tasks    │ │                                             │
+│ │ [4/8]    │ │                                             │
+│ └──────────┘ │                                             │
+├──────────────┴─────────────────────────────────────────────┤
+│  [p]ause [r]esume [s]croll [q]uit [?]help      Phase 2/4   │
+└────────────────────────────────────────────────────────────┘
+```
+
+### Keyboard Shortcuts
+
+| Key | Action | Context |
+|-----|--------|---------|
+| `j` / `↓` | Navigate down | Menu/List |
+| `k` / `↑` | Navigate up | Menu/List |
+| `Enter` | Select | Menu |
+| `q` | Quit | Global |
+| `Esc` | Back | Any screen |
+| `p` | Pause execution | During execution |
+| `r` | Resume | When paused |
+| `s` | Toggle auto-scroll | Output stream |
+| `?` | Help | Global |
+| `Tab` | Switch focus | Between panels |
+
+### Usage
+
+```bash
+# Launch TUI
+feature-marker-tui
+
+# With specific project directory
+feature-marker-tui --project /path/to/project
+
+# Start with a specific feature
+feature-marker-tui --feature prd-user-auth
 ```
 
 ---
