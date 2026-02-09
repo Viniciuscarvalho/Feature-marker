@@ -1,0 +1,45 @@
+[package]
+name = "feature-marker-menubar"
+version = "0.1.0"
+edition = "2021"
+description = "Menu bar application for Feature-Marker workflow automation"
+authors = ["Vinicius Carvalho"]
+license = "MIT"
+repository = "https://github.com/viniciuscarvalho/feature-marker"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Tauri
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-shell = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-dialog = "2"
+
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error Handling
+anyhow = "1"
+thiserror = "2"
+
+# File Watching
+notify = "7"
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# System directories
+dirs = "5"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-global-shortcut = "2"

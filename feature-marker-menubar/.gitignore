@@ -1,0 +1,17 @@
+# Rust
+src-tauri/target/
+
+# Tauri generated
+src-tauri/gen/
+
+# Node
+ui/node_modules/
+ui/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
