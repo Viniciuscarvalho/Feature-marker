@@ -1,0 +1,62 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Feature-Marker",
+  "identifier": "com.featuremarker.menubar",
+  "version": "0.1.0",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../ui/dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "dashboard",
+        "title": "Feature-Marker Dashboard",
+        "width": 400,
+        "height": 500,
+        "resizable": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "focus": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "category": "DeveloperTool",
+    "createUpdaterArtifacts": false,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": false
+      },
+      "deb": {
+        "depends": []
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.13"
+    },
+    "shortDescription": "Menu bar app for Feature-Marker workflow automation",
+    "longDescription": "A system tray application that enables developers to execute and monitor Feature-Marker workflows directly from the menu bar. Supports real-time progress tracking, notifications, and checkpoint management."
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    }
+  }
+}
