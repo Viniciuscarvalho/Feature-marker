@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-02-09
+
+### Added
+- **Feature-Marker Menu Bar** - Native macOS menu bar application built with Tauri v2
+  - System tray icon with quick access menu
+  - Real-time process output streaming (no external Terminal needed)
+  - Dashboard for viewing and managing feature workflows
+  - Support for all workflow modes (Full, Tasks Only, Ralph Loop, Spec Driven)
+  - Checkpoint monitoring with file watching
+  - Native notifications on phase completion
+  - Keyboard shortcuts (Cmd+N, Cmd+R, Cmd+D, Cmd+,, Cmd+Q, ESC)
+  - Native file picker for project directory selection
+  - Catppuccin Mocha dark theme
+
+## [3.0.0] - 2026-02-08
+
+### Added
+- **Feature-Marker TUI** - Terminal User Interface application built with Ratatui
+  - Full-screen terminal interface with real-time output
+  - Feature list panel with status indicators
+  - Interactive mode selection (Full, Tasks Only, Ralph Loop, Spec Driven)
+  - Project directory configuration
+  - Vim-style navigation (j/k, Tab, Enter)
+  - Cross-platform support (macOS, Linux, Windows)
+
 ## [2.0.0] - 2026-02-05
 
 ### Added
@@ -141,6 +166,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated from template-based to command-based file generation
 - Simplified directory structure (./tasks instead of ./docs/tasks)
 
+[4.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v3.0.0...v4.0.0
+[3.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v1.6.0...v2.0.0
 [1.6.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v1.4.0...v1.5.0
