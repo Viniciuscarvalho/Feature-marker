@@ -1,0 +1,12 @@
+<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Simple feature flag for menu bar - template icon -->
+  <!-- Pole -->
+  <rect x="4" y="3" width="2" height="16" rx="1" fill="black"/>
+
+  <!-- Flag -->
+  <path d="M6 3 L6 11 L16 8 L13 7 L16 6 L6 3Z" fill="black"/>
+
+  <!-- Progress dots -->
+  <circle cx="5" cy="14" r="1.5" fill="black"/>
+  <circle cx="5" cy="17.5" r="1.5" fill="black" opacity="0.5"/>
+</svg>
