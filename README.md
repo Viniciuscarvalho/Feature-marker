@@ -9,6 +9,12 @@
 </p>
 
 <p align="center">
+  <a href="https://www.npmjs.com/package/@viniciuscarvalho/feature-marker">
+    <img src="https://img.shields.io/npm/v/@viniciuscarvalho/feature-marker.svg" alt="npm version">
+  </a>
+  <a href="https://github.com/Viniciuscarvalho/homebrew-tap">
+    <img src="https://img.shields.io/badge/homebrew-tap-orange.svg" alt="Homebrew Tap">
+  </a>
   <a href="https://github.com/Viniciuscarvalho/Feature-marker/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
   </a>
@@ -32,8 +38,50 @@
 
 ## Installation
 
+Choose your preferred installation method:
+
+### NPX (Recommended)
+
+The fastest way to install. Requires Node.js 18+.
+
 ```bash
-# Clone and install
+# Install
+npx @viniciuscarvalho/feature-marker install
+
+# Check status
+npx @viniciuscarvalho/feature-marker status
+
+# Uninstall
+npx @viniciuscarvalho/feature-marker uninstall
+```
+
+### Homebrew (macOS/Linux)
+
+For Homebrew users on macOS and Linux.
+
+```bash
+# Add tap and install
+brew tap viniciuscarvalho/tap
+brew install feature-marker
+
+# Complete installation to ~/.claude
+feature-marker-install
+
+# Optional: with TUI (requires Rust)
+brew install feature-marker --with-tui
+```
+
+**Uninstall:**
+```bash
+feature-marker-uninstall
+brew uninstall feature-marker
+```
+
+### Manual
+
+Clone and run the install script directly.
+
+```bash
 git clone https://github.com/Viniciuscarvalho/Feature-marker.git
 cd Feature-marker
 ./feature-marker-dist/feature-marker/install.sh
