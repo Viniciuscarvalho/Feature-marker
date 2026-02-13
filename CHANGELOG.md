@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] - 2026-02-12
+
+### Added
+- **NPX Distribution** - Install feature-marker via npm/npx for easier cross-platform installation
+  - `npx feature-marker install` - One-command installation
+  - `npx feature-marker uninstall` - Clean removal
+  - `npx feature-marker status` - Check installation status
+  - Auto-install on package installation (postinstall hook)
+  - ES modules with Node.js 18+ support
+- **Homebrew Distribution** - Install feature-marker via Homebrew for macOS/Linux users
+  - `brew tap viniciuscarvalho/tap && brew install feature-marker`
+  - `feature-marker-install` - Install skill to ~/.claude
+  - `feature-marker-uninstall` - Remove skill from ~/.claude
+  - Optional `--with-tui` flag to build TUI from source
+  - Standard Homebrew formula with test and caveats
+
+### Changed
+- Updated README with new installation methods (NPX, Homebrew, Manual)
+- Version bumped to 5.0.0
+
+### Technical Details
+- NPX package uses ES modules (type: module)
+- Bundle script copies dist files during npm prepare
+- Homebrew formula includes wrapper scripts for installation management
+- Both distribution methods install to standard ~/.claude paths
+
+## [4.0.0] - 2026-02-10
+
+### Added
+- **Feature-Marker Menu Bar** - Native macOS menu bar application
+  - Global keyboard shortcut (Cmd+Shift+F)
+  - Quick access to feature workflows
+  - System tray integration
+
 ## [3.0.0] - 2026-02-08
 
 ### Added
@@ -170,6 +204,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated from template-based to command-based file generation
 - Simplified directory structure (./tasks instead of ./docs/tasks)
 
+[5.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v4.0.0...v5.0.0
+[4.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v3.0.0...v4.0.0
 [3.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v1.6.0...v2.0.0
 [1.6.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v1.5.0...v1.6.0

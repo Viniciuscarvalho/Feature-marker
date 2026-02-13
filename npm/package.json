@@ -1,0 +1,47 @@
+{
+  "name": "@viniciuscarvalho/feature-marker",
+  "version": "4.0.0",
+  "description": "Automate your feature development workflow with AI-powered checkpoints for Claude Code",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "ai",
+    "workflow",
+    "feature-development",
+    "prd",
+    "tech-spec",
+    "automation",
+    "cli"
+  ],
+  "homepage": "https://github.com/Viniciuscarvalho/Feature-marker#readme",
+  "bugs": {
+    "url": "https://github.com/Viniciuscarvalho/Feature-marker/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Viniciuscarvalho/Feature-marker.git"
+  },
+  "license": "MIT",
+  "author": "Vinicius Carvalho <vinicius@example.com>",
+  "type": "module",
+  "bin": {
+    "feature-marker": "./bin/feature-marker.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "prepare": "node scripts/bundle.js",
+    "postinstall": "node bin/feature-marker.js install --silent || true"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
