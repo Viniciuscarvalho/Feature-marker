@@ -8,7 +8,7 @@ class FeatureMarker < Formula
   homepage "https://github.com/Viniciuscarvalho/Feature-marker"
   url "https://github.com/Viniciuscarvalho/Feature-marker/archive/refs/heads/main.tar.gz"
   sha256 "37cf9dc767eca032a394df9ed4ee2f18a18431a2f69ba063b8cab67663d9746a"
-  version "5.0.0"
+  version "5.1.0"
   license "MIT"
   head "https://github.com/Viniciuscarvalho/Feature-marker.git", branch: "main"
 

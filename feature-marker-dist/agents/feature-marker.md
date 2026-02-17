@@ -41,6 +41,14 @@ When invoked with `--interactive` flag, the user can select between three execut
    - Executes standard FM phases 3-4 after implementation
    - Environment variable: `EXECUTION_MODE=spec-driven`
 
+5. **Test Only Mode**
+   - Skips Phases 0-2 (inputs gate, planning, implementation)
+   - Runs only Phase 3 (Tests & Validation) exclusively
+   - Uses `/swift-testing` skill for guided test creation and best practices
+   - Validates existing implementation with comprehensive tests
+   - Ideal for adding tests to already-implemented features
+   - Environment variable: `EXECUTION_MODE=test-only`
+
 Check execution mode with: `echo $EXECUTION_MODE`
 
 ### Interactive Mode via Claude CLI
@@ -58,6 +66,7 @@ the script outputs `INTERACTIVE_MODE_REQUESTED` followed by `FEATURE_NAME=<name>
    - "Tasks Only" → `--mode tasks-only`
    - "Ralph Loop" → `--mode ralph-loop`
    - "Spec-Driven" → `--mode spec-driven`
+   - "Test Only" → `--mode test-only`
 
 **Example AskUserQuestion**:
 ```json
@@ -69,7 +78,8 @@ the script outputs `INTERACTIVE_MODE_REQUESTED` followed by `FEATURE_NAME=<name>
       {"label": "Full Workflow", "description": "Generates missing PRD/TechSpec/Tasks and executes all phases"},
       {"label": "Tasks Only", "description": "Skips generation, executes implementation only (requires existing files)"},
       {"label": "Ralph Loop", "description": "Autonomous execution with self-correction via ralph-wiggum"},
-      {"label": "Spec-Driven", "description": "Multi-agent review + isolated worktree via spec-workflow"}
+      {"label": "Spec-Driven", "description": "Multi-agent review + isolated worktree via spec-workflow"},
+      {"label": "Test Only", "description": "Runs tests phase exclusively using /swift-testing for guided test creation"}
     ],
     "multiSelect": false
   }]
@@ -251,6 +261,112 @@ If `EXECUTION_MODE=ralph-loop`, use the ralph-wiggum skill for autonomous iterat
 - Build failures are non-blocking - logs warning and proceeds to Phase 4
 
 **Note**: If no tests exist, Phase 3 gracefully skips tests with a warning.
+
+---
+
+## Test Only Mode (EXECUTION_MODE=test-only)
+
+This mode runs **only Phase 3 (Tests & Validation)**, skipping all other phases. It is designed for adding tests to already-implemented features using the `/swift-testing` skill as the primary guide.
+
+### Overview
+
+Test Only Mode provides:
+- **Focused test execution**: Skips inputs gate, planning, and implementation
+- **Swift Testing integration**: Uses `/swift-testing` skill for best practices and guided test creation
+- **Comprehensive validation**: Runs test suites and build validation
+- **Checkpoint support**: Saves test results to checkpoint for tracking
+
+### Test Only Workflow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Phase 3 Only: Tests & Validation                        │
+│                                                         │
+│ 1. Detect project type and test framework               │
+│    - Swift/Xcode → swift test / xcodebuild test         │
+│    - Node.js → npm test / yarn test                     │
+│    - Python → pytest                                    │
+│    - Rust → cargo test                                  │
+│    - Go → go test ./...                                 │
+│                                                         │
+│ 2. Invoke /swift-testing skill (for Swift projects)     │
+│    - Guides test structure with @Test, @Suite            │
+│    - Uses #expect/#require macros                       │
+│    - Applies F.I.R.S.T. principles                      │
+│    - Creates parameterized tests where appropriate      │
+│    - Organizes tests with traits and tags               │
+│                                                         │
+│ 3. Write/update test files based on skill guidance      │
+│    - Analyze existing code to determine test needs      │
+│    - Create test files following best practices          │
+│    - Cover edge cases and error paths                   │
+│                                                         │
+│ 4. Run test suites and validate                         │
+│    - Execute all tests                                  │
+│    - Analyze output for failures                        │
+│    - Run build validation                               │
+│    - Report results                                     │
+│                                                         │
+│ 5. Save test results                                    │
+│    - .claude/feature-state/{feature-name}/test-results.md│
+│    - Update checkpoint                                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Swift Testing Skill Integration
+
+When running in Test Only mode on a Swift project, the agent:
+
+1. **Invokes `/swift-testing`** to get guidance on:
+   - Test structure and organization (`@Suite`, `@Test`)
+   - Assertion patterns (`#expect`, `#require`)
+   - Parameterized testing for data-driven tests
+   - Test doubles (mocks, stubs, spies)
+   - Async/await test patterns
+   - Traits and tags for test organization
+
+2. **Applies best practices**:
+   - Arrange-Act-Assert pattern
+   - F.I.R.S.T. principles (Fast, Isolated, Repeatable, Self-validating, Timely)
+   - Meaningful test names describing behavior
+   - Proper test isolation
+
+3. **For non-Swift projects**: The `/swift-testing` skill serves as a methodology guide. The testing patterns (structure, assertions, parameterized tests) are adapted to the project's native test framework.
+
+### Example Session: Test Only Mode
+
+```
+User: /feature-marker --mode test-only prd-user-authentication
+
+Agent: 🧪 Test Only Mode activated
+
+       Skipping Phases 0-2 (inputs gate, planning, implementation)
+
+       Phase 3: Tests & Validation (Test Only)
+
+       Detecting project type...
+       ✓ Swift/Xcode project detected
+
+       Invoking /swift-testing for test guidance...
+       ✓ Test structure guidelines loaded
+
+       Analyzing existing implementation...
+       - UserAuthService.swift (needs tests)
+       - TokenManager.swift (needs tests)
+       - LoginViewModel.swift (needs tests)
+
+       Creating test files...
+       ✓ UserAuthServiceTests.swift created
+       ✓ TokenManagerTests.swift created
+       ✓ LoginViewModelTests.swift created
+
+       Running: swift test
+       ✓ All 24 tests passed
+
+       Test results saved to .claude/feature-state/prd-user-authentication/test-results.md
+
+       ✓ Test Only mode complete!
+```
 
 ---
 
