@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "4e634e5ac01a",
+  "session_id": "1c7bb634-0674-44f6-913d-fc592dd2ce75",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-17T15:22:15.550883Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "README.md"
+  ],
+  "agent": "Claude Code",
+  "transcript_identifier_at_start": "155425ed-9d0e-40ed-822a-07f814f204cf",
+  "checkpoint_transcript_start": 185,
+  "transcript_lines_at_start": 185,
+  "token_usage": {
+    "input_tokens": 2092,
+    "cache_creation_tokens": 12705,
+    "cache_read_tokens": 555727,
+    "output_tokens": 30,
+    "api_call_count": 5
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-17T15:22:15.161405Z",
+    "agent_lines": 2,
+    "human_added": 151,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 153,
+    "agent_percentage": 1.3071895424836601
+  },
+  "transcript_path": ".claude/projects/-Users-viniciuscarvalho-Documents-Feature-marker/1c7bb634-0674-44f6-913d-fc592dd2ce75.jsonl"
+}
