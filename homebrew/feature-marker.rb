@@ -7,7 +7,7 @@ class FeatureMarker < Formula
   desc "AI-powered feature development workflow automation for Claude Code"
   homepage "https://github.com/Viniciuscarvalho/Feature-marker"
   url "https://github.com/Viniciuscarvalho/Feature-marker/archive/refs/heads/main.tar.gz"
-  sha256 "37cf9dc767eca032a394df9ed4ee2f18a18431a2f69ba063b8cab67663d9746a"
+  sha256 "5d172be26ccf6f5c68f03a7fb8eadb1c0b602687f2f77f4244362299ac0acd83"
   version "5.1.0"
   license "MIT"
   head "https://github.com/Viniciuscarvalho/Feature-marker.git", branch: "main"
