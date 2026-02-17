@@ -35,7 +35,7 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     --version|-V)
-      echo "feature-marker v1.5.0"
+      echo "feature-marker v5.1.0"
       exit 0
       ;;
     --interactive|-i)
@@ -74,7 +74,7 @@ if [[ "${SHOW_HELP}" == "true" ]]; then
   echo "  -s, --status       Show status of a feature workflow"
   echo "  -p, --platform     Show detected git platform info"
   echo "  -i, --interactive  Launch interactive menu panel"
-  echo "  -m, --mode <mode>  Set execution mode (full|tasks-only|ralph-loop)"
+  echo "  -m, --mode <mode>  Set execution mode (full|tasks-only|ralph-loop|spec-driven|test-only)"
   echo "  -V, --version      Show version"
   echo ""
   echo "Examples:"
@@ -156,6 +156,12 @@ if [[ "${INTERACTIVE_MODE}" == "true" ]]; then
     ralph-loop)
       info "Mode: Ralph Loop (Autonomous)"
       ;;
+    spec-driven)
+      info "Mode: Spec-Driven (Multi-agent review)"
+      ;;
+    test-only)
+      info "Mode: Test Only (Tests phase exclusively)"
+      ;;
   esac
   separator
 fi
@@ -187,7 +193,10 @@ validate_directories "${FEATURE_NAME}"
 separator
 header "Inputs Gate"
 
-if [[ "${INTERACTIVE_MODE}" == "true" ]] && is_tasks_only_mode; then
+if [[ "${INTERACTIVE_MODE}" == "true" ]] && is_test_only_mode; then
+  info "Test Only Mode - Skipping inputs gate"
+  info "Proceeding directly to test phase"
+elif [[ "${INTERACTIVE_MODE}" == "true" ]] && is_tasks_only_mode; then
   success "All required files exist (validated in menu)"
   info "Skipping file generation - proceeding to implementation"
 elif [[ "${INTERACTIVE_MODE}" == "true" ]] && is_ralph_loop_mode; then
@@ -212,7 +221,14 @@ echo ""
 
 # Show next steps based on mode
 if [[ "${INTERACTIVE_MODE}" == "true" ]]; then
-  if is_ralph_loop_mode; then
+  if is_test_only_mode; then
+    info "Starting Test Only Mode..."
+    echo ""
+    echo "To begin test execution:"
+    echo "  The agent will use /swift-testing for guided test creation"
+    echo "  Skips Phases 0-2, runs Phase 3 (Tests) exclusively"
+    echo ""
+  elif is_ralph_loop_mode; then
     info "Starting Ralph Loop Mode..."
     echo ""
     echo "To begin autonomous execution:"

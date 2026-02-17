@@ -36,6 +36,7 @@ Opens a menu to select execution mode:
 - **Tasks Only** - Uses existing files, skips generation phase
 - **Ralph Loop** - Autonomous continuous execution with ralph-wiggum
 - **Spec-Driven** - Multi-agent review + worktree isolation via spec-workflow
+- **Test Only** - Runs tests phase exclusively using /swift-testing for guided test creation
 
 Works both in terminal (TTY menu) and Claude CLI (AskUserQuestion prompt).
 
@@ -45,6 +46,7 @@ Works both in terminal (TTY menu) and Claude CLI (AskUserQuestion prompt).
 /feature-marker --mode tasks-only <feature-slug>
 /feature-marker --mode ralph-loop <feature-slug>
 /feature-marker --mode spec-driven <feature-slug>
+/feature-marker --mode test-only <feature-slug>
 ```
 
 ## Prerequisites
