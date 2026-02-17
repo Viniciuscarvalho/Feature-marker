@@ -60,30 +60,32 @@ the script outputs `INTERACTIVE_MODE_REQUESTED` followed by `FEATURE_NAME=<name>
 
 1. Detect the marker `INTERACTIVE_MODE_REQUESTED` in script output
 2. Extract feature name from `FEATURE_NAME=<name>` line
-3. Use `AskUserQuestion` tool to present the four execution modes
+3. Use `AskUserQuestion` tool to present the execution modes (max 4 options allowed)
 4. Based on user selection, re-invoke the script with `--mode <selected-mode>`:
    - "Full Workflow" → `--mode full`
    - "Tasks Only" → `--mode tasks-only`
-   - "Ralph Loop" → `--mode ralph-loop`
    - "Spec-Driven" → `--mode spec-driven`
    - "Test Only" → `--mode test-only`
+   - If user selects "Other" and types "Ralph Loop" → `--mode ralph-loop`
 
 **Example AskUserQuestion**:
 ```json
 {
   "questions": [{
-    "question": "Which execution mode do you want to use?",
+    "question": "Select the execution mode for the {feature-name} feature:",
     "header": "Mode",
     "options": [
-      {"label": "Full Workflow", "description": "Generates missing PRD/TechSpec/Tasks and executes all phases"},
-      {"label": "Tasks Only", "description": "Skips generation, executes implementation only (requires existing files)"},
-      {"label": "Ralph Loop", "description": "Autonomous execution with self-correction via ralph-wiggum"},
-      {"label": "Spec-Driven", "description": "Multi-agent review + isolated worktree via spec-workflow"},
+      {"label": "Full Workflow", "description": "Generates missing PRD/TechSpec/Tasks files and executes all phases (Recommended)"},
+      {"label": "Tasks Only", "description": "Uses existing files, skips generation phase"},
+      {"label": "Spec-Driven", "description": "Multi-agent review + worktree isolation via spec-workflow"},
       {"label": "Test Only", "description": "Runs tests phase exclusively using /swift-testing for guided test creation"}
     ],
     "multiSelect": false
   }]
 }
+```
+
+**Note**: AskUserQuestion supports max 4 options. Ralph Loop mode is available via "Other" (user types "ralph-loop" or "Ralph Loop"). The agent should detect this and use `--mode ralph-loop`.
 ```
 
 **Example Flow**:
