@@ -35,6 +35,9 @@ show_main_menu() {
   echo -e "  ${GREEN}4)${NC} ${BOLD}Spec-Driven Mode${NC} - Multi-agent review + worktree isolation"
   echo -e "     ${BLUE}→${NC} Uses spec-workflow for rigorous spec review"
   echo ""
+  echo -e "  ${GREEN}5)${NC} ${BOLD}Test Only Mode${NC} - Run tests phase exclusively"
+  echo -e "     ${BLUE}→${NC} Uses /swift-testing for guided test creation and execution"
+  echo ""
   echo -e "  ${YELLOW}0)${NC} Exit"
   echo ""
 }
@@ -70,6 +73,13 @@ confirm_mode() {
       echo "  • Isolated worktree for safe development"
       echo "  • Converts spec to PRD/TechSpec/Tasks format"
       echo "  • Then executes standard FM phases 3-4"
+      ;;
+    5)
+      echo -e "${BOLD}🧪 Test Only Mode${NC}"
+      echo "  • Runs only the test phase (Phase 3)"
+      echo "  • Uses /swift-testing skill for guided test creation"
+      echo "  • Validates existing implementation with tests"
+      echo "  • Skips generation, planning, and implementation"
       ;;
   esac
   echo ""
@@ -230,7 +240,7 @@ select_execution_mode() {
     banner
     show_main_menu "$feature_name"
 
-    read -p "Select option [0-4]: " selected_mode
+    read -p "Select option [0-5]: " selected_mode
 
     case "$selected_mode" in
       1)
@@ -290,13 +300,20 @@ select_execution_mode() {
           read -p "Press Enter to continue..."
         fi
         ;;
+      5)
+        confirm_mode 5 "$feature_name"
+        if ask_yes_no "Proceed with Test Only mode?"; then
+          export EXECUTION_MODE="test-only"
+          return 0
+        fi
+        ;;
       0)
         echo ""
         info "Exiting feature-marker"
         exit 0
         ;;
       *)
-        error "Invalid option. Please select 0-4."
+        error "Invalid option. Please select 0-5."
         sleep 1
         ;;
     esac
@@ -326,4 +343,9 @@ is_full_workflow_mode() {
 # Check if mode is spec-driven
 is_spec_driven_mode() {
   [[ "${EXECUTION_MODE:-full}" == "spec-driven" ]]
+}
+
+# Check if mode is test-only
+is_test_only_mode() {
+  [[ "${EXECUTION_MODE:-full}" == "test-only" ]]
 }

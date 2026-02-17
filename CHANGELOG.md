@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0] - 2026-02-17
+
+### Added
+- **Test Only Mode** - New execution mode (option 5) for running tests phase exclusively
+  - Skips Phases 0-2 (inputs gate, planning, implementation)
+  - Runs only Phase 3 (Tests & Validation)
+  - Uses `/swift-testing` skill for guided test creation and best practices
+  - Supports Swift Testing framework patterns: `@Test`, `@Suite`, `#expect`, `#require`
+  - Applies F.I.R.S.T. principles and Arrange-Act-Assert patterns
+  - Adapts testing methodology to non-Swift projects using native test frameworks
+  - Ideal for adding tests to already-implemented features
+- **Direct mode selection**: `--mode test-only` flag for CLI usage
+- **Interactive menu**: Option 5 in interactive mode panel
+
+### Changed
+- Updated interactive menu to include option 5 (Test Only Mode)
+- Updated `menu.sh` with `is_test_only_mode()` helper function
+- Updated `feature-marker.sh` with test-only mode display and inputs gate handling
+- Enhanced agent documentation with full Test Only Mode workflow and examples
+- Updated SKILL.md with test-only mode in usage and direct mode selection docs
+- Updated CLI help text to list all 5 execution modes
+
+### Technical Details
+- Environment variable: `EXECUTION_MODE=test-only`
+- Integrates with `/swift-testing` skill for Swift project test guidance
+- Non-Swift projects adapt the testing methodology to their native frameworks
+- Checkpoint support: saves test results to `.claude/feature-state/{feature-name}/test-results.md`
+- Backward compatible: all existing modes continue to work unchanged
+
 ## [5.0.0] - 2026-02-12
 
 ### Added
@@ -204,6 +233,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated from template-based to command-based file generation
 - Simplified directory structure (./tasks instead of ./docs/tasks)
 
+[5.1.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.0.0...v5.1.0
 [5.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v4.0.0...v5.0.0
 [4.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v3.0.0...v4.0.0
 [3.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v2.0.0...v3.0.0
