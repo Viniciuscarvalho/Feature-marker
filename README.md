@@ -113,7 +113,7 @@ feature-marker-tui
 - **4-Phase Workflow** — Analysis → Implementation → Tests → Commit & PR
 - **Checkpoint/Resume** — Pause anytime, resume where you left off
 - **Platform Detection** — Auto-detects GitHub, Azure DevOps, GitLab for PR creation
-- **Multiple Modes** — Full workflow, tasks-only, Ralph Loop, or Spec-Driven
+- **Multiple Modes** — Full workflow, tasks-only, Ralph Loop, Spec-Driven, or Test Only
 - **TUI Application** — Rich terminal interface for visual workflow management
 - **Menu Bar App** — Native macOS app with global shortcut (⌘⇧F)
 
@@ -127,6 +127,7 @@ feature-marker-tui
 | **Tasks Only** | Skip generation, use existing files |
 | **Ralph Loop** | Autonomous self-correcting execution |
 | **Spec-Driven** | Multi-agent review with worktree isolation |
+| **Test Only** | Run tests phase exclusively via `/swift-testing` |
 
 ---
 
