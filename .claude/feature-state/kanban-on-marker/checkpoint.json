@@ -1,0 +1,32 @@
+{
+  "version": "1.2.0",
+  "feature_name": "kanban-on-marker",
+  "project_path": "/Users/vinicius.marques/Documents/Projects/pessoal/Feature-marker",
+  "current_phase": 0,
+  "phase_status": "pending",
+  "phases": {
+    "2": {
+      "name": "Implementation",
+      "status": "pending"
+    },
+    "0": {
+      "name": "Inputs Gate",
+      "status": "pending"
+    },
+    "1": {
+      "name": "Analysis & Planning",
+      "status": "pending"
+    },
+    "4": {
+      "name": "Commit & PR",
+      "status": "pending"
+    },
+    "3": {
+      "name": "Tests & Validation",
+      "status": "pending"
+    }
+  },
+  "last_updated": "2026-02-20T17:57:43.956018Z",
+  "paused": false,
+  "error_state": null
+}

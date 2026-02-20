@@ -19,6 +19,12 @@ pub struct AppState {
     pub project_dir: PathBuf,
     /// Available features (for selection screen)
     pub available_features: Vec<String>,
+    /// Feature prompt entered by the user
+    pub feature_prompt: Option<String>,
+    /// Previous mode (for returning from KanbanView)
+    pub previous_mode: Option<AppMode>,
+    /// Cached feature list for kanban view
+    pub kanban_features: Vec<FeatureState>,
 }
 
 impl AppState {
@@ -31,6 +37,9 @@ impl AppState {
             ui: UIState::default(),
             project_dir,
             available_features: Vec::new(),
+            feature_prompt: None,
+            previous_mode: None,
+            kanban_features: Vec::new(),
         }
     }
 
@@ -67,6 +76,7 @@ impl AppState {
     pub fn navigate_back(&mut self) {
         self.mode = match &self.mode {
             AppMode::FeatureSelection => AppMode::Welcome,
+            AppMode::PromptInput => AppMode::FeatureSelection,
             AppMode::ModeSelection => AppMode::FeatureSelection,
             AppMode::Paused => AppMode::Executing,
             AppMode::Error(_) => AppMode::Executing,
@@ -82,6 +92,8 @@ pub enum AppMode {
     Welcome,
     /// Feature selection (new or resume)
     FeatureSelection,
+    /// Prompt input for new features
+    PromptInput,
     /// Execution mode selection
     ModeSelection,
     /// Main execution dashboard
@@ -92,6 +104,8 @@ pub enum AppMode {
     Completed,
     /// Error state with message
     Error(String),
+    /// Kanban board view
+    KanbanView,
     /// Quitting
     Quitting,
 }
@@ -169,6 +183,8 @@ pub struct UIState {
     pub input_buffer: String,
     /// Is in input mode
     pub input_mode: bool,
+    /// Prompt text buffer (for PromptInput screen)
+    pub prompt_buffer: String,
 }
 
 impl UIState {
