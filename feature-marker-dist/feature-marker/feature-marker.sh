@@ -35,7 +35,7 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     --version|-V)
-      echo "feature-marker v5.1.0"
+      echo "feature-marker v5.2.0"
       exit 0
       ;;
     --interactive|-i)
