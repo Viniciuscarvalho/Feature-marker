@@ -14,6 +14,11 @@ impl CheckpointManager {
         Self { state_path }
     }
 
+    /// Get the base state directory path
+    pub fn state_path(&self) -> &PathBuf {
+        &self.state_path
+    }
+
     /// Get the state directory for a feature
     pub fn feature_dir(&self, feature: &str) -> PathBuf {
         self.state_path.join(feature)

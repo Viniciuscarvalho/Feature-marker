@@ -17,6 +17,8 @@ pub struct FeatureState {
     pub paused: bool,
     #[serde(default)]
     pub error_state: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
 }
 
 impl FeatureState {
@@ -54,6 +56,7 @@ impl FeatureState {
             last_updated: Utc::now(),
             paused: false,
             error_state: None,
+            prompt: None,
         }
     }
 
