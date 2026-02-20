@@ -21,6 +21,7 @@
 # Build artifacts
 dist/
 build/
+target/
 
 # Node (if using any tooling)
 node_modules/
