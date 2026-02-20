@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "8483f6216e5d",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "CHANGELOG.md",
+    "feature-marker-dist/feature-marker/feature-marker.sh",
+    "homebrew/feature-marker.rb",
+    "npm/package.json"
+  ],
+  "sessions": [
+    {
+      "metadata": "/84/83f6216e5d/0/metadata.json",
+      "transcript": "/84/83f6216e5d/0/full.jsonl",
+      "context": "/84/83f6216e5d/0/context.md",
+      "content_hash": "/84/83f6216e5d/0/content_hash.txt",
+      "prompt": "/84/83f6216e5d/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 22,
+    "cache_creation_tokens": 64382,
+    "cache_read_tokens": 1005927,
+    "output_tokens": 1370,
+    "api_call_count": 18
+  }
+}
