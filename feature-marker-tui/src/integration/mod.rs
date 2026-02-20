@@ -1,4 +1,5 @@
 mod checkpoint;
+pub mod kanban;
 mod shell;
 mod watcher;
 

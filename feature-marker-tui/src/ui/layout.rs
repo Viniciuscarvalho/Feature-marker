@@ -12,6 +12,9 @@ pub fn render_layout(frame: &mut Frame, state: &AppState, theme: &Theme) {
         AppMode::FeatureSelection => {
             screens::render_feature_select(frame, state, theme);
         }
+        AppMode::PromptInput => {
+            screens::render_prompt_input(frame, state, theme);
+        }
         AppMode::ModeSelection => {
             screens::render_mode_select(frame, state, theme);
         }
@@ -23,6 +26,9 @@ pub fn render_layout(frame: &mut Frame, state: &AppState, theme: &Theme) {
         }
         AppMode::Error(msg) => {
             screens::render_error(frame, msg, theme);
+        }
+        AppMode::KanbanView => {
+            screens::render_kanban(frame, state, theme);
         }
         AppMode::Quitting => {
             // Nothing to render, app is quitting

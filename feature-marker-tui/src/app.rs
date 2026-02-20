@@ -1,11 +1,12 @@
 use feature_marker_tui::config::AppConfig;
 use feature_marker_tui::integration::{
-    create_output_channel, CheckpointChange, CheckpointManager, CheckpointWatcher, ShellExecutor,
+    create_output_channel, kanban, CheckpointChange, CheckpointManager, CheckpointWatcher,
+    ShellExecutor,
 };
 use feature_marker_tui::model::{AppMode, AppState, ExecutionMode, OutputLine, PhaseStatus};
 use feature_marker_tui::ui::{render_layout, Theme};
 use anyhow::Result;
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::prelude::*;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -161,7 +162,7 @@ impl App {
             if event::poll(Duration::from_millis(50))? {
                 if let Event::Key(key) = event::read()? {
                     if key.kind == KeyEventKind::Press {
-                        self.handle_key(key.code).await?;
+                        self.handle_key(key.code, key.modifiers).await?;
                     }
                 }
             }
@@ -250,6 +251,7 @@ impl App {
                                 }
                                 let _ = self.checkpoint_manager.save(feature);
                             }
+                            self.regenerate_kanban();
                         } else {
                             self.state.add_output(OutputLine::error(format!(
                                 "Execution failed (exit code: {})",
@@ -292,6 +294,17 @@ impl App {
         let executor = Arc::new(ShellExecutor::new(self.state.project_dir.clone(), tx));
         self.shell_executor = Some(executor.clone());
 
+        // Build optional prompt file prefix
+        let prompt_prefix = if let Some(ref _prompt) = self.state.feature_prompt {
+            let prompt_file = self
+                .checkpoint_manager
+                .feature_dir(&feature.feature_name)
+                .join("prompt.txt");
+            format!("FEATURE_PROMPT_FILE='{}' ", prompt_file.display())
+        } else {
+            String::new()
+        };
+
         // Determine command to run
         let command = if let Some(ref fm_path) = self.feature_marker_path {
             let script = fm_path.join("feature-marker.sh");
@@ -302,7 +315,8 @@ impl App {
                 ExecutionMode::SpecDriven => "spec-driven",
             };
             format!(
-                "{} --feature {} --mode {}",
+                "{}{} --feature {} --mode {}",
+                prompt_prefix,
                 script.display(),
                 feature.feature_name,
                 mode_arg
@@ -344,21 +358,38 @@ impl App {
     }
 
     /// Handle keyboard input
-    async fn handle_key(&mut self, key: KeyCode) -> Result<()> {
-        // Global quit
-        if key == KeyCode::Char('q') && !self.state.ui.input_mode {
+    async fn handle_key(&mut self, key: KeyCode, modifiers: KeyModifiers) -> Result<()> {
+        // Global quit (skip in input modes)
+        if key == KeyCode::Char('q') && !self.state.ui.input_mode
+            && self.state.mode != AppMode::PromptInput
+        {
             self.state.mode = AppMode::Quitting;
             return Ok(());
         }
 
-        match &self.state.mode {
+        // Global kanban toggle (skip in text-input modes)
+        if key == KeyCode::Char('K')
+            && !self.state.ui.input_mode
+            && self.state.mode != AppMode::PromptInput
+        {
+            if self.state.mode == AppMode::KanbanView {
+                self.close_kanban();
+            } else {
+                self.open_kanban()?;
+            }
+            return Ok(());
+        }
+
+        match &self.state.mode.clone() {
             AppMode::Welcome => self.handle_welcome_key(key),
             AppMode::FeatureSelection => self.handle_feature_select_key(key),
+            AppMode::PromptInput => self.handle_prompt_input_key(key, modifiers),
             AppMode::ModeSelection => self.handle_mode_select_key(key).await,
             AppMode::Executing => self.handle_executing_key(key),
             AppMode::Paused => self.handle_paused_key(key).await,
             AppMode::Completed => self.handle_completed_key(key),
             AppMode::Error(_) => self.handle_error_key(key),
+            AppMode::KanbanView => self.handle_kanban_key(key),
             AppMode::Quitting => Ok(()),
         }
     }
@@ -380,11 +411,16 @@ impl App {
                 KeyCode::Enter => {
                     if !self.state.ui.input_buffer.is_empty() {
                         let feature_name = self.state.ui.input_buffer.clone();
+                        let is_new = !self.checkpoint_manager.exists(&feature_name);
                         self.create_or_load_feature(&feature_name)?;
-                        self.state.ui.input_mode = false;
                         self.state.ui.input_buffer.clear();
-                        self.state.mode = AppMode::ModeSelection;
-                        self.state.ui.selected_index = 0;
+                        self.state.ui.input_mode = false;
+                        if is_new {
+                            self.state.mode = AppMode::PromptInput;
+                        } else {
+                            self.state.mode = AppMode::ModeSelection;
+                            self.state.ui.selected_index = 0;
+                        }
                     }
                 }
                 KeyCode::Esc => {
@@ -418,6 +454,7 @@ impl App {
                     if !self.state.available_features.is_empty() {
                         let feature_name =
                             self.state.available_features[self.state.ui.selected_index].clone();
+                        // Selecting from list is always a resume
                         self.create_or_load_feature(&feature_name)?;
                         self.state.mode = AppMode::ModeSelection;
                         self.state.ui.selected_index = 0;
@@ -554,10 +591,95 @@ impl App {
                     }
                     self.checkpoint_manager.save(feature)?;
                 }
+                self.regenerate_kanban();
             }
             _ => {}
         }
         Ok(())
+    }
+
+    fn handle_prompt_input_key(&mut self, key: KeyCode, modifiers: KeyModifiers) -> Result<()> {
+        match key {
+            KeyCode::Enter if modifiers.contains(KeyModifiers::ALT) => {
+                self.state.ui.prompt_buffer.push('\n');
+            }
+            KeyCode::Enter => {
+                let prompt = self.state.ui.prompt_buffer.trim().to_string();
+                let mut should_regenerate = false;
+                if !prompt.is_empty() {
+                    if let Some(ref mut feature) = self.state.feature {
+                        feature.prompt = Some(prompt.clone());
+                        self.checkpoint_manager
+                            .write_artifact(&feature.feature_name, "prompt.txt", &prompt)?;
+                        self.checkpoint_manager.save(feature)?;
+                        should_regenerate = true;
+                    }
+                    self.state.feature_prompt = Some(prompt);
+                }
+                if should_regenerate {
+                    self.regenerate_kanban();
+                }
+                self.state.ui.prompt_buffer.clear();
+                self.state.mode = AppMode::ModeSelection;
+                self.state.ui.selected_index = 0;
+            }
+            KeyCode::Esc => {
+                self.state.ui.prompt_buffer.clear();
+                self.state.mode = AppMode::FeatureSelection;
+            }
+            KeyCode::Backspace => {
+                self.state.ui.prompt_buffer.pop();
+            }
+            KeyCode::Char(c) => {
+                self.state.ui.prompt_buffer.push(c);
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn handle_kanban_key(&mut self, key: KeyCode) -> Result<()> {
+        match key {
+            KeyCode::Esc => {
+                self.close_kanban();
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn open_kanban(&mut self) -> Result<()> {
+        self.state.kanban_features = self
+            .checkpoint_manager
+            .list_features()
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|f| self.checkpoint_manager.load(f).ok())
+            .collect();
+        self.state.previous_mode = Some(self.state.mode.clone());
+        self.state.mode = AppMode::KanbanView;
+        Ok(())
+    }
+
+    fn close_kanban(&mut self) {
+        self.state.mode = self
+            .state
+            .previous_mode
+            .clone()
+            .unwrap_or(AppMode::FeatureSelection);
+        self.state.previous_mode = None;
+    }
+
+    fn regenerate_kanban(&self) {
+        let features: Vec<_> = self
+            .checkpoint_manager
+            .list_features()
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|f| self.checkpoint_manager.load(f).ok())
+            .collect();
+        let md = kanban::generate_kanban_md(&features);
+        let _ = kanban::write_kanban(&self.checkpoint_manager.state_path(), &md);
     }
 
     fn create_or_load_feature(&mut self, feature_name: &str) -> Result<()> {

@@ -22,36 +22,52 @@ pub fn render_status_bar(frame: &mut Frame, area: Rect, state: &AppState, theme:
                     ("n", "New"),
                     ("Enter", "Select"),
                     ("Esc", "Back"),
+                    ("K", "Kanban"),
                     ("q", "Quit"),
                 ]
             }
         }
+        AppMode::PromptInput => vec![
+            ("Enter", "Confirm / Skip"),
+            ("Alt+Enter", "New Line"),
+            ("Esc", "Back"),
+        ],
         AppMode::ModeSelection => vec![
             ("j/k", "Navigate"),
             ("1-4", "Quick Select"),
             ("Enter", "Confirm"),
             ("Esc", "Back"),
+            ("K", "Kanban"),
             ("q", "Quit"),
         ],
         AppMode::Executing => vec![
             ("p", "Pause"),
             ("s", "Toggle Scroll"),
             ("Tab", "Switch Focus"),
+            ("K", "Kanban"),
             ("q", "Quit"),
         ],
         AppMode::Paused => vec![
             ("r", "Resume"),
             ("s", "Toggle Scroll"),
             ("Tab", "Switch Focus"),
+            ("K", "Kanban"),
             ("q", "Quit"),
         ],
         AppMode::Completed => vec![
             ("Enter", "New Feature"),
+            ("K", "Kanban"),
             ("q", "Quit"),
         ],
         AppMode::Error(_) => vec![
             ("r", "Retry"),
             ("s", "Skip"),
+            ("K", "Kanban"),
+            ("q", "Quit"),
+        ],
+        AppMode::KanbanView => vec![
+            ("Esc", "Back"),
+            ("K", "Close"),
             ("q", "Quit"),
         ],
         AppMode::Quitting => vec![],
