@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "8df41199eea4",
+  "session_id": "14102640-5795-473b-8a7c-c00bdc165fc7",
+  "strategy": "manual-commit",
+  "created_at": "2026-02-24T23:10:14.676957Z",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "CHANGELOG.md",
+    "feature-marker-dist/CHANGELOG.md",
+    "feature-marker-dist/agents/feature-marker.md",
+    "feature-marker-dist/feature-marker/SKILL.md",
+    "homebrew/feature-marker.rb",
+    "npm/package.json"
+  ],
+  "agent": "Claude Code",
+  "token_usage": {
+    "input_tokens": 12325,
+    "cache_creation_tokens": 116438,
+    "cache_read_tokens": 6239921,
+    "output_tokens": 996,
+    "api_call_count": 70
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-02-24T23:10:13.81228Z",
+    "agent_lines": 111,
+    "human_added": 224,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 335,
+    "agent_percentage": 33.134328358208954
+  },
+  "transcript_path": ".claude/projects/-Users-viniciuscarvalho-Documents-Feature-marker/14102640-5795-473b-8a7c-c00bdc165fc7.jsonl"
+}
