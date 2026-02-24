@@ -101,6 +101,52 @@ the script outputs `INTERACTIVE_MODE_REQUESTED` followed by `FEATURE_NAME=<name>
 
 ---
 
+## Pre-Phase: Context Loading
+
+**Objective**: Load external context that enriches the entire workflow before any phase begins.
+
+### Step 1: Read Project Conventions (CLAUDE.md)
+
+1. Check if `./CLAUDE.md` exists at the project root
+2. If found, read its contents entirely using the Read tool
+3. Use this content as project-level conventions and constraints throughout all phases:
+   - Naming conventions and code patterns
+   - Architecture guidelines and constraints
+   - Testing standards and tooling preferences
+   - Any project-specific rules
+4. If not found, skip silently (non-blocking)
+
+### Step 2: Detect Claude Plan Mode Output
+
+1. List plan files sorted by modification time:
+   ```bash
+   ls -t ~/.claude/plans/*.md 2>/dev/null | head -1
+   ```
+2. If a plan file is found, read its contents entirely using the Read tool
+3. Store the plan content as **PLAN_CONTEXT** for use in Phase 0 and Phase 1
+4. If `~/.claude/plans/` does not exist or is empty, skip silently (non-blocking)
+
+### How Plan Context is Used
+
+When PLAN_CONTEXT is available:
+
+- **Phase 0 (PRD generation)**: When invoking `/create-prd`, present the plan content as pre-answered context. The plan typically covers problem definition, codebase exploration, architectural decisions, and implementation approach. The create-prd command's "Clarify" step will recognize that these topics are already defined and can reduce or skip redundant clarifying questions, focusing only on gaps not covered by the plan.
+- **Phase 1 (Analysis & Planning)**: The plan provides pre-explored codebase understanding, reducing discovery time. Architectural decisions from the plan inform the implementation plan.
+- **Phase 2+ (Implementation)**: CLAUDE.md conventions guide code style and patterns. Plan context provides architectural direction.
+
+### Graceful Degradation
+
+| Scenario | Behavior |
+|----------|----------|
+| No `~/.claude/plans/` directory | Skip plan loading, continue normally |
+| Plans directory empty | Skip plan loading, continue normally |
+| No `CLAUDE.md` at project root | Skip conventions loading, continue normally |
+| Both plan and CLAUDE.md found | Load both as context |
+| Plan file is very large (>50KB) | Read first 2000 lines only |
+| No plan and no CLAUDE.md | Workflow proceeds exactly as before (fully backward-compatible) |
+
+---
+
 ## Inputs & Commands Gate (Pre-Phase)
 
 Before starting Phase 1, validate that required inputs exist. If missing, generate them using commands in `~/.claude/commands/`, which read templates from `~/.claude/docs/specs/`.
@@ -142,7 +188,10 @@ Generates ./tasks/prd-{feature-name}/prd.md
    - ✅ `tasks.md` exists → Skip generation
 3. **Only if a file is missing**, generate it using the corresponding command:
    - **Missing PRD**:
-     - Invoke: `~/.claude/commands/create-prd.md`
+     - **If PLAN_CONTEXT was loaded** in Pre-Phase:
+       - Before invoking `/create-prd`, present the plan content as context with this framing: "The following plan was created during a planning session and covers: problem definition, functionality, constraints, and scope. Use it as pre-answered context for the PRD. Reduce clarifying questions to only items NOT covered by the plan."
+       - Then invoke: `~/.claude/commands/create-prd.md`
+     - **If no PLAN_CONTEXT**: Invoke `~/.claude/commands/create-prd.md` directly (unchanged behavior)
      - Reads: `~/.claude/docs/specs/prd-template.md`
      - Creates: `./tasks/prd-{feature-name}/prd.md`
    - **Missing Tech Spec**:
@@ -183,6 +232,10 @@ Generates ./tasks/prd-{feature-name}/prd.md
   - If skill exists (user's or newly installed), it will be available for use throughout the workflow
 - Read `prd.md`, `techspec.md`, and `tasks.md` from `./tasks/prd-{feature-name}/`
 - Understand requirements deeply
+- If PLAN_CONTEXT was loaded in Pre-Phase, use it to supplement the analysis:
+  - Pre-explored files and dependencies from the plan reduce codebase discovery time
+  - Architectural decisions from the plan inform the implementation plan
+  - If CLAUDE.md was loaded, validate plan decisions against project conventions
 - Ask clarifying questions if needed (pause and wait for user input)
 - Create implementation plan with file mapping
 - Identify critical files and dependencies

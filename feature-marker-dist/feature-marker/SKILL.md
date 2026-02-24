@@ -251,6 +251,25 @@ ls -l ~/.claude/commands/
 
 If templates are missing, create them in `~/.claude/docs/specs/` before running feature-marker.
 
+## Plan Mode Integration
+
+When the user has used Claude's built-in plan mode before invoking feature-marker, the agent automatically:
+
+1. **Detects the most recent plan** from `~/.claude/plans/` (sorted by modification time)
+2. **Reads project conventions** from `./CLAUDE.md` at the project root (if present)
+3. **Uses both as rich context** to enhance PRD generation and reduce redundant clarification questions
+
+This is automatic and requires no additional flags or options. If no plan or CLAUDE.md exists, the workflow proceeds normally.
+
+**Recommended flow**:
+```
+1. Use Claude plan mode to explore the codebase and think through the feature
+2. Exit plan mode
+3. Run /feature-marker --interactive <feature-slug>
+4. Select "Full Workflow"
+5. The plan content automatically enriches PRD generation
+```
+
 ## Checkpoint & Resume
 
 If interrupted (Ctrl+C, session crash, etc.), re-invoke with the same feature slug to resume:
