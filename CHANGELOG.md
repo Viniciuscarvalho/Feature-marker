@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.2.1] - 2026-02-24
+
+### Added
+- **Plan Mode Integration** - Agent automatically detects and uses Claude plan mode output to enrich PRD generation
+  - Auto-detects most recent plan file from `~/.claude/plans/` (sorted by modification time)
+  - Reads project conventions from `./CLAUDE.md` at project root (if present)
+  - Uses plan content as pre-answered context for `/create-prd`, reducing redundant clarification questions
+  - Plan context also supplements Phase 1 (Analysis & Planning) with pre-explored codebase understanding
+  - Fully backward-compatible: no plan = unchanged behavior
+  - No new execution modes, flags, or shell script changes required
+
+### Changed
+- Added "Pre-Phase: Context Loading" section to agent definition (runs before Phase 0)
+- Enhanced Phase 0 "Missing PRD" logic with conditional plan context injection
+- Enhanced Phase 1 to leverage plan context and CLAUDE.md conventions
+- Updated SKILL.md with Plan Mode Integration documentation and recommended flow
+
 ## [5.2.0] - 2026-02-20
 
 ### Added
@@ -239,6 +256,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated from template-based to command-based file generation
 - Simplified directory structure (./tasks instead of ./docs/tasks)
 
+[5.2.1]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.2.0...v5.2.1
 [5.2.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.0.0...v5.1.0
 [5.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v4.0.0...v5.0.0
