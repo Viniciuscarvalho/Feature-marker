@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.0] - 2026-02-27
+
+### Added
+- **Native Swift/SwiftUI Menu Bar App** - Complete rewrite of the menu bar application from Rust/Tauri to native Swift/SwiftUI
+  - Pure Swift 6 with zero external dependencies (Foundation, AppKit, SwiftUI, UserNotifications only)
+  - `@Observable` + `@MainActor` for efficient state management with property-level tracking
+  - Actor-based `ProcessManager` and `FileWatcher` for safe structured concurrency
+  - NSStatusItem + NSPopover for native macOS menu bar experience with vibrancy material
+  - Full feature parity: tray icon, popover dashboard (4 views), process spawning, output streaming, file watching, notifications
+  - SF Symbols for template icon (adapts to light/dark mode automatically)
+  - Native macOS controls and system colors throughout
+
+### Removed
+- **Rust/Tauri menu bar app** - Removed all Rust, TypeScript, Vite, and Tauri dependencies
+  - Removed `src-tauri/` directory (Rust backend: tokio, serde, notify, chrono, tauri plugins)
+  - Removed `ui/` directory (TypeScript/Vite frontend with node_modules)
+  - Removed `scripts/` directory (Tauri build scripts)
+
+### Changed
+- **93.5% binary size reduction** - From 13 MB (Rust/Tauri) to 839 KB (Swift)
+- **App bundle size**: 844 KB total (vs estimated 15-20 MB for Tauri .app bundle)
+- **Source code**: 19 Swift files, 1652 lines (unified from 5 Rust + 2 TS/CSS files)
+- macOS 15+ (Sequoia) minimum target for latest SwiftUI APIs
+- Swift Package Manager project structure (no Xcode project needed)
+- Build via `./build.sh` creates optimized .app bundle with `-Osize` flag
+
 ## [5.2.1] - 2026-02-24
 
 ### Added
@@ -256,6 +282,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated from template-based to command-based file generation
 - Simplified directory structure (./tasks instead of ./docs/tasks)
 
+[5.3.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.2.1...v5.3.0
 [5.2.1]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.2.0...v5.2.1
 [5.2.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.0.0...v5.1.0
