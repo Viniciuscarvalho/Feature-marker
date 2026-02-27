@@ -66,9 +66,6 @@ brew install feature-marker
 
 # Complete installation to ~/.claude
 feature-marker-install
-
-# Optional: with TUI (requires Rust)
-brew install feature-marker --with-tui
 ```
 
 **Uninstall:**
@@ -85,9 +82,6 @@ Clone and run the install script directly.
 git clone https://github.com/Viniciuscarvalho/Feature-marker.git
 cd Feature-marker
 ./feature-marker-dist/feature-marker/install.sh
-
-# With TUI (requires Rust)
-./feature-marker-dist/feature-marker/install.sh --with-tui
 ```
 
 ---
@@ -115,7 +109,7 @@ feature-marker-tui
 - **Platform Detection** — Auto-detects GitHub, Azure DevOps, GitLab for PR creation
 - **Multiple Modes** — Full workflow, tasks-only, Ralph Loop, Spec-Driven, or Test Only
 - **TUI Application** — Rich terminal interface for visual workflow management
-- **Menu Bar App** — Native macOS app with global shortcut (⌘⇧F)
+- **Menu Bar App** — Native Swift/SwiftUI macOS app (839 KB binary)
 
 ---
 
