@@ -1,12 +1,12 @@
-# Rust
-src-tauri/target/
+# Swift
+.build/
+dist/
 
-# Tauri generated
-src-tauri/gen/
-
-# Node
-ui/node_modules/
-ui/dist/
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
 
 # IDE
 .idea/
