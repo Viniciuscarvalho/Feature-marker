@@ -1,0 +1,886 @@
+Quero reescrever a minha aplicação que hoje tem Rust para rodar em um menu bar para que seja reescrita em Swift, otimizando seu tamanho e performance. Hoje ele não está performático e o projeto inteiro está bem grande, estou visando a redução de tamanho e organização. Seguindo boas práticas de desenvolvimento e seguindo para escrever um app MacOS que tenha um tamanho menor possível, utilizando /swiftui-expert-skill /swift-concurrency e /swift-expert
+
+---
+
+Base directory for this skill: /Users/viniciuscarvalho/.claude/skills/swiftui-expert-skill
+
+# SwiftUI Expert Skill
+
+## Overview
+Use this skill to build, review, or improve SwiftUI features with correct state management, modern API usage, Swift concurrency best practices, optimal view composition, and iOS 26+ Liquid Glass styling. Prioritize native APIs, Apple design guidance, and performance-conscious patterns. This skill focuses on facts and best practices without enforcing specific architectural patterns.
+
+## Workflow Decision Tree
+
+### 1) Review existing SwiftUI code
+- Check property wrapper usage against the selection guide (see `references/state-management.md`)
+- Verify modern API usage (see `references/modern-apis.md`)
+- Verify view composition follows extraction rules (see `references/view-structure.md`)
+- Check performance patterns are applied (see `references/performance-patterns.md`)
+- Verify list patterns use stable identity (see `references/list-patterns.md`)
+- Inspect Liquid Glass usage for correctness and consistency (see `references/liquid-glass.md`)
+- Validate iOS 26+ availability handling with sensible fallbacks
+
+### 2) Improve existing SwiftUI code
+- Audit state management for correct wrapper selection (prefer `@Observable` over `ObservableObject`)
+- Replace deprecated APIs with modern equivalents (see `references/modern-apis.md`)
+- Extract complex views into separate subviews (see `references/view-structure.md`)
+- Refactor hot paths to minimize redundant state updates (see `references/performance-patterns.md`)
+- Ensure ForEach uses stable identity (see `references/list-patterns.md`)
+- Suggest image downsampling when `UIImage(data:)` is used (as optional optimization, see `references/image-optimization.md`)
+- Adopt Liquid Glass only when explicitly requested by the user
+
+### 3) Implement new SwiftUI feature
+- Design data flow first: identify owned vs injected state (see `references/state-management.md`)
+- Use modern APIs (no deprecated modifiers or patterns, see `references/modern-apis.md`)
+- Use `@Observable` for shared state (with `@MainActor` if not using default actor isolation)
+- Structure views for optimal diffing (extract subviews early, keep views small, see `references/view-structure.md`)
+- Separate business logic into testable models (see `references/layout-best-practices.md`)
+- Apply glass effects after layout/appearance modifiers (see `references/liquid-glass.md`)
+- Gate iOS 26+ features with `#available` and provide fallbacks
+
+## Core Guidelines
+
+### State Management
+- **Always prefer `@Observable` over `ObservableObject`** for new code
+- **Mark `@Observable` classes with `@MainActor`** unless using default actor isolation
+- **Always mark `@State` and `@StateObject` as `private`** (makes dependencies clear)
+- **Never declare passed values as `@State` or `@StateObject`** (they only accept initial values)
+- Use `@State` with `@Observable` classes (not `@StateObject`)
+- `@Binding` only when child needs to **modify** parent state
+- `@Bindable` for injected `@Observable` objects needing bindings
+- Use `let` for read-only values; `var` + `.onChange()` for reactive reads
+- Legacy: `@StateObject` for owned `ObservableObject`; `@ObservedObject` for injected
+- Nested `ObservableObject` doesn't work (pass nested objects directly); `@Observable` handles nesting fine
+
+### Modern APIs
+- Use `foregroundStyle()` instead of `foregroundColor()`
+- Use `clipShape(.rect(cornerRadius:))` instead of `cornerRadius()`
+- Use `Tab` API instead of `tabItem()`
+- Use `Button` instead of `onTapGesture()` (unless need location/count)
+- Use `NavigationStack` instead of `NavigationView`
+- Use `navigationDestination(for:)` for type-safe navigation
+- Use two-parameter or no-parameter `onChange()` variant
+- Use `ImageRenderer` for rendering SwiftUI views
+- Use `.sheet(item:)` instead of `.sheet(isPresented:)` for model-based content
+- Sheets should own their actions and call `dismiss()` internally
+- Use `ScrollViewReader` for programmatic scrolling with stable IDs
+- Avoid `UIScreen.main.bounds` for sizing
+- Avoid `GeometryReader` when alternatives exist (e.g., `containerRelativeFrame()`)
+
+### Swift Best Practices
+- Use modern Text formatting (`.format` parameters, not `String(format:)`)
+- Use `localizedStandardContains()` for user-input filtering (not `contains()`)
+- Prefer static member lookup (`.blue` vs `Color.blue`)
+- Use `.task` modifier for automatic cancellation of async work
+- Use `.task(id:)` for value-dependent tasks
+
+### View Composition
+- **Prefer modifiers over conditional views** for state changes (maintains view identity)
+- Extract complex views into separate subviews for better readability and performance
+- Keep views small for optimal performance
+- Keep view `body` simple and pure (no side effects or complex logic)
+- Use `@ViewBuilder` functions only for small, simple sections
+- Prefer `@ViewBuilder let content: Content` over closure-based content properties
+- Separate business logic into testable models (not about enforcing architectures)
+- Action handlers should reference methods, not contain inline logic
+- Use relative layout over hard-coded constants
+- Views should work in any context (don't assume screen size or presentation style)
+
+### Performance
+- Pass only needed values to views (avoid large "config" or "context" objects)
+- Eliminate unnecessary dependencies to reduce update fan-out
+- Check for value changes before assigning state in hot paths
+- Avoid redundant state updates in `onReceive`, `onChange`, scroll handlers
+- Minimize work in frequently executed code paths
+- Use `LazyVStack`/`LazyHStack` for large lists
+- Use stable identity for `ForEach` (never `.indices` for dynamic content)
+- Ensure constant number of views per `ForEach` element
+- Avoid inline filtering in `ForEach` (prefilter and cache)
+- Avoid `AnyView` in list rows
+- Consider POD views for fast diffing (or wrap expensive views in POD parents)
+- Suggest image downsampling when `UIImage(data:)` is encountered (as optional optimization)
+- Avoid layout thrash (deep hierarchies, excessive `GeometryReader`)
+- Gate frequent geometry updates by thresholds
+- Use `Self._printChanges()` to debug unexpected view updates
+
+### Liquid Glass (iOS 26+)
+**Only adopt when explicitly requested by the user.**
+- Use native `glassEffect`, `GlassEffectContainer`, and glass button styles
+- Wrap multiple glass elements in `GlassEffectContainer`
+- Apply `.glassEffect()` after layout and visual modifiers
+- Use `.interactive()` only for tappable/focusable elements
+- Use `glassEffectID` with `@Namespace` for morphing transitions
+
+## Quick Reference
+
+### Property Wrapper Selection (Modern)
+| Wrapper | Use When |
+|---------|----------|
+| `@State` | Internal view state (must be `private`), or owned `@Observable` class |
+| `@Binding` | Child modifies parent's state |
+| `@Bindable` | Injected `@Observable` needing bindings |
+| `let` | Read-only value from parent |
+| `var` | Read-only value watched via `.onChange()` |
+
+**Legacy (Pre-iOS 17):**
+| Wrapper | Use When |
+|---------|----------|
+| `@StateObject` | View owns an `ObservableObject` (use `@State` with `@Observable` instead) |
+| `@ObservedObject` | View receives an `ObservableObject` |
+
+### Modern API Replacements
+| Deprecated | Modern Alternative |
+|------------|-------------------|
+| `foregroundColor()` | `foregroundStyle()` |
+| `cornerRadius()` | `clipShape(.rect(cornerRadius:))` |
+| `tabItem()` | `Tab` API |
+| `onTapGesture()` | `Button` (unless need location/count) |
+| `NavigationView` | `NavigationStack` |
+| `onChange(of:) { value in }` | `onChange(of:) { old, new in }` or `onChange(of:) { }` |
+| `fontWeight(.bold)` | `bold()` |
+| `GeometryReader` | `containerRelativeFrame()` or `visualEffect()` |
+| `showsIndicators: false` | `.scrollIndicators(.hidden)` |
+| `String(format: "%.2f", value)` | `Text(value, format: .number.precision(.fractionLength(2)))` |
+| `string.contains(search)` | `string.localizedStandardContains(search)` (for user input) |
+
+### Liquid Glass Patterns
+```swift
+// Basic glass effect with fallback
+if #available(iOS 26, *) {
+    content
+        .padding()
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
+} else {
+    content
+        .padding()
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+}
+
+// Grouped glass elements
+GlassEffectContainer(spacing: 24) {
+    HStack(spacing: 24) {
+        GlassButton1()
+        GlassButton2()
+    }
+}
+
+// Glass buttons
+Button("Confirm") { }
+    .buttonStyle(.glassProminent)
+```
+
+## Review Checklist
+
+### State Management
+- [ ] Using `@Observable` instead of `ObservableObject` for new code
+- [ ] `@Observable` classes marked with `@MainActor` (if needed)
+- [ ] Using `@State` with `@Observable` classes (not `@StateObject`)
+- [ ] `@State` and `@StateObject` properties are `private`
+- [ ] Passed values NOT declared as `@State` or `@StateObject`
+- [ ] `@Binding` only where child modifies parent state
+- [ ] `@Bindable` for injected `@Observable` needing bindings
+- [ ] Nested `ObservableObject` avoided (or passed directly to child views)
+
+### Modern APIs (see `references/modern-apis.md`)
+- [ ] Using `foregroundStyle()` instead of `foregroundColor()`
+- [ ] Using `clipShape(.rect(cornerRadius:))` instead of `cornerRadius()`
+- [ ] Using `Tab` API instead of `tabItem()`
+- [ ] Using `Button` instead of `onTapGesture()` (unless need location/count)
+- [ ] Using `NavigationStack` instead of `NavigationView`
+- [ ] Avoiding `UIScreen.main.bounds`
+- [ ] Using alternatives to `GeometryReader` when possible
+- [ ] Button images include text labels for accessibility
+
+### Sheets & Navigation (see `references/sheet-navigation-patterns.md`)
+- [ ] Using `.sheet(item:)` for model-based sheets
+- [ ] Sheets own their actions and dismiss internally
+- [ ] Using `navigationDestination(for:)` for type-safe navigation
+
+### ScrollView (see `references/scroll-patterns.md`)
+- [ ] Using `ScrollViewReader` with stable IDs for programmatic scrolling
+- [ ] Using `.scrollIndicators(.hidden)` instead of initializer parameter
+
+### Text & Formatting (see `references/text-formatting.md`)
+- [ ] Using modern Text formatting (not `String(format:)`)
+- [ ] Using `localizedStandardContains()` for search filtering
+
+### View Structure (see `references/view-structure.md`)
+- [ ] Using modifiers instead of conditionals for state changes
+- [ ] Complex views extracted to separate subviews
+- [ ] Views kept small for performance
+- [ ] Container views use `@ViewBuilder let content: Content`
+
+### Performance (see `references/performance-patterns.md`)
+- [ ] View `body` kept simple and pure (no side effects)
+- [ ] Passing only needed values (not large config objects)
+- [ ] Eliminating unnecessary dependencies
+- [ ] State updates check for value changes before assigning
+- [ ] Hot paths minimize state updates
+- [ ] No object creation in `body`
+- [ ] Heavy computation moved out of `body`
+
+### List Patterns (see `references/list-patterns.md`)
+- [ ] ForEach uses stable identity (not `.indices`)
+- [ ] Constant number of views per ForEach element
+- [ ] No inline filtering in ForEach
+- [ ] No `AnyView` in list rows
+
+### Layout (see `references/layout-best-practices.md`)
+- [ ] Avoiding layout thrash (deep hierarchies, excessive GeometryReader)
+- [ ] Gating frequent geometry updates by thresholds
+- [ ] Business logic separated into testable models
+- [ ] Action handlers reference methods (not inline logic)
+- [ ] Using relative layout (not hard-coded constants)
+- [ ] Views work in any context (context-agnostic)
+
+### Liquid Glass (iOS 26+)
+- [ ] `#available(iOS 26, *)` with fallback for Liquid Glass
+- [ ] Multiple glass views wrapped in `GlassEffectContainer`
+- [ ] `.glassEffect()` applied after layout/appearance modifiers
+- [ ] `.interactive()` only on user-interactable elements
+- [ ] Shapes and tints consistent across related elements
+
+## References
+- `references/state-management.md` - Property wrappers and data flow (prefer `@Observable`)
+- `references/view-structure.md` - View composition, extraction, and container patterns
+- `references/performance-patterns.md` - Performance optimization techniques and anti-patterns
+- `references/list-patterns.md` - ForEach identity, stability, and list best practices
+- `references/layout-best-practices.md` - Layout patterns, context-agnostic views, and testability
+- `references/modern-apis.md` - Modern API usage and deprecated replacements
+- `references/sheet-navigation-patterns.md` - Sheet presentation and navigation patterns
+- `references/scroll-patterns.md` - ScrollView patterns and programmatic scrolling
+- `references/text-formatting.md` - Modern text formatting and string operations
+- `references/image-optimization.md` - AsyncImage, image downsampling, and optimization
+- `references/liquid-glass.md` - iOS 26+ Liquid Glass API
+
+## Philosophy
+
+This skill focuses on **facts and best practices**, not architectural opinions:
+- We don't enforce specific architectures (e.g., MVVM, VIPER)
+- We do encourage separating business logic for testability
+- We prioritize modern APIs over deprecated ones
+- We emphasize thread safety with `@MainActor` and `@Observable`
+- We optimize for performance and maintainability
+- We follow Apple's Human Interface Guidelines and API design patterns
+
+---
+
+Base directory for this skill: /Users/viniciuscarvalho/.claude/skills/swift-concurrency
+
+# Swift Concurrency
+
+## Overview
+
+This skill provides expert guidance on Swift Concurrency, covering modern async/await patterns, actors, tasks, Sendable conformance, and migration to Swift 6. Use this skill to help developers write safe, performant concurrent code and navigate the complexities of Swift's structured concurrency model.
+
+## Agent Behavior Contract (Follow These Rules)
+
+1. Analyze the project/package file to find out which Swift language mode (Swift 5.x vs Swift 6) and which Xcode/Swift toolchain is used when advice depends on it.
+2. Before proposing fixes, identify the isolation boundary: `@MainActor`, custom actor, actor instance isolation, or nonisolated.
+3. Do not recommend `@MainActor` as a blanket fix. Justify why main-actor isolation is correct for the code.
+4. Prefer structured concurrency (child tasks, task groups) over unstructured tasks. Use `Task.detached` only with a clear reason.
+5. If recommending `@preconcurrency`, `@unchecked Sendable`, or `nonisolated(unsafe)`, require:
+   - a documented safety invariant
+   - a follow-up ticket to remove or migrate it
+6. For migration work, optimize for minimal blast radius (small, reviewable changes) and add verification steps.
+7. Course references are for deeper learning only. Use them sparingly and only when they clearly help answer the developer’s question.
+
+## Project Settings Intake (Evaluate Before Advising)
+
+Concurrency behavior depends on build settings. Always try to determine:
+
+- Default actor isolation (is the module default `@MainActor` or `nonisolated`?)
+- Strict concurrency checking level (minimal/targeted/complete)
+- Whether upcoming features are enabled (especially `NonisolatedNonsendingByDefault`)
+- Swift language mode (Swift 5.x vs Swift 6) and SwiftPM tools version
+
+### Manual checks (no scripts)
+
+- SwiftPM:
+  - Check `Package.swift` for `.defaultIsolation(MainActor.self)`.
+  - Check `Package.swift` for `.enableUpcomingFeature("NonisolatedNonsendingByDefault")`.
+  - Check for strict concurrency flags: `.enableExperimentalFeature("StrictConcurrency=targeted")` (or similar).
+  - Check tools version at the top: `// swift-tools-version: ...`
+- Xcode projects:
+  - Search `project.pbxproj` for:
+    - `SWIFT_DEFAULT_ACTOR_ISOLATION`
+    - `SWIFT_STRICT_CONCURRENCY`
+    - `SWIFT_UPCOMING_FEATURE_` (and/or `SWIFT_ENABLE_EXPERIMENTAL_FEATURES`)
+
+If any of these are unknown, ask the developer to confirm them before giving migration-sensitive guidance.
+
+## Quick Decision Tree
+
+When a developer needs concurrency guidance, follow this decision tree:
+
+1. **Starting fresh with async code?**
+   - Read `references/async-await-basics.md` for foundational patterns
+   - For parallel operations → `references/tasks.md` (async let, task groups)
+
+2. **Protecting shared mutable state?**
+   - Need to protect class-based state → `references/actors.md` (actors, @MainActor)
+   - Need thread-safe value passing → `references/sendable.md` (Sendable conformance)
+
+3. **Managing async operations?**
+   - Structured async work → `references/tasks.md` (Task, child tasks, cancellation)
+   - Streaming data → `references/async-sequences.md` (AsyncSequence, AsyncStream)
+
+4. **Working with legacy frameworks?**
+   - Core Data integration → `references/core-data.md`
+   - General migration → `references/migration.md`
+
+5. **Performance or debugging issues?**
+   - Slow async code → `references/performance.md` (profiling, suspension points)
+   - Testing concerns → `references/testing.md` (XCTest, Swift Testing)
+
+6. **Understanding threading behavior?**
+   - Read `references/threading.md` for thread/task relationship and isolation
+
+7. **Memory issues with tasks?**
+   - Read `references/memory-management.md` for retain cycle prevention
+
+## Triage-First Playbook (Common Errors -> Next Best Move)
+
+- SwiftLint concurrency-related warnings
+  - Use `references/linting.md` for rule intent and preferred fixes; avoid dummy awaits as “fixes”.
+- SwiftLint `async_without_await` warning
+  - Remove `async` if not required; if required by protocol/override/@concurrent, prefer narrow suppression over adding fake awaits. See `references/linting.md`.
+- "Sending value of non-Sendable type ... risks causing data races"
+  - First: identify where the value crosses an isolation boundary
+  - Then: use `references/sendable.md` and `references/threading.md` (especially Swift 6.2 behavior changes)
+- "Main actor-isolated ... cannot be used from a nonisolated context"
+  - First: decide if it truly belongs on `@MainActor`
+  - Then: use `references/actors.md` (global actors, `nonisolated`, isolated parameters) and `references/threading.md` (default isolation)
+- "Class property 'current' is unavailable from asynchronous contexts" (Thread APIs)
+  - Use `references/threading.md` to avoid thread-centric debugging and rely on isolation + Instruments
+- XCTest async errors like "wait(...) is unavailable from asynchronous contexts"
+  - Use `references/testing.md` (`await fulfillment(of:)` and Swift Testing patterns)
+- Core Data concurrency warnings/errors
+  - Use `references/core-data.md` (DAO/`NSManagedObjectID`, default isolation conflicts)
+
+## Core Patterns Reference
+
+### When to Use Each Concurrency Tool
+
+**async/await** - Making existing synchronous code asynchronous
+```swift
+// Use for: Single asynchronous operations
+func fetchUser() async throws -> User {
+    try await networkClient.get("/user")
+}
+```
+
+**async let** - Running multiple independent async operations in parallel
+```swift
+// Use for: Fixed number of parallel operations known at compile time
+async let user = fetchUser()
+async let posts = fetchPosts()
+let profile = try await (user, posts)
+```
+
+**Task** - Starting unstructured asynchronous work
+```swift
+// Use for: Fire-and-forget operations, bridging sync to async contexts
+Task {
+    await updateUI()
+}
+```
+
+**Task Group** - Dynamic parallel operations with structured concurrency
+```swift
+// Use for: Unknown number of parallel operations at compile time
+await withTaskGroup(of: Result.self) { group in
+    for item in items {
+        group.addTask { await process(item) }
+    }
+}
+```
+
+**Actor** - Protecting mutable state from data races
+```swift
+// Use for: Shared mutable state accessed from multiple contexts
+actor DataCache {
+    private var cache: [String: Data] = [:]
+    func get(_ key: String) -> Data? { cache[key] }
+}
+```
+
+**@MainActor** - Ensuring UI updates on main thread
+```swift
+// Use for: View models, UI-related classes
+@MainActor
+class ViewModel: ObservableObject {
+    @Published var data: String = ""
+}
+```
+
+### Common Scenarios
+
+**Scenario: Network request with UI update**
+```swift
+Task { @concurrent in
+    let data = try await fetchData() // Background
+    await MainActor.run {
+        self.updateUI(with: data) // Main thread
+    }
+}
+```
+
+**Scenario: Multiple parallel network requests**
+```swift
+async let users = fetchUsers()
+async let posts = fetchPosts()
+async let comments = fetchComments()
+let (u, p, c) = try await (users, posts, comments)
+```
+
+**Scenario: Processing array items in parallel**
+```swift
+await withTaskGroup(of: ProcessedItem.self) { group in
+    for item in items {
+        group.addTask { await process(item) }
+    }
+    for await result in group {
+        results.append(result)
+    }
+}
+```
+
+## Swift 6 Migration Quick Guide
+
+Key changes in Swift 6:
+- **Strict concurrency checking** enabled by default
+- **Complete data-race safety** at compile time
+- **Sendable requirements** enforced on boundaries
+- **Isolation checking** for all async boundaries
+
+For detailed migration steps, see `references/migration.md`.
+
+## Reference Files
+
+Load these files as needed for specific topics:
+
+- **`async-await-basics.md`** - async/await syntax, execution order, async let, URLSession patterns
+- **`tasks.md`** - Task lifecycle, cancellation, priorities, task groups, structured vs unstructured
+- **`threading.md`** - Thread/task relationship, suspension points, isolation domains, nonisolated
+- **`memory-management.md`** - Retain cycles in tasks, memory safety patterns
+- **`actors.md`** - Actor isolation, @MainActor, global actors, reentrancy, custom executors, Mutex
+- **`sendable.md`** - Sendable conformance, value/reference types, @unchecked, region isolation
+- **`linting.md`** - Concurrency-focused lint rules and SwiftLint `async_without_await`
+- **`async-sequences.md`** - AsyncSequence, AsyncStream, when to use vs regular async methods
+- **`core-data.md`** - NSManagedObject sendability, custom executors, isolation conflicts
+- **`performance.md`** - Profiling with Instruments, reducing suspension points, execution strategies
+- **`testing.md`** - XCTest async patterns, Swift Testing, concurrency testing utilities
+- **`migration.md`** - Swift 6 migration strategy, closure-to-async conversion, @preconcurrency, FRP migration
+
+## Best Practices Summary
+
+1. **Prefer structured concurrency** - Use task groups over unstructured tasks when possible
+2. **Minimize suspension points** - Keep actor-isolated sections small to reduce context switches
+3. **Use @MainActor judiciously** - Only for truly UI-related code
+4. **Make types Sendable** - Enable safe concurrent access by conforming to Sendable
+5. **Handle cancellation** - Check Task.isCancelled in long-running operations
+6. **Avoid blocking** - Never use semaphores or locks in async contexts
+7. **Test concurrent code** - Use proper async test methods and consider timing issues
+
+## Verification Checklist (When You Change Concurrency Code)
+
+- Confirm build settings (default isolation, strict concurrency, upcoming features) before interpreting diagnostics.
+- After refactors:
+  - Run tests, especially concurrency-sensitive ones (see `references/testing.md`).
+  - If performance-related, verify with Instruments (see `references/performance.md`).
+  - If lifetime-related, verify deinit/cancellation behavior (see `references/memory-management.md`).
+
+## Glossary
+
+See `references/glossary.md` for quick definitions of core concurrency terms used across this skill.
+
+---
+
+**Note**: This skill is based on the comprehensive [Swift Concurrency Course](https://www.swiftconcurrencycourse.com?utm_source=github&utm_medium=agent-skill&utm_campaign=skill-footer) by Antoine van der Lee.
+
+---
+
+Base directory for this skill: /Users/viniciuscarvalho/.claude/skills/swift-expert
+
+# Swift Expert
+
+Senior Swift developer with mastery of Swift 6.0+, Apple's development ecosystem, SwiftUI, async/await concurrency, and protocol-oriented programming.
+
+## Role Definition
+
+You are a senior Swift engineer with 10+ years of Apple platform development. You specialize in Swift 6.0+, SwiftUI, async/await concurrency, protocol-oriented design, and server-side Swift. You build type-safe, performant applications following Apple's API design guidelines.
+
+## When to Use This Skill
+
+- Building iOS/macOS/watchOS/tvOS applications
+- Implementing SwiftUI interfaces and state management
+- Setting up async/await concurrency and actors
+- Creating protocol-oriented architectures
+- Optimizing memory and performance
+- Integrating UIKit with SwiftUI
+
+## Core Workflow
+
+1. **Architecture Analysis** - Identify platform targets, dependencies, design patterns
+2. **Design Protocols** - Create protocol-first APIs with associated types
+3. **Implement** - Write type-safe code with async/await and value semantics
+4. **Optimize** - Profile with Instruments, ensure thread safety
+5. **Test** - Write comprehensive tests with XCTest and async patterns
+
+## Reference Guide
+
+Load detailed guidance based on context:
+
+| Topic | Reference | Load When |
+|-------|-----------|-----------|
+| SwiftUI | `references/swiftui-patterns.md` | Building views, state management, modifiers |
+| Concurrency | `references/async-concurrency.md` | async/await, actors, structured concurrency |
+| Protocols | `references/protocol-oriented.md` | Protocol design, generics, type erasure |
+| Memory | `references/memory-performance.md` | ARC, weak/unowned, performance optimization |
+| Testing | `references/testing-patterns.md` | XCTest, async tests, mocking strategies |
+
+## Constraints
+
+### MUST DO
+- Use type hints and inference appropriately
+- Follow Swift API Design Guidelines
+- Use async/await for asynchronous operations
+- Ensure Sendable compliance for concurrency
+- Use value types (struct/enum) by default
+- Document APIs with markup comments
+- Use property wrappers for cross-cutting concerns
+- Profile with Instruments before optimizing
+
+### MUST NOT DO
+- Use force unwrapping (!) without justification
+- Create retain cycles in closures
+- Mix synchronous and asynchronous code improperly
+- Ignore actor isolation warnings
+- Use implicitly unwrapped optionals unnecessarily
+- Skip error handling
+- Use Objective-C patterns when Swift alternatives exist
+- Hardcode platform-specific values
+
+## Output Templates
+
+When implementing Swift features, provide:
+1. Protocol definitions and type aliases
+2. Model types (structs/classes with value semantics)
+3. View implementations (SwiftUI) or view controllers
+4. Tests demonstrating usage
+5. Brief explanation of architectural decisions
+
+## Knowledge Reference
+
+Swift 6.0+, SwiftUI, UIKit, async/await, actors, structured concurrency, property wrappers, result builders, protocol-oriented programming, generics, type erasure, ARC, Instruments, XCTest, Swift Package Manager, Vapor
+
+## Related Skills
+
+- **Mobile Developer** - Cross-platform mobile development
+- **Frontend Expert** - UI/UX implementation patterns
+- **Backend Developer** - Server-side Swift integration
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+Execute o plano que foi proposto
+
+---
+
+Realize o commit e a alteraçnao para uma nova release 5.3.0 com essa atualização do arquivo em Swift utilize a /add-to-changelog 5.3.0 added "remove rust files and rewrite in Swift"
+
+---
+
+# Update Changelog
+
+This command adds a new entry to the project's CHANGELOG.md file.
+
+## Usage
+
+```
+/add-to-changelog <version> <change_type> <message>
+```
+
+Where:
+- `<version>` is the version number (e.g., "1.1.0")
+- `<change_type>` is one of: "added", "changed", "deprecated", "removed", "fixed", "security"
+- `<message>` is the description of the change
+
+## Examples
+
+```
+/add-to-changelog 1.1.0 added "New markdown to BlockDoc conversion feature"
+```
+
+```
+/add-to-changelog 1.0.2 fixed "Bug in HTML renderer causing incorrect output"
+```
+
+## Description
+
+This command will:
+
+1. Check if a CHANGELOG.md file exists and create one if needed
+2. Look for an existing section for the specified version
+   - If found, add the new entry under the appropriate change type section
+   - If not found, create a new version section with today's date
+3. Format the entry according to Keep a Changelog conventions
+4. Commit the changes if requested
+
+The CHANGELOG follows the [Keep a Changelog](https://keepachangelog.com/) format and [Semantic Versioning](https://semver.org/).
+
+## Implementation
+
+The command should:
+
+1. Parse the arguments to extract version, change type, and message
+2. Read the existing CHANGELOG.md file if it exists
+3. If the file doesn't exist, create a new one with standard header
+4. Check if the version section already exists
+5. Add the new entry in the appropriate section
+6. Write the updated content back to the file
+7. Suggest committing the changes
+
+Remember to update the package version in `__init__.py` and `setup.py` if this is a new version.
+
+ARGUMENTS: 5.3.0 added "remove rust files and rewrite in Swift"
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Analysis:
+Let me chronologically analyze the entire conversation:
+
+1. **Initial Request**: User wants to rewrite their Rust/Tauri menu bar application to Swift/SwiftUI, optimizing for size and performance. They explicitly requested using `/swiftui-expert-skill`, `/swift-concurrency`, and `/swift-expert` skills.
+
+2. **Exploration Phase**: 
+   - Launched an Explore agent to understand the full codebase
+   - Invoked three skills: swiftui-expert-skill, swift-concurrency, swift-expert
+   - Read all Rust source files: main.rs, tray.rs, commands.rs, state.rs, process_manager.rs
+   - Read TypeScript UI: ui/src/main.ts, ui/src/styles.css
+   - Read Tauri config: src-tauri/tauri.conf.json
+   - Checked Swift version: 6.2.1
+
+3. **Planning Phase**:
+   - Entered plan mode
+   - Asked user 4 clarifying questions about: macOS target, UI style, project location, feature scope
+   - User chose: macOS 15+, Native macOS style, Inside monorepo (replace Rust), Full parity
+   - Launched Plan agent for architecture design
+   - Wrote comprehensive plan to plan file
+   - User rejected ExitPlanMode initially but then said "Execute o plano que foi proposto"
+
+4. **Implementation Phase**:
+   - Phase 1: Package.swift, FeatureMarkerApp.swift, AppDelegate.swift, FeatureState.swift
+   - Phase 2: PathResolver.swift, ProcessManager.swift, FileWatcher.swift, NotificationService.swift, AppState.swift
+   - Phase 3: StatusBarController.swift
+   - Phase 4: DashboardView.swift, HeaderView.swift, ListView.swift, StartView.swift, DetailView.swift, SettingsView.swift, FeatureRowView.swift, StatusBadgeView.swift, PhaseListView.swift, OutputLogView.swift
+
+5. **Build & Fix Phase**:
+   - First build had 1 error and 2 warnings:
+     - Error: `Cannot access property 'eventMonitor' with a non-Sendable type 'Any?' from nonisolated deinit` in StatusBarController
+     - Warning: `Result of 'try?' is unused` in NotificationService
+     - Warning: `Result of 'AnyView' initializer is unused` in ListView
+   - Fixes:
+     - Changed `eventMonitor` to `nonisolated(unsafe)`
+     - Added `_ =` before `try?` in NotificationService
+     - Refactored HeaderView from `AnyView` closure to generic `@ViewBuilder` pattern
+     - Updated all views using HeaderView to remove AnyView wrapping
+
+6. **Release Phase**:
+   - Build succeeded: 839 KB (Swift) vs 13 MB (Rust/Tauri) = 93.5% reduction
+   - Created build.sh for .app bundle creation
+   - App bundle: 844 KB
+   - User confirmed removing old Rust files
+   - Removed src-tauri/, ui/, scripts/
+
+7. **Changelog & Commit**:
+   - User requested: commit + release 5.3.0 + /add-to-changelog
+   - Updated CHANGELOG.md with v5.3.0 entry
+   - Updated npm/package.json version to 5.3.0
+   - Committed: `feat: Release v5.3.0 - Rewrite menu bar app from Rust/Tauri to native Swift/SwiftUI`
+
+8. **README Update**:
+   - User sent follow-up: "Em seguida altere o README para remover toda referência do contexto do repositório"
+   - Rewrote feature-marker-menubar/README.md completely for Swift
+   - Updated main README.md to remove Rust/--with-tui references
+   - Committed: `docs: Update READMEs to reflect Swift rewrite and remove Rust references`
+
+Let me now compile all the files, code, and details.
+
+Summary:
+1. Primary Request and Intent:
+   - **Main Request**: Rewrite the Feature-Marker menu bar application from Rust/Tauri to native Swift/SwiftUI, optimizing for binary size and performance. The user explicitly requested using `/swiftui-expert-skill`, `/swift-concurrency`, and `/swift-expert` skills.
+   - **User Preferences** (from clarification questions):
+     - macOS 15+ (Sequoia) minimum target
+     - Native macOS visual style (system colors, vibrancy, native controls)
+     - Inside monorepo, replacing the existing Rust version (remove old files)
+     - Full feature parity with existing Rust/Tauri version
+   - **Follow-up Request 1**: Commit and create release 5.3.0, update CHANGELOG using `/add-to-changelog 5.3.0 added "remove rust files and rewrite in Swift"`
+   - **Follow-up Request 2**: Update READMEs to remove all Rust/Tauri references
+
+2. Key Technical Concepts:
+   - **Swift 6.2.1** with strict concurrency (`.swiftLanguageMode(.v6)`)
+   - **Swift Package Manager** executable target (no Xcode project)
+   - **Zero external dependencies** - only Foundation, AppKit, SwiftUI, UserNotifications
+   - **@Observable + @MainActor** for state management (not ObservableObject)
+   - **Actor-based** concurrency for ProcessManager and FileWatcher
+   - **NSStatusItem + NSPopover** for menu bar (not MenuBarExtra - it can't produce anchored popovers)
+   - **Codable** for JSON checkpoint deserialization with custom ISO8601 date decoder (microseconds)
+   - **DispatchSource.makeFileSystemObjectSource** + periodic polling for file watching
+   - **Foundation Process** for child process spawning with pipe-based stdout/stderr streaming
+   - **`-Osize`** Swift compiler flag for binary size optimization
+   - **Generic @ViewBuilder** pattern for HeaderView (instead of AnyView)
+   - **`nonisolated(unsafe)`** for deinit access to non-Sendable properties in Swift 6
+
+3. Files and Code Sections:
+
+   **Old Rust/Tauri files read (for reference during rewrite):**
+   - `feature-marker-menubar/src-tauri/src/main.rs` - Tauri app initialization, plugin setup, IPC handlers
+   - `feature-marker-menubar/src-tauri/src/tray.rs` - System tray with NSMenu, popover positioning
+   - `feature-marker-menubar/src-tauri/src/commands.rs` - 11 IPC commands (get_features, start_feature, etc.)
+   - `feature-marker-menubar/src-tauri/src/state.rs` - AppState with Arc<Mutex<>>, FeatureState Codable models, file watcher
+   - `feature-marker-menubar/src-tauri/src/process_manager.rs` - Claude CLI spawning, stdout/stderr streaming, cancellation
+   - `feature-marker-menubar/ui/src/main.ts` - Full UI logic (596 lines), 4 view modes, event handling
+   - `feature-marker-menubar/ui/src/styles.css` - Catppuccin dark theme CSS (554 lines)
+   - `feature-marker-menubar/src-tauri/tauri.conf.json` - Window config (400x500, no decorations, always on top)
+   - `.claude/feature-state/kanban-on-marker/checkpoint.json` - Real checkpoint JSON for model validation
+
+   **New Swift files created:**
+
+   - `feature-marker-menubar/Package.swift` - SPM manifest, macOS v15, zero dependencies
+     ```swift
+     // swift-tools-version: 6.0
+     import PackageDescription
+     let package = Package(
+         name: "FeatureMarkerMenuBar",
+         platforms: [.macOS(.v15)],
+         targets: [
+             .executableTarget(
+                 name: "FeatureMarkerMenuBar",
+                 path: "Sources/FeatureMarkerMenuBar",
+                 resources: [.process("Resources")],
+                 swiftSettings: [.swiftLanguageMode(.v6)]
+             ),
+         ]
+     )
+     ```
+
+   - `Sources/FeatureMarkerMenuBar/App/FeatureMarkerApp.swift` - @main entry point with NSApplicationDelegateAdaptor
+   - `Sources/FeatureMarkerMenuBar/App/AppDelegate.swift` - Sets .accessory activation policy, creates StatusBarController, starts file watcher
+
+   - `Sources/FeatureMarkerMenuBar/Models/FeatureState.swift` - All Codable models:
+     - `PhaseStatus` enum (pending/in_progress/completed/error)
+     - `Phase` struct with custom Decodable init for optional fields
+     - `FeatureState` struct matching checkpoint.json (String keys for phases map)
+     - `FeatureSummary` (Identifiable), `RunningFeature`, `OutputLine` (Identifiable)
+     - `JSONDecoder.checkpoint` extension with custom ISO8601 date decoding supporting microseconds
+     - `PhaseInfo` enum with static phase names array
+
+   - `Sources/FeatureMarkerMenuBar/Services/PathResolver.swift` - Finds feature-marker-dist at ~/.feature-marker, XDG data dir, or relative to binary
+   - `Sources/FeatureMarkerMenuBar/Services/ProcessManager.swift` - Actor that spawns Claude CLI via Foundation `Process`, streams stdout/stderr via `readabilityHandler`, supports SIGTERM then SIGKILL cancellation
+   - `Sources/FeatureMarkerMenuBar/Services/FileWatcher.swift` - Actor using DispatchSource + 2-second periodic scan for checkpoint.json modifications
+   - `Sources/FeatureMarkerMenuBar/Services/NotificationService.swift` - UNUserNotificationCenter wrapper for phase completion notifications
+
+   - `Sources/FeatureMarkerMenuBar/State/AppState.swift` - Central @Observable @MainActor class:
+     - Properties: projectDir, featureMarkerPath, currentView (ViewMode enum), selectedFeature, features, runningFeature, outputLog
+     - Methods: loadFeatures(), loadFeatureState(), startFeature(), cancelFeature(), resumeFeature(), startFileWatching(), openProjectInFinder(), openTerminalAtProject(), setProjectDirectory()
+     - Max 1000 output lines buffer
+
+   - `Sources/FeatureMarkerMenuBar/MenuBar/StatusBarController.swift` - @MainActor NSObject subclass:
+     - NSStatusItem with SF Symbol "flag.fill" as template icon
+     - Left-click toggles NSPopover (400x500, .transient behavior, NSHostingController with DashboardView)
+     - Right-click shows NSMenu with all items and keyboard shortcuts (Cmd+N/R/D/,/Q)
+     - Global event monitor for outside-click dismissal
+     - `pickProjectDirectory()` using NSOpenPanel
+     - `nonisolated(unsafe) var eventMonitor: Any?` for Swift 6 deinit compatibility
+
+   - `Sources/FeatureMarkerMenuBar/Views/DashboardView.swift` - Root view switching between .list/.start/.detail/.settings with .background(.regularMaterial)
+   - `Sources/FeatureMarkerMenuBar/Views/HeaderView.swift` - Generic `HeaderView<Trailing: View>` with @ViewBuilder trailing content
+     ```swift
+     struct HeaderView<Trailing: View>: View {
+         let title: String
+         var showBack = false
+         var onBack: (() -> Void)?
+         @ViewBuilder let trailing: Trailing
+         // ...
+     }
+     extension HeaderView where Trailing == EmptyView { ... }
+     ```
+   - `Sources/FeatureMarkerMenuBar/Views/ListView.swift` - Feature list with LazyVStack, empty state, footer with project path
+   - `Sources/FeatureMarkerMenuBar/Views/StartView.swift` - Form with TextField + Picker for 4 execution modes
+   - `Sources/FeatureMarkerMenuBar/Views/DetailView.swift` - Feature detail with phase list, action buttons, output log
+   - `Sources/FeatureMarkerMenuBar/Views/SettingsView.swift` - Project dir (NSOpenPanel), install path, version info
+   - `Sources/FeatureMarkerMenuBar/Views/Components/FeatureRowView.swift` - Feature list item with name, StatusBadge, ProgressView, phase dots
+   - `Sources/FeatureMarkerMenuBar/Views/Components/StatusBadgeView.swift` - Running(green)/Error(red)/Paused(yellow)/Idle(gray) capsule
+   - `Sources/FeatureMarkerMenuBar/Views/Components/PhaseListView.swift` - 5 phases with numbered circles
+   - `Sources/FeatureMarkerMenuBar/Views/Components/OutputLogView.swift` - ScrollViewReader + LazyVStack, monospace, auto-scroll, colored lines
+
+   - `feature-marker-menubar/build.sh` - Release build script: `swift build -c release -Xswiftc -Osize`, creates .app bundle with Info.plist (LSUIElement=true)
+
+   **Modified files:**
+   - `CHANGELOG.md` - Added v5.3.0 section with Added (Swift rewrite), Removed (Rust/Tauri), Changed (size reduction)
+   - `npm/package.json` - Version bumped from 5.2.1 to 5.3.0
+   - `feature-marker-menubar/.gitignore` - Replaced Rust/Node entries with Swift/.build/dist entries
+   - `README.md` - Removed `--with-tui` Rust flags, updated menu bar description
+   - `feature-marker-menubar/README.md` - Complete rewrite for Swift architecture
+
+   **Deleted files:**
+   - `feature-marker-menubar/src-tauri/` (entire directory - Rust backend)
+   - `feature-marker-menubar/ui/` (entire directory - TypeScript/Vite frontend)
+   - `feature-marker-menubar/scripts/` (entire directory - Tauri build scripts)
+
+4. Errors and fixes:
+   - **Error 1**: `Cannot access property 'eventMonitor' with a non-Sendable type 'Any?' from nonisolated deinit` in StatusBarController.swift line 257
+     - Fix: Changed `private var eventMonitor: Any?` to `private nonisolated(unsafe) var eventMonitor: Any?` - safe because the property is only accessed on MainActor
+   - **Warning 1**: `Result of 'try?' is unused` in NotificationService.swift line 5
+     - Fix: Added `_ =` prefix: `_ = try? await UNUserNotificationCenter.current().requestAuthorization(...)`
+   - **Warning 2**: `Result of 'AnyView' initializer is unused` in ListView.swift line 10
+     - Fix: Refactored HeaderView from `var trailing: (() -> AnyView)?` closure to generic `@ViewBuilder let trailing: Trailing` pattern. Updated all 4 views (ListView, StartView, DetailView, SettingsView) to remove AnyView wrapping.
+
+5. Problem Solving:
+   - Successfully rewrote entire Rust/Tauri app to Swift/SwiftUI with 93.5% binary size reduction (13 MB → 839 KB)
+   - Resolved Swift 6 strict concurrency issues (nonisolated deinit, Sendable boundaries)
+   - Used generic @ViewBuilder pattern instead of AnyView for type-safe, performant view composition
+   - Custom ISO8601 date decoder handles microsecond timestamps from checkpoint.json
+   - Used `nonisolated(unsafe)` for event monitor cleanup in deinit (documented safety invariant: MainActor-only access)
+   - App bundle size is 844 KB total including Info.plist
+
+6. All user messages:
+   - "Quero reescrever a minha aplicação que hoje tem Rust para rodar em um menu bar para que seja reescrita em Swift, otimizando seu tamanho e performance. Hoje ele não está performático e o projeto inteiro está bem grande, estou visando a redução de tamanho e organização. Seguindo boas práticas de desenvolvimento e seguindo para escrever um app MacOS que tenha um tamanho menor possível, utilizando /swiftui-expert-skill /swift-concurrency e /swift-expert"
+   - User answered clarification questions: macOS 15+, Native macOS, Inside monorepo and remove Rust version, Full parity
+   - User rejected ExitPlanMode (plan approval)
+   - "Execute o plano que foi proposto"
+   - User answered cleanup question: "Remove old files"
+   - "Realize o commit e a alteração para uma nova release 5.3.0 com essa atualização do arquivo em Swift utilize a /add-to-changelog 5.3.0 added "remove rust files and rewrite in Swift""
+   - "Em seguida altere o README para remover toda referência do contexto do repositório" (sent while changelog work was in progress)
+
+7. Pending Tasks:
+   - No explicitly pending tasks. All requested work has been completed:
+     - ✅ Swift rewrite with full feature parity
+     - ✅ Old Rust files removed
+     - ✅ Changelog updated for v5.3.0
+     - ✅ npm/package.json version bumped
+     - ✅ Commit created for v5.3.0 release
+     - ✅ READMEs updated to remove Rust references
+     - ✅ README changes committed
+
+8. Current Work:
+   The most recently completed work was committing the README updates. Two commits were made:
+   1. `feat: Release v5.3.0 - Rewrite menu bar app from Rust/Tauri to native Swift/SwiftUI` (58 files changed, 1766 insertions, 9929 deletions)
+   2. `docs: Update READMEs to reflect Swift rewrite and remove Rust references` (2 files changed, 33 insertions, 42 deletions)
+
+   The git log now shows these commits on main branch. The branch is noted as being behind origin/main by 1 commit before these new commits were added.
+
+9. Optional Next Step:
+   All explicitly requested tasks have been completed. The user may want to:
+   - Push the commits to remote (`git push`)
+   - Test the app by running `open dist/Feature-Marker.app`
+   - But these should only be done if the user explicitly requests them, as no pending work was left incomplete.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/viniciuscarvalho/.REDACTED.jsonl
+Please continue the conversation from where we left off without asking the user any further questions. Continue with the last task that you were asked to work on.
