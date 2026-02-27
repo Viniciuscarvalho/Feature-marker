@@ -1,22 +1,23 @@
-# Feature-Marker Menu Bar v4.0.0
+# Feature-Marker Menu Bar v5.3.0
 
-A native macOS menu bar application for Feature-Marker workflow automation.
+A native macOS menu bar application for Feature-Marker workflow automation, built with Swift/SwiftUI.
 
-## Installation
+## Requirements
 
-### Quick Install
+- **macOS 15+** (Sequoia)
+- **Xcode Command Line Tools**: `xcode-select --install`
 
-```bash
-./scripts/install.sh
-```
-
-This builds and installs the app to `/Applications/Feature-Marker.app`.
-
-### Development
+## Build & Install
 
 ```bash
-./scripts/dev.sh
+# Build release .app bundle
+./build.sh
+
+# Run
+open dist/Feature-Marker.app
 ```
+
+To install permanently, copy `dist/Feature-Marker.app` to `/Applications/`.
 
 ## Usage
 
@@ -32,7 +33,7 @@ This builds and installs the app to `/Applications/Feature-Marker.app`.
 | **Full** | Generate missing docs + execute all phases |
 | **Tasks Only** | Use existing docs, skip generation |
 | **Ralph Loop** | Autonomous execution with self-correction |
-| **Spec Driven** | Generate from requirements, skip PRD |
+| **Spec Driven** | Multi-agent review with worktree isolation |
 
 ### Keyboard Shortcuts
 
@@ -43,37 +44,33 @@ This builds and installs the app to `/Applications/Feature-Marker.app`.
 | Cmd+D | Show Dashboard |
 | Cmd+, | Settings |
 | Cmd+Q | Quit |
-| ESC | Close Window |
-
-## Requirements
-
-- **macOS** 11+ (Big Sur or later)
-- **Rust** 1.70+ via [rustup.rs](https://rustup.rs)
-- **Node.js** 18+ via [nodejs.org](https://nodejs.org)
-- **Xcode Command Line Tools**: `xcode-select --install`
 
 ## Architecture
 
 ```
 feature-marker-menubar/
-├── ui/                     # Frontend (Vite + TypeScript)
-│   └── src/main.ts        # Main application logic
-├── src-tauri/              # Backend (Rust + Tauri v2)
-│   └── src/
-│       ├── main.rs        # Entry point
-│       ├── tray.rs        # System tray
-│       ├── commands.rs    # Tauri IPC commands
-│       ├── state.rs       # State management
-│       └── process_manager.rs # Process execution
-└── scripts/
-    ├── dev.sh             # Development runner
-    └── install.sh         # Build & install
+├── Package.swift                     # SPM manifest (zero dependencies)
+├── build.sh                          # Release build script
+└── Sources/FeatureMarkerMenuBar/
+    ├── App/                          # Entry point + AppDelegate
+    ├── Models/                       # Codable models (checkpoint.json)
+    ├── State/                        # @Observable state management
+    ├── Services/                     # ProcessManager, FileWatcher, Notifications
+    ├── MenuBar/                      # NSStatusItem + NSPopover + NSMenu
+    └── Views/                        # SwiftUI views + components
 ```
+
+**Key design decisions:**
+- Zero external dependencies (Foundation, AppKit, SwiftUI, UserNotifications)
+- `@Observable` + `@MainActor` for efficient property-level state tracking
+- Actor-based `ProcessManager` and `FileWatcher` for safe concurrency
+- NSStatusItem + NSPopover for native menu bar UX with vibrancy material
+- Binary size: ~839 KB (release, `-Osize`)
 
 ## Related
 
-- [feature-marker-dist](../feature-marker-dist/) - CLI tool (v1.6.0)
-- [feature-marker-tui](../feature-marker-tui/) - Terminal UI (v3.0.0)
+- [feature-marker-dist](../feature-marker-dist/) - CLI tool
+- [feature-marker-tui](../feature-marker-tui/) - Terminal UI
 
 ## License
 
