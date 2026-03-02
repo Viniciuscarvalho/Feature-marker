@@ -36,7 +36,7 @@ show_main_menu() {
   echo -e "     ${BLUE}→${NC} Uses spec-workflow for rigorous spec review"
   echo ""
   echo -e "  ${GREEN}5)${NC} ${BOLD}Test Only Mode${NC} - Run tests phase exclusively"
-  echo -e "     ${BLUE}→${NC} Uses /swift-testing for guided test creation and execution"
+  echo -e "     ${BLUE}→${NC} Uses platform-appropriate test guidance (Swift Testing, Jest, pytest, etc.)"
   echo ""
   echo -e "  ${YELLOW}0)${NC} Exit"
   echo ""

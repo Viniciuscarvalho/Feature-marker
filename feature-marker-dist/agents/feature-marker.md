@@ -44,7 +44,8 @@ When invoked with `--interactive` flag, the user can select between three execut
 5. **Test Only Mode**
    - Skips Phases 0-2 (inputs gate, planning, implementation)
    - Runs only Phase 3 (Tests & Validation) exclusively
-   - Uses `/swift-testing` skill for guided test creation and best practices
+   - Uses platform-appropriate test guidance (Swift Testing for iOS, Jest for Node.js, etc.)
+   - iOS projects: invokes `/swift-testing` skill with Swift Testing patterns (@Test, @Suite, #expect)
    - Validates existing implementation with comprehensive tests
    - Ideal for adding tests to already-implemented features
    - Environment variable: `EXECUTION_MODE=test-only`
@@ -78,7 +79,7 @@ the script outputs `INTERACTIVE_MODE_REQUESTED` followed by `FEATURE_NAME=<name>
       {"label": "Full Workflow", "description": "Generates missing PRD/TechSpec/Tasks files and executes all phases (Recommended)"},
       {"label": "Tasks Only", "description": "Uses existing files, skips generation phase"},
       {"label": "Spec-Driven", "description": "Multi-agent review + worktree isolation via spec-workflow"},
-      {"label": "Test Only", "description": "Runs tests phase exclusively using /swift-testing for guided test creation"}
+      {"label": "Test Only", "description": "Runs tests phase exclusively using platform-appropriate test guidance (Swift Testing, Jest, pytest, etc.)"}
     ],
     "multiSelect": false
   }]
@@ -373,30 +374,26 @@ Test Only Mode provides:
 ┌─────────────────────────────────────────────────────────┐
 │ Phase 3 Only: Tests & Validation                        │
 │                                                         │
-│ 1. Detect project type and test framework               │
-│    - Swift/Xcode → swift test / xcodebuild test         │
-│    - Node.js → npm test / yarn test                     │
-│    - Python → pytest                                    │
-│    - Rust → cargo test                                  │
-│    - Go → go test ./...                                 │
+│ 1. Load platform-context.json                           │
+│    - Determines test framework and commands             │
 │                                                         │
-│ 2. Invoke /swift-testing skill (for Swift projects)     │
-│    - Guides test structure with @Test, @Suite            │
-│    - Uses #expect/#require macros                       │
-│    - Applies F.I.R.S.T. principles                      │
-│    - Creates parameterized tests where appropriate      │
-│    - Organizes tests with traits and tags               │
+│ 2. Identify files without test coverage                 │
+│    - iOS: .swift files without *Tests.swift             │
+│    - Node.js: src/**/*.ts without *.test.ts             │
+│    - Rust: modules without #[cfg(test)]                 │
+│    - Python: *.py without test_*.py                     │
+│    - Go: *.go without *_test.go                         │
 │                                                         │
-│ 3. Write/update test files based on skill guidance      │
-│    - Analyze existing code to determine test needs      │
-│    - Create test files following best practices          │
-│    - Cover edge cases and error paths                   │
+│ 3. Generate tests for detected platform                 │
+│    - iOS: @Test, @Suite, #expect (Swift Testing)        │
+│    - Node.js: describe/it/expect (Jest or Vitest)       │
+│    - Rust: #[cfg(test)] mod tests { #[test] fn }        │
+│    - Python: def test_*(): with pytest                  │
+│    - Go: func TestXxx(t *testing.T) {}                  │
 │                                                         │
-│ 4. Run test suites and validate                         │
-│    - Execute all tests                                  │
-│    - Analyze output for failures                        │
-│    - Run build validation                               │
-│    - Report results                                     │
+│ 4. Run test suite for platform                          │
+│    - Execute, analyze output for failures               │
+│    - Report coverage before/after                       │
 │                                                         │
 │ 5. Save test results                                    │
 │    - .claude/feature-state/{feature-name}/test-results.md│
@@ -404,58 +401,71 @@ Test Only Mode provides:
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Swift Testing Skill Integration
+### Platform-specific test guidance
 
-When running in Test Only mode on a Swift project, the agent:
+| Platform | Test command | Test framework | Guidance skill |
+|----------|-------------|----------------|---------------|
+| iOS/Swift | `swift test --parallel` | Swift Testing (`@Test`, `@Suite`) | `/swift-testing` |
+| Node.js | `jest` or `vitest run` | Jest / Vitest | Built-in guidance |
+| Rust | `cargo test -- --nocapture` | `#[test]` inline | Built-in guidance |
+| Python | `pytest --tb=short -v` | pytest | Built-in guidance |
+| Go | `go test ./... -v` | `testing` package | Built-in guidance |
 
-1. **Invokes `/swift-testing`** to get guidance on:
-   - Test structure and organization (`@Suite`, `@Test`)
-   - Assertion patterns (`#expect`, `#require`)
-   - Parameterized testing for data-driven tests
-   - Test doubles (mocks, stubs, spies)
-   - Async/await test patterns
-   - Traits and tags for test organization
+iOS projects invoke the `/swift-testing` skill for structured guidance on test organization, `@Suite`/`@Test` annotations, `#expect`/`#require` macros, and parameterized tests.
 
-2. **Applies best practices**:
-   - Arrange-Act-Assert pattern
-   - F.I.R.S.T. principles (Fast, Isolated, Repeatable, Self-validating, Timely)
-   - Meaningful test names describing behavior
-   - Proper test isolation
-
-3. **For non-Swift projects**: The `/swift-testing` skill serves as a methodology guide. The testing patterns (structure, assertions, parameterized tests) are adapted to the project's native test framework.
-
-### Example Session: Test Only Mode
+### Example Session: Test Only Mode (iOS)
 
 ```
-User: /feature-marker --mode test-only prd-user-authentication
+User: /feature-marker --mode test-only prd-trainer-connect
 
 Agent: 🧪 Test Only Mode activated
 
-       Skipping Phases 0-2 (inputs gate, planning, implementation)
-
-       Phase 3: Tests & Validation (Test Only)
-
-       Detecting project type...
-       ✓ Swift/Xcode project detected
-
-       Invoking /swift-testing for test guidance...
-       ✓ Test structure guidelines loaded
+       ✅ Platform detected: iOS (Swift Package) — swift test + SwiftLint + XcodeBuildMCP
 
        Analyzing existing implementation...
-       - UserAuthService.swift (needs tests)
-       - TokenManager.swift (needs tests)
-       - LoginViewModel.swift (needs tests)
+       Found 3 files without test coverage:
+       - PersonalTrainerViewModel.swift
+       - ConnectTrainerUseCase.swift
+       - TrainerRepository.swift
+
+       Generate Swift Testing tests for these 3 files? [yes/no/select]
 
        Creating test files...
-       ✓ UserAuthServiceTests.swift created
-       ✓ TokenManagerTests.swift created
-       ✓ LoginViewModelTests.swift created
+       ✓ PersonalTrainerViewModelTests.swift created (8 tests)
+       ✓ ConnectTrainerUseCaseTests.swift created (5 tests)
+       ✓ TrainerRepositoryTests.swift created (4 tests)
 
-       Running: swift test
-       ✓ All 24 tests passed
+       Running: swift test --parallel
+       ✓ All 17 tests passed
 
-       Test results saved to .claude/feature-state/prd-user-authentication/test-results.md
+       Test results saved to .claude/feature-state/prd-trainer-connect/test-results.md
+       ✓ Test Only mode complete!
+```
 
+### Example Session: Test Only Mode (Node.js)
+
+```
+User: /feature-marker --mode test-only prd-student-enrollment
+
+Agent: 🧪 Test Only Mode activated
+
+       ✅ Platform detected: Node.js / Next.js (pnpm) — jest + pnpm run lint
+
+       Analyzing existing implementation...
+       Found 2 files without test coverage:
+       - src/api/students/route.ts
+       - src/repositories/StudentRepository.ts
+
+       Generate Jest tests for these 2 files? [yes/no/select]
+
+       Creating test files...
+       ✓ src/api/students/route.test.ts created (6 tests)
+       ✓ src/repositories/StudentRepository.test.ts created (4 tests)
+
+       Running: jest --findRelatedTests src/api/students/route.ts
+       ✓ 10 passed, 0 failed
+
+       Test results saved to .claude/feature-state/prd-student-enrollment/test-results.md
        ✓ Test Only mode complete!
 ```
 
