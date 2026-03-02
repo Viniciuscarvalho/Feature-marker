@@ -11,8 +11,22 @@ Automates feature development with a 5-phase workflow:
 1. **Inputs Gate** - Validates `prd.md`, `techspec.md`, `tasks.md` exist; generates them via `~/.claude/commands/` if missing.
 2. **Analysis & Planning** - Auto-installs product-manager skill if missing; reads docs, creates implementation plan.
 3. **Implementation** - Executes tasks with progress tracking.
-4. **Tests & Validation** - Runs test suites, validates build, and runs iOS simulator (XcodeBuildMCP) if available.
+4. **Tests & Validation** - Runs platform-appropriate test suites and build validation.
+   Auto-detects: Swift/Xcode (+ XcodeBuildMCP simulator), Node.js, Rust, Python, Go.
 5. **Commit & PR** - Auto-installs enhanced commit command if missing; commits changes using professional workflow and creates PR (auto-detects git platform).
+
+## Platform Support
+
+feature-marker works with any tech stack:
+
+- 🍎 **iOS/Swift** — `swift test` + SwiftLint + XcodeBuildMCP simulator validation
+- 🟨 **Node.js/TypeScript** — auto-detects npm/yarn/pnpm/bun + Jest/Vitest
+- 🦀 **Rust** — `cargo test` + `cargo clippy`
+- 🐍 **Python** — `pytest` + ruff/flake8
+- 🐹 **Go** — `go test` + `go vet`
+
+iOS/Xcode projects get additional simulator validation via XcodeBuildMCP (optional, non-blocking).
+The platform is auto-detected once at workflow start and cached — no configuration required.
 
 ## Usage
 
@@ -36,7 +50,7 @@ Opens a menu to select execution mode:
 - **Tasks Only** - Uses existing files, skips generation phase
 - **Ralph Loop** - Autonomous continuous execution with ralph-wiggum
 - **Spec-Driven** - Multi-agent review + worktree isolation via spec-workflow
-- **Test Only** - Runs tests phase exclusively using /swift-testing for guided test creation
+- **Test Only** - Runs tests phase exclusively using platform-appropriate test guidance (Swift Testing for iOS, Jest/Vitest for Node.js, etc.)
 
 Works both in terminal (TTY menu) and Claude CLI (AskUserQuestion prompt).
 
@@ -393,8 +407,10 @@ Phase 2: Implementation
 Checkpoint saved.
 
 Phase 3: Tests & Validation
-Running: swift test
-All tests passed.
+✅ Platform detected: Node.js / Next.js (pnpm)
+Running: jest --findRelatedTests src/api/users.ts
+✅ 14 passed, 0 failed
+Lint: pnpm run lint ✅
 Checkpoint saved.
 
 Phase 4: Commit & PR
