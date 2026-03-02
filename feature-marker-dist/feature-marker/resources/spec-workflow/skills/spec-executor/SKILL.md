@@ -136,17 +136,192 @@ If `--dry-run`, stop here after showing the plan.
 
 ---
 
+## Phase 2.5: AC Lock Checkpoint
+
+Before starting any implementation:
+
+1. **Check for `accepted-criteria.md`** in `.claude/feature-state/{slug}/`
+   - If found: show locked ACs as a reminder, proceed
+   - If not found: run the AC Lock flow (extract from prd.md + techspec.md + tasks.md, present to user, wait for confirmation)
+2. **Do not start Phase 3 until** `accepted-criteria.md` is saved
+3. **Emergency bypass**: if user types `skip-ac-lock`, log bypass and proceed without file
+
+---
+
 ## Phase 3: Execute Batch
+
+### Pre-Task: File Index
+
+Before implementing each task:
+
+1. **Build file index** from task description and spec Appendix:
+   - Files to **modify** (will be edited)
+   - Files to **create** (new files)
+   - Files to **delete** (if any)
+   - Files to **read** as reference only (not modified)
+
+2. **Verify pre-conditions**:
+   - Does each file-to-modify exist?
+   - Does any file have uncommitted changes? (flag potential conflict)
+   - Are the functions/classes the task will extend actually present?
+
+3. **Save index** to `.claude/feature-state/{slug}/task-{n}-index.json`:
+   ```json
+   {
+     "task": 3,
+     "files_to_modify": ["src/api/users.ts"],
+     "files_to_create": ["src/api/students.ts"],
+     "files_to_delete": [],
+     "reference_files": ["src/lib/firebase-admin.ts"],
+     "pre_conditions": {
+       "src/api/users.ts": { "exists": true, "has_uncommitted_changes": false }
+     }
+   }
+   ```
+
+4. **Load only the necessary files** — read files_to_modify and reference_files; avoid loading the entire project.
 
 ### Task Execution
 
 For each task in the current batch:
 
 1. **Mark task in_progress** in todo list
-2. **Read related files** mentioned in spec's Appendix
+2. **Run Pre-Task File Index** (see above)
 3. **Execute the task** following spec instructions exactly
-4. **Run verification** if specified (tests, lint, build)
-5. **Mark task completed**
+4. **Run Post-Task Validation** (see below)
+5. **Mark task completed** only after validation passes
+
+### Post-Task Validation
+
+After implementing each task:
+
+1. **Lint modified files only** (not full project):
+   ```bash
+   # TypeScript/JavaScript
+   npx eslint {files_to_modify}
+   npx tsc --noEmit {files_to_modify}
+
+   # Swift
+   swiftlint lint {files_to_modify}
+
+   # Rust
+   cargo clippy -- -D warnings  # scoped to modified module
+
+   # Python
+   ruff check {files_to_modify}
+
+   # Go
+   go vet {files_to_modify}
+   ```
+
+2. **Run related tests only**:
+   ```bash
+   # TypeScript/JavaScript
+   jest --findRelatedTests {files_to_modify}
+
+   # Swift — run target containing modified files
+   swift test --filter {ModuleName}
+
+   # Rust
+   cargo test {module_name}
+
+   # Python
+   pytest {test_file_for_modified_module}
+
+   # Go
+   go test ./{package}/...
+   ```
+
+3. **Report per-task result**:
+   ```
+   Task {N} — Post-Task Validation
+   Files modified: {list}
+   Lint: ✅ 0 errors / ❌ {N} errors
+   Tests: ✅ {N} passed / ❌ {N} failed
+   ```
+
+4. **If validation passes** → mark task ✅ and continue
+5. **If validation fails** → invoke Failure Recovery (see below)
+
+### Failure Recovery
+
+When a task fails post-task validation:
+
+**Level 1 — Auto-correction (up to 2 attempts):**
+
+| Failure type | Auto-fix |
+|-------------|---------|
+| Missing import | Add import, re-run lint |
+| Unused variable | Remove or use it |
+| TypeScript type simple error | Infer correct type from context |
+| Snapshot test outdated | Update snapshot (if configured) |
+| Lint warning (not error) | Fix inline, continue |
+
+After each auto-fix attempt, re-run lint + tests.
+If still failing after 2 attempts → Level 2.
+
+**Level 2 — Structured diagnosis:**
+
+```
+⚠️ Task {N} Failed
+
+Error type: {TypeScript/Lint/Test}
+File: {path}:{line}
+Error: {message}
+
+Root cause analysis:
+{explanation of why this failed — e.g., "missing field on existing type"}
+
+Impact on remaining tasks:
+- Task {N+2} also depends on {affected entity} → will also fail without fix
+- Tasks {list} are unaffected
+
+Options:
+A) Fix the root cause now and re-run Task {N} (recommended)
+B) Replan Tasks {N} through {M} with a new approach
+C) Mark Task {N} as blocked, skip to Task {N+1} (cascade risk)
+D) Stop execution and review the spec
+
+Proceed with: A / B / C / D ?
+```
+
+**Level 3 — Replan remaining tasks:**
+
+When user chooses option B:
+1. Identify tasks that depend on the failing task
+2. Propose alternative tasks that cover the same ACs
+3. Present new task plan to user for confirmation
+4. Update `tasks.md` and state directory with replanned tasks
+5. Log in `failure-log.md`
+
+**Failure log** (`.claude/feature-state/{slug}/failure-log.md`):
+```markdown
+## Failure Log
+
+### Task {N} — {timestamp}
+Error: {message}
+Auto-fix attempts: {0|1|2}
+Resolution: {Option A/B/C/D chosen}
+Replanned tasks: {list or "none"}
+Status: Resolved ✅ | Replanned ♻️ | Blocked ⏸️
+```
+
+**Configurable via `.feature-marker.json`:**
+```json
+{
+  "per_task_validation": {
+    "lint": true,
+    "tests": "related",
+    "fail_behavior": "pause"
+  },
+  "failure_recovery": {
+    "auto_fix": true,
+    "auto_fix_max_attempts": 2,
+    "auto_fix_types": ["lint", "unused-imports", "snapshot"],
+    "replan_on_cascade": true
+  }
+}
+```
 
 ### Parallelization
 
