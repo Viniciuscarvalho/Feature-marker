@@ -101,6 +101,45 @@ the script outputs `INTERACTIVE_MODE_REQUESTED` followed by `FEATURE_NAME=<name>
 
 ---
 
+## Pre-Phase: Platform Detection
+
+**Objective**: Detect the project's tech stack once and cache the result for all subsequent phases.
+
+### Run platform detection
+
+1. Check if `.claude/feature-state/{feature-name}/platform-context.json` already exists
+   - If **yes** → load it and skip detection (cached result)
+   - If **no** → run detection now
+
+2. **Detection logic** (scan project root):
+
+   | Platform | Signals |
+   |----------|---------|
+   | iOS/Swift | `*.xcodeproj`, `*.xcworkspace`, or `Package.swift` |
+   | Node.js | `package.json` |
+   | Rust | `Cargo.toml` |
+   | Python | `pyproject.toml`, `setup.py`, or `requirements.txt` |
+   | Go | `go.mod` |
+
+   - Multiple signals → `is_monorepo: true`
+   - Check `.feature-marker.json` for manual `"platform"` override
+
+3. For **Node.js**: detect package manager from lockfile (`pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn, `bun.lockb` → bun, else npm)
+4. For **iOS**: check `command -v swiftlint` and `~/.claude/skills/xcodebuildmcp/SKILL.md`
+5. Write result to `.claude/feature-state/{feature-name}/platform-context.json`
+6. Display to user:
+   ```
+   ✅ Platform detected: iOS (Swift Package) — swift test + SwiftLint + XcodeBuildMCP
+   ```
+   or:
+   ```
+   ✅ Platform detected: Node.js / Next.js (pnpm) — jest + pnpm run lint
+   ```
+
+This detection result is used in every subsequent phase. See `lib/stack-detector.sh` for the implementation reference.
+
+---
+
 ## Pre-Phase: Context Loading
 
 **Objective**: Load external context that enriches the entire workflow before any phase begins.
@@ -279,41 +318,38 @@ If `EXECUTION_MODE=ralph-loop`, use the ralph-wiggum skill for autonomous iterat
 
 ## Phase 3: Tests & Validation
 
-**Objective**: Run tests, validate the implementation, and verify iOS app functionality.
+**Objective**: Run platform-appropriate test suites and build validation.
 
 **Tasks**:
-- Identify test commands based on project type:
-  - Swift/Xcode: `swift test` or `xcodebuild test`
-  - Node.js: `npm test` or `yarn test`
-  - Python: `pytest` or `python -m unittest`
-  - Rust: `cargo test`
-  - Go: `go test ./...`
-- Run test suites
-- Analyze test output
-- Run build validation
-- Check for errors/warnings
-- If tests fail, report issues and allow user to fix before continuing
-- **If tests pass AND project is iOS/Swift AND XcodeBuildMCP available**:
-  - **Check for XcodeBuildMCP skill**: Verify `~/.claude/skills/xcodebuildmcp/SKILL.md` exists
-  - **Discover Xcode project**: Use `/xcodebuildmcp discover_projs` to find .xcodeproj or .xcworkspace
-  - **Configure session**: Use `/xcodebuildmcp session_set_defaults` to auto-configure (if needed)
-  - **Build and run**: Invoke `/xcodebuildmcp build_run_sim` to build and run on iOS simulator
-  - **Capture output**: Monitor build output and simulator launch status
-  - **Report status**:
-    - Success: Log "✅ App built and running on simulator"
-    - Failure: Log "⚠️ Build failed: [error details]" and continue anyway (optional validation)
-- Save test results:
-  - `.claude/feature-state/{feature-name}/test-results.md`
-  - Include simulator build/run results if XcodeBuildMCP was used
-- Update checkpoint to phase 3 complete
+1. **Load platform context** from `.claude/feature-state/{feature-name}/platform-context.json`
+2. **Select test commands** based on detected platform:
 
-**Outputs**: `test-results.md` (includes simulator validation section for iOS projects)
+   | Platform | Test command | Lint command |
+   |----------|-------------|-------------|
+   | iOS/Swift | `swift test --parallel` | `swiftlint` (if available) |
+   | Node.js | `jest --findRelatedTests` or `vitest run` | `{pm} run lint` |
+   | Rust | `cargo test` | `cargo clippy -- -D warnings` |
+   | Python | `pytest -v` | `ruff check .` or `flake8` |
+   | Go | `go test ./...` | `go vet ./...` |
+   | Unknown | Skip tests with warning | — |
 
-**XcodeBuildMCP Integration** (iOS projects only):
-- This is **optional validation** - if XcodeBuildMCP skill not found or build fails, workflow continues
-- Skill detection: Check if `~/.claude/skills/xcodebuildmcp/SKILL.md` exists
-- Only runs for Swift/Xcode projects (detected by test command type)
-- Build failures are non-blocking - logs warning and proceeds to Phase 4
+3. Run test suite, analyze output
+4. Run lint command (if available for platform)
+5. If tests fail, report issues and allow user to fix before continuing
+
+6. **iOS-specific: XcodeBuildMCP validation** (only when `primary_platform == "ios"` AND `capabilities.xcodebuildmcp_available == true`):
+   - Discover Xcode project: `/xcodebuildmcp discover_projs`
+   - Configure session: `/xcodebuildmcp session_set_defaults`
+   - Build and run on simulator: `/xcodebuildmcp build_run_sim`
+   - Report status (non-blocking):
+     - Success: `✅ App running on iOS Simulator`
+     - Failure: `⚠️ Simulator build failed: [error] — continuing`
+
+7. Save test results:
+   - `.claude/feature-state/{feature-name}/test-results.md`
+8. Update checkpoint to phase 3 complete
+
+**Outputs**: `test-results.md`
 
 **Note**: If no tests exist, Phase 3 gracefully skips tests with a warning.
 
