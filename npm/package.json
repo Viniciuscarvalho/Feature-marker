@@ -1,6 +1,6 @@
 {
   "name": "@viniciuscarvalho/feature-marker",
-  "version": "5.3.0",
+  "version": "6.0.0",
   "description": "Automate your feature development workflow with AI-powered checkpoints for Claude Code",
   "keywords": [
     "claude",
