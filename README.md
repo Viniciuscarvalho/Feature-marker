@@ -101,12 +101,27 @@ feature-marker-tui
 
 ---
 
+## Platform Support
+
+feature-marker works with any tech stack — agnostic by default, iOS-aware when detected:
+
+- 🍎 **iOS/Swift** — `swift test` + SwiftLint + XcodeBuildMCP simulator validation
+- 🟨 **Node.js/TypeScript** — auto-detects npm/yarn/pnpm/bun + Jest/Vitest
+- 🦀 **Rust** — `cargo test` + `cargo clippy`
+- 🐍 **Python** — `pytest` + ruff/flake8
+- 🐹 **Go** — `go test` + `go vet`
+
+iOS/Xcode projects get additional simulator validation via XcodeBuildMCP (optional).
+
+---
+
 ## Features
 
 - **Artifact Generation** — Auto-generates PRD, Tech Spec, and Tasks from requirements
 - **4-Phase Workflow** — Analysis → Implementation → Tests → Commit & PR
 - **Checkpoint/Resume** — Pause anytime, resume where you left off
-- **Platform Detection** — Auto-detects GitHub, Azure DevOps, GitLab for PR creation
+- **Stack Detection** — Auto-detects iOS, Node.js, Rust, Python, Go for correct test/lint commands
+- **Git Platform Detection** — Auto-detects GitHub, Azure DevOps, GitLab for PR creation
 - **Multiple Modes** — Full workflow, tasks-only, Ralph Loop, Spec-Driven, or Test Only
 - **TUI Application** — Rich terminal interface for visual workflow management
 - **Menu Bar App** — Native Swift/SwiftUI macOS app (839 KB binary)
@@ -121,7 +136,7 @@ feature-marker-tui
 | **Tasks Only** | Skip generation, use existing files |
 | **Ralph Loop** | Autonomous self-correcting execution |
 | **Spec-Driven** | Multi-agent review with worktree isolation |
-| **Test Only** | Run tests phase exclusively via `/swift-testing` |
+| **Test Only** | Run tests phase exclusively (Swift Testing, Jest, pytest, etc.) |
 
 ---
 
