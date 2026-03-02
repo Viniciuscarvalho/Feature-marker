@@ -70,15 +70,38 @@ If `.claude/spec-workflow/philosophy/exploration.md` exists, read it and incorpo
 
 ## The Process
 
+**0. Context Gathering (automatic, before any questions):**
+
+Before asking the user anything, gather codebase context:
+
+1. Parse the feature topic/prompt for key terms (entities, actions, domain words)
+2. Grep/glob the codebase for files containing those terms — find the **5–10 most relevant files**
+3. Read project context files: `CLAUDE.md`, `.claude/spec-workflow/PROJECT.md`, `README.md`, stack config
+4. Identify existing patterns, similar features, and related entities already in the codebase
+5. Save context to `.claude/feature-state/{slug}/context.md` (load if already exists)
+6. Show a brief summary before the first question:
+   ```
+   📂 Context gathered — 7 related files found.
+      Existing: Student entity (src/types/student.ts), Trainer entity, checkout Cloud Function.
+      Patterns: MVVM + Firebase Auth + Firestore (soft delete).
+      Injecting codebase context into exploration...
+   ```
+
+Context gathering is best-effort — partial results are fine. Never block on it.
+
 **1. Understand the context:**
 
 Check out the current project state first by reading the repository contents, docs, recent commits.
+Use the context.md from step 0 as the primary source — avoid re-reading files already scanned.
 
 **2. Understanding the idea and develop the intention, problem space and opportunity:**
 
 This purpose of this step is to narrow down and clarify the idea, its purpose, constraints and success criteria.
 
 - Ask questions one at a time to refine the idea
+- **Anchor questions in the actual codebase**: reference real files, entities, and patterns found in context.md
+  - ❌ Generic: "How should the student connect to the trainer?"
+  - ✅ Grounded: "I found `handleCheckoutComplete` which already creates a trainer-student link via Stripe. Should this new feature use that existing mechanism or create a separate direct-connect flow?"
 - Prefer multiple choice questions when possible, but open-ended is fine too
 - Only one question per message - if a topic needs more exploration, break it into multiple questions
 - Where possible, provide 2-4 options to choose from
