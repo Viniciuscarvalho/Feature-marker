@@ -60,6 +60,22 @@ This skill prioritizes:
 
 ---
 
+## Phase 0: Project Context
+
+Before any execution, load permanent project context:
+
+1. Check for `.claude/spec-workflow/PROJECT.md`
+   - If found: read and store as PROJECT_DNA context
+   - Extract: Architecture Rules, Code Conventions, Known Constraints, "Done" criteria
+2. Use PROJECT_DNA throughout implementation:
+   - **Architecture Rules** → enforce in every file change (flag violations)
+   - **Code Conventions** → guide naming, file structure, error handling
+   - **Known Constraints** → avoid assuming unavailable infrastructure
+   - **"Done" criteria** → validate against when marking tasks complete
+3. If not found: proceed without it (non-blocking)
+
+---
+
 ## Phase 1: Environment Setup
 
 Before executing, verify the environment is ready:

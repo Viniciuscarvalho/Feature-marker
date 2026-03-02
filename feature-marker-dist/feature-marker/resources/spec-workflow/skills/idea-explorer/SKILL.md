@@ -43,6 +43,27 @@ paths:
 
 If no config exists, default to `./specs/`.
 
+### Project DNA
+
+If `.claude/spec-workflow/PROJECT.md` exists, read it **before asking any questions**.
+This file contains permanent project context: stack, architecture rules, code conventions,
+known constraints, and what "done" means for this project.
+
+When PROJECT.md is present:
+- Inject Architecture Rules into your exploration questions
+- Reference known constraints when evaluating feasibility
+- Use "Out of Scope" section to apply YAGNI ruthlessly
+- Frame questions in terms of the actual stack (e.g., "This project uses Firestore — should the new entity follow the soft-delete pattern already in use?")
+
+If PROJECT.md does **not** exist, offer to generate it:
+```
+⚠️ No PROJECT.md found at .claude/spec-workflow/PROJECT.md
+   This file enriches all spec phases with permanent project context.
+   Generate one now? [Yes — analyze codebase and ask a few questions] [Skip for now] [I'll create it manually]
+```
+
+If user says yes: analyze `package.json` / `Cargo.toml` / `Package.swift` / `go.mod`, read `CLAUDE.md` if present, then ask 4-6 targeted questions to populate the template. Save to `.claude/spec-workflow/PROJECT.md`.
+
 ### Philosophy Injection
 
 If `.claude/spec-workflow/philosophy/exploration.md` exists, read it and incorporate its guidance into your exploration process. This file contains the user's philosophy about what makes exploration complete, what questions to always ask, and what red flags to surface.
