@@ -52,6 +52,33 @@ When invoked with `--interactive` flag, the user can select between three execut
 
 Check execution mode with: `echo $EXECUTION_MODE`
 
+### Setup Personas Mode
+
+When invoked with `--setup-personas`:
+
+1. List all built-in personas from `resources/spec-workflow/personas/` (bundled with feature-marker)
+2. Check which are already installed in `.claude/spec-workflow/personas/` (project directory)
+3. Present the list to the user with AskUserQuestion (multiSelect: true):
+   ```
+   Which personas would you like to install for this project?
+   [x] Firebase Cost Reviewer — Firestore query costs, N+1 patterns, unbounded listeners
+   [ ] iOS Performance Reviewer — Main thread, image caching, lazy rendering
+   [x] API Security Reviewer — Auth bypass, input validation, CORS, rate limiting
+   [ ] Payment Flow Reviewer — Idempotency, webhook replay, rollback
+   [ ] Data Migration Reviewer — Breaking changes, rollback, zero-downtime migrations
+   ```
+4. Copy selected personas to `.claude/spec-workflow/personas/`
+5. Do NOT overwrite if a persona with the same name already exists (user's version has priority)
+6. Confirm installation:
+   ```
+   ✅ Installed personas:
+   • Firebase Cost Reviewer → .claude/spec-workflow/personas/firebase-cost-reviewer.md
+   • API Security Reviewer → .claude/spec-workflow/personas/api-security-reviewer.md
+
+   These will be auto-activated by spec-orchestrator when feature keywords match their triggers.
+   You can customize them by editing the files directly.
+   ```
+
 ### Interactive Mode via Claude CLI
 
 When invoked with `--interactive` and running inside Claude CLI (no TTY available),
