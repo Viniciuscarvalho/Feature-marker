@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0] - 2026-03-02
+
+### Added
+- Enrichment prompt, spec accuracy pipeline and tests for ios validated
+
 ## [5.3.0] - 2026-02-27
 
 ### Added
@@ -282,6 +287,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated from template-based to command-based file generation
 - Simplified directory structure (./tasks instead of ./docs/tasks)
 
+[6.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.3.0...v6.0.0
 [5.3.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.2.1...v5.3.0
 [5.2.1]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.2.0...v5.2.1
 [5.2.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.1.0...v5.2.0
