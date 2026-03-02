@@ -144,6 +144,26 @@ This skill prioritizes:
 
 ---
 
+## Pre-Phase: PRD Validation Check
+
+Before writing the spec, check if PRD validation has been run:
+
+1. **Load `prd-validation.md`** from `.claude/feature-state/{slug}/prd-validation.md` if it exists
+2. **If validation has blockers** → stop and present them to the user:
+   ```
+   ❌ PRD has unresolved blockers — spec cannot be written until fixed.
+   Run prd-validator first, or fix these issues in prd.md:
+   - [Blocker 1 from prd-validation.md]
+   - [Blocker 2 from prd-validation.md]
+   ```
+3. **If validation passed** → use Reference Check table and Scope Analysis as context:
+   - Treat ✅ entities as EXISTING (don't redesign them)
+   - Treat ❌/new entities as TO BE CREATED (plan their design)
+   - Use scope analysis to calibrate TechSpec complexity
+4. **If `prd-validation.md` does not exist** → proceed without it (non-blocking), but note that validation was skipped
+
+---
+
 ## Phase 1: Understanding (Exploring Requirements)
 
 > **Mode note:** In autonomous mode, infer answers from context and document assumptions. In revision mode, skip this phase.
