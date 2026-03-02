@@ -44,6 +44,23 @@ spec:
   naming: "{date}-{topic}-spec.md"   # Spec file naming pattern
 ```
 
+### Project DNA
+
+If `.claude/spec-workflow/PROJECT.md` exists, read it **at the start of every spec-writing session** (before any questions). Its content is the authoritative source of:
+
+- **Architecture Rules** → enforce in Component Design and Tech decisions; flag violations as blockers
+- **Code Conventions** → use when proposing naming, file structure, error handling
+- **Known Constraints** → reference when evaluating feasibility and risk sections
+- **"Done" criteria** → use as the baseline for Acceptance Criteria and Testing Strategy
+- **Out of Scope** → apply ruthlessly to YAGNI decisions
+
+When PROJECT.md is present, your spec proposals must be consistent with its rules.
+If a design decision conflicts with an Architecture Rule, flag it explicitly:
+```
+⚠️ Note: This approach uses a hard delete. PROJECT.md requires soft delete (status: 'archived').
+   Adjusting design to follow project convention.
+```
+
 ### Philosophy Injection
 
 If `.claude/spec-workflow/philosophy/spec-standards.md` exists, read it and incorporate its guidance. This file contains the user's standards for what makes a good spec.
