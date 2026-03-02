@@ -89,6 +89,45 @@ Before asking the user anything, gather codebase context:
 
 Context gathering is best-effort — partial results are fine. Never block on it.
 
+**0.2. Prompt Enrichment (automatic, after context gathering):**
+
+After saving `context.md`, run the **prompt-enricher** phase to ground the raw prompt in discovered constraints:
+
+1. Read `context.md` from the state directory
+2. Detect architectural, data, infrastructure, and dependency constraints relevant to the feature
+3. Identify ambiguities (decisions with multiple valid interpretations)
+4. Auto-suggest edge cases based on feature type keywords detected in the prompt:
+   - connect/link/assign → connection/relationship edge cases
+   - login/auth/token → auth/permissions edge cases
+   - list/search/filter → list/query edge cases
+   - create/add/submit → form/input edge cases
+   - stripe/payment/checkout → payment edge cases
+   - delete/remove/archive → delete/remove edge cases
+   - notify/push/email → notification edge cases
+   - webhook/API/external → external integration edge cases
+5. Suggest scope boundaries (In Scope / Likely Out of Scope YAGNI / Deferred)
+6. Save to `.claude/feature-state/{slug}/enriched-prompt.md` (load if already exists)
+
+Use the enriched prompt as the **starting brief** for the first question:
+```
+Based on what I found in the codebase, here's what we're working with:
+
+**Constraints discovered:**
+- [Key constraint from context.md]
+- [Key constraint from context.md]
+
+**Ambiguities to resolve:**
+- [First ambiguity]
+
+**Suggested scope:**
+- In scope: [inferred from prompt + context]
+- Likely out of scope (YAGNI): [things not essential for v1]
+
+My first question: [first question anchored in the ambiguities above]
+```
+
+Prompt enrichment is best-effort — skip silently if context.md is empty or prompt is too vague.
+
 **1. Understand the context:**
 
 Check out the current project state first by reading the repository contents, docs, recent commits.
