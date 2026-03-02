@@ -118,13 +118,65 @@ iOS/Xcode projects get additional simulator validation via XcodeBuildMCP (option
 ## Features
 
 - **Artifact Generation** — Auto-generates PRD, Tech Spec, and Tasks from requirements
+- **Spec Accuracy Pipeline** — Context gathering, prompt enrichment, PRD/TechSpec/Tasks validation, AC lock checkpoint
 - **4-Phase Workflow** — Analysis → Implementation → Tests → Commit & PR
+- **Per-Task Validation** — Lint + related tests after each task; structured failure recovery with auto-fix
 - **Checkpoint/Resume** — Pause anytime, resume where you left off
 - **Stack Detection** — Auto-detects iOS, Node.js, Rust, Python, Go for correct test/lint commands
 - **Git Platform Detection** — Auto-detects GitHub, Azure DevOps, GitLab for PR creation
 - **Multiple Modes** — Full workflow, tasks-only, Ralph Loop, Spec-Driven, or Test Only
+- **Custom Personas** — Domain-specific review personas with auto-trigger by feature keywords
 - **TUI Application** — Rich terminal interface for visual workflow management
 - **Menu Bar App** — Native Swift/SwiftUI macOS app (839 KB binary)
+
+---
+
+## Custom Personas
+
+feature-marker ships with 5 built-in review personas for the Spec-Driven mode. Each persona focuses on a specific domain and auto-activates when feature keywords match its triggers.
+
+### Setup
+
+```bash
+/feature-marker --setup-personas
+```
+
+This installs personas to `.claude/spec-workflow/personas/` for the current project.
+
+### Built-in Personas
+
+| Persona | Triggers | Focus |
+|---------|----------|-------|
+| **Firebase Cost Reviewer** | firestore, collection, query, listener | Query costs, N+1, unbounded reads |
+| **iOS Performance Reviewer** | swift, ios, swiftui, list, scroll, animation | Main thread, image caching, lazy rendering |
+| **API Security Reviewer** | api, route, endpoint, auth, token, webhook | Auth bypass, input validation, rate limiting |
+| **Payment Flow Reviewer** | stripe, payment, checkout, webhook, subscription | Idempotency, replay, network failure |
+| **Data Migration Reviewer** | migration, schema, breaking, rename, remove | Rollback plan, zero-downtime, data integrity |
+
+### Custom Personas
+
+Create `.claude/spec-workflow/personas/my-persona.md`:
+
+```markdown
+---
+name: My Custom Reviewer
+triggers: [keyword1, keyword2, keyword3]
+applies_to: [large-feature, api-change]
+---
+
+You review specs for [your domain].
+
+### Your perspective
+[What you care about and why]
+
+### What you look for
+[Specific issues to catch]
+
+### When to pass
+"[Your LGTM phrase]"
+```
+
+Custom personas always have priority over built-in personas with the same `name`.
 
 ---
 

@@ -36,12 +36,61 @@ If `.claude/spec-workflow/philosophy/review-criteria.md` exists, inject it into 
 
 ### Custom Personas
 
-If `.claude/spec-workflow/personas/` exists and contains `.md` files:
-- Load each file as a reviewer persona
-- Parse frontmatter for `name` and `triggers`
-- Use these instead of built-in personas
+Custom personas are loaded from two sources (user personas have priority):
 
-Otherwise, use built-in personas from references/personas.md.
+1. **User personas**: `.claude/spec-workflow/personas/` in the project directory
+2. **Built-in personas**: `resources/spec-workflow/personas/` bundled with feature-marker
+
+For each `.md` file in these directories:
+- Parse frontmatter for `name`, `triggers`, and `applies_to`
+- Make available as a reviewer persona
+
+**Priority**: user personas always override built-in personas with the same `name`.
+
+### Auto-trigger by domain
+
+After classifying the spec (type, risk, scope), scan the feature topic, title, and context.md keywords against each persona's `triggers` list (case-insensitive):
+
+```
+Feature context keywords: [firestore, collection, query, trainer, student]
+Firebase Cost Reviewer triggers: [firestore, collection, query, listener]
+  → 3/4 keywords matched → AUTO-ACTIVATE this persona
+
+API Security Reviewer triggers: [api, route, endpoint, auth, token]
+  → 0/5 matched → not activated for this feature
+```
+
+**Activation threshold**: ≥2 trigger keywords matched → activate persona.
+
+When auto-activating personas, announce them:
+```
+🎭 Auto-activated personas based on feature context:
+  • Firebase Cost Reviewer (matched: firestore, collection, query)
+  • Performance Reviewer (matched: list, pagination)
+```
+
+### Persona file format
+
+```markdown
+---
+name: Firebase Cost Reviewer
+triggers: [firestore, firebase, collection, query, realtime, listener, snapshot]
+applies_to: [large-feature, infrastructure, api-change]
+---
+
+You review specs for Firebase cost implications.
+
+### Your perspective
+[description of the persona's focus and values]
+
+### What you look for
+[specific things this persona checks]
+
+### When to pass
+"[LGTM phrase for this persona]"
+```
+
+Otherwise, use built-in personas from `resources/spec-workflow/personas/`.
 
 ---
 
