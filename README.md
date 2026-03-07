@@ -1,7 +1,7 @@
 
 <!-- Banner -->
 <p align="center">
-  <img src="./assets/banner-peekaboo.svg" alt="feature-marker Banner" width="800">
+  <img src="assets/banner-peekaboo.svg" width="800" alt="feature-marker banner">
 </p>
 
 <p align="center">
