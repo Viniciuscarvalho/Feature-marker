@@ -1,7 +1,7 @@
 
 <!-- Banner -->
 <p align="center">
-  <img src="assets/banner.svg" alt="feature-marker Banner" width="800">
+  <img src="assets/banner-peekaboo.svg" alt="feature-marker Banner" width="800">
 </p>
 
 <p align="center">
@@ -9,6 +9,9 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/sponsors/Viniciuscarvalho">
+    <img src="https://img.shields.io/badge/Sponsor-Viniciuscarvalho-red.svg?logo=github-sponsors&logoColor=white" alt="Sponsor">
+  </a>
   <a href="https://www.npmjs.com/package/@viniciuscarvalho/feature-marker">
     <img src="https://img.shields.io/npm/v/@viniciuscarvalho/feature-marker.svg" alt="npm version">
   </a>
@@ -233,6 +236,18 @@ Templates in `~/.claude/docs/specs/`:
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+---
+
+## Sponsors
+
+If you find **feature-marker** helpful, please consider sponsoring its development. Your support helps keep the project active and enables new features!
+
+<p align="left">
+  <a href="https://github.com/sponsors/Viniciuscarvalho">
+    <img src="https://img.shields.io/badge/Sponsor-Viniciuscarvalho-red.svg?style=for-the-badge&logo=github-sponsors&logoColor=white" alt="Sponsor on GitHub">
+  </a>
+</p>
 
 ---
 
