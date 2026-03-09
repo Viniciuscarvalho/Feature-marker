@@ -1,0 +1,111 @@
+name: Close Linear Issue on PR Merge
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  close-linear-issue:
+    runs-on: ubuntu-latest
+    # Only run if PR was merged (not just closed)
+    if: github.event.pull_request.merged == true
+    
+    steps:
+      - name: Extract Linear Issue ID from branch name
+        id: extract_issue
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          echo "Branch: $BRANCH_NAME"
+          
+          # Extract issue ID (PRO-XX format)
+          ISSUE_ID=$(echo "$BRANCH_NAME" | grep -oP 'PRO-\d+' | head -1)
+          
+          if [ -z "$ISSUE_ID" ]; then
+            echo "No Linear issue found in branch name"
+            echo "issue_id=" >> $GITHUB_OUTPUT
+          else
+            echo "Found issue: $ISSUE_ID"
+            echo "issue_id=$ISSUE_ID" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Update Linear Issue Status to Done
+        if: steps.extract_issue.outputs.issue_id != ''
+        run: |
+          ISSUE_ID="${{ steps.extract_issue.outputs.issue_id }}"
+          LINEAR_API_KEY="${{ secrets.LINEAR_API_KEY }}"
+          
+          # GraphQL mutation to update issue state
+          QUERY='
+          mutation {
+            issueUpdate(
+              id: "'$ISSUE_ID'"
+              input: {
+                stateId: "done"
+              }
+            ) {
+              issue {
+                id
+                identifier
+                title
+                state {
+                  name
+                }
+              }
+            }
+          }
+          '
+          
+          RESPONSE=$(curl -s -X POST "https://api.linear.app/graphql" \
+            -H "Authorization: Bearer $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"query\": $(echo "$QUERY" | jq -Rs .)}")
+          
+          echo "Linear API Response:"
+          echo "$RESPONSE" | jq .
+          
+          # Check for errors
+          if echo "$RESPONSE" | jq -e '.errors' > /dev/null; then
+            echo "❌ Error updating Linear issue"
+            echo "$RESPONSE" | jq '.errors'
+            exit 1
+          else
+            echo "✅ Issue status updated successfully"
+          fi
+      
+      - name: Notify Discord (Optional)
+        if: steps.extract_issue.outputs.issue_id != '' && success()
+        run: |
+          ISSUE_ID="${{ steps.extract_issue.outputs.issue_id }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          DISCORD_WEBHOOK="${{ secrets.DISCORD_WEBHOOK_URL }}"
+          
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "Discord webhook not configured, skipping notification"
+            exit 0
+          fi
+          
+          PAYLOAD='{
+            "embeds": [{
+              "title": "✅ Issue Closed: '"$ISSUE_ID"'",
+              "description": "'"$PR_TITLE"'",
+              "url": "'"$PR_URL"'",
+              "color": 3066993,
+              "fields": [
+                {
+                  "name": "PR",
+                  "value": "['"$PR_TITLE"']('"$PR_URL"')",
+                  "inline": true
+                },
+                {
+                  "name": "Issue",
+                  "value": "'"$ISSUE_ID"'",
+                  "inline": true
+                }
+              ]
+            }]
+          }'
+          
+          curl -X POST "$DISCORD_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
