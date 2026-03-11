@@ -9,6 +9,7 @@ source "${SCRIPT_DIR}/lib/ui.sh"
 source "${SCRIPT_DIR}/lib/config.sh"
 source "${SCRIPT_DIR}/lib/state-manager.sh"
 source "${SCRIPT_DIR}/lib/platform-detector.sh"
+source "${SCRIPT_DIR}/lib/mcp-detector.sh"
 source "${SCRIPT_DIR}/lib/menu.sh"
 
 # Show banner
@@ -36,6 +37,13 @@ while [[ $# -gt 0 ]]; do
       ;;
     --version|-V)
       echo "feature-marker v5.2.0"
+      exit 0
+      ;;
+    --env|-e)
+      # Run full environment discovery and display results
+      ENV_STATE_DIR=".claude/feature-state/default"
+      mkdir -p "$ENV_STATE_DIR"
+      bash "${SCRIPT_DIR}/scripts/discover-env.sh" "." "$ENV_STATE_DIR"
       exit 0
       ;;
     --interactive|-i)
@@ -73,6 +81,7 @@ if [[ "${SHOW_HELP}" == "true" ]]; then
   echo "  -h, --help         Show this help message"
   echo "  -s, --status       Show status of a feature workflow"
   echo "  -p, --platform     Show detected git platform info"
+  echo "  -e, --env          Show full environment info (stack + MCPs + CLIs + CI)"
   echo "  -i, --interactive  Launch interactive menu panel"
   echo "  -m, --mode <mode>  Set execution mode (full|tasks-only|ralph-loop|spec-driven|test-only)"
   echo "  -V, --version      Show version"
@@ -215,6 +224,22 @@ fi
 # Show platform info
 separator
 show_platform_info
+
+# Show MCP info (non-blocking)
+if [[ -f ".claude/feature-state/${FEATURE_NAME}/mcp-context.json" ]]; then
+  MCP_COUNT=$(python3 -c "import json; d=json.load(open('.claude/feature-state/${FEATURE_NAME}/mcp-context.json')); print(d.get('mcp_count', 0))" 2>/dev/null || echo "0")
+  if [[ "$MCP_COUNT" -gt 0 ]]; then
+    info "MCP servers detected: ${MCP_COUNT}"
+    python3 -c "
+import json
+d = json.load(open('.claude/feature-state/${FEATURE_NAME}/mcp-context.json'))
+for m in d.get('mcps', []):
+    cat = m.get('category', 'unknown')
+    name = m.get('name', 'unknown')
+    print(f'  • {name} ({cat})')
+" 2>/dev/null || true
+  fi
+fi
 
 separator
 echo ""
