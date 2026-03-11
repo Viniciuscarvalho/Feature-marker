@@ -25,6 +25,7 @@ iOS toolchain ready.
 ```
 
 Checks to perform:
+
 - `swift --version` → report Swift version
 - `xcodebuild -version` → report Xcode version
 - `command -v swiftlint && swiftlint version` → report version or "not found"
@@ -49,10 +50,13 @@ xctest_count=$(grep -r "import XCTest" . --include="*.swift" -l 2>/dev/null | wc
 - None found → default to **Swift Testing** (modern standard)
 
 Report to user:
+
 ```
 🧪 Test framework: Swift Testing (@Test, @Suite, #expect)
 ```
+
 or:
+
 ```
 🧪 Test framework: XCTest (existing project uses XCTest — maintaining consistency)
 ```
@@ -111,10 +115,13 @@ Only if `capabilities.xcodebuildmcp_available == true` in platform-context.json:
 ```
 
 Result reporting:
+
 ```
 ✅ App running on iPhone 16 Simulator (iOS 18.3)
 ```
+
 or:
+
 ```
 ⚠️ Simulator build failed: [error summary] — tests passed, continuing to commit
 ```
@@ -224,6 +231,7 @@ When `--mode test-only` is invoked on an iOS project:
    ```
 3. For each file without tests, check if it's testable (ViewModels, UseCases, Repositories, Services)
 4. Present to user:
+
    ```
    Found 3 files without test coverage:
    - Presentation/Features/PersonalTrainer/PersonalTrainerViewModel.swift
@@ -232,6 +240,7 @@ When `--mode test-only` is invoked on an iOS project:
 
    Generate Swift Testing tests for these files? [yes/no/select]
    ```
+
 5. Generate tests following Swift Testing patterns above
 6. Run `swift test --parallel`
 7. If XcodeBuildMCP available: optionally run build on simulator
@@ -254,3 +263,7 @@ The iOS entry in `platform-context.json` includes:
 ```
 
 This configuration is **ignored completely** on non-iOS projects.
+
+## Cross-Phase MCP Integration
+
+XcodeBuildMCP integration is also documented in `references/mcp-adapters/xcodebuild.md` for cross-phase consistency. The ios-workflow skill remains the iOS-specific test pipeline; the adapter is the cross-phase MCP integration guide that other skills (context-gatherer, spec-executor) use to incorporate XcodeBuildMCP in their phases.

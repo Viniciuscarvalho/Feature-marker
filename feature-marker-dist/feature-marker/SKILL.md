@@ -28,6 +28,70 @@ feature-marker works with any tech stack:
 iOS/Xcode projects get additional simulator validation via XcodeBuildMCP (optional, non-blocking).
 The platform is auto-detected once at workflow start and cached — no configuration required.
 
+### MCP-Enhanced Validation
+
+When MCP servers are detected in agent config files, feature-marker loads adapter references to enhance validation:
+
+| MCP           | Category   | Enhancement                                  |
+| ------------- | ---------- | -------------------------------------------- |
+| XcodeBuildMCP | build      | Simulator build verification after iOS tasks |
+| Playwright    | test       | E2E browser testing and visual regression    |
+| Docker        | deployment | Container build verification                 |
+
+MCP failures are always **non-blocking** — CLI fallback is the primary path; MCPs enhance, never gate.
+
+## Environment Awareness
+
+feature-marker automatically discovers the full development environment:
+
+1. **Stack detection** (`lib/stack-detector.sh`) — identifies platform, test runner, package manager
+2. **MCP detection** (`lib/mcp-detector.sh`) — scans agent config files for configured MCP servers
+3. **CLI detection** — checks PATH for available development tools
+4. **CI detection** — identifies CI/CD configuration
+
+All results are merged into `environment_manifest.json` via `scripts/discover-env.sh`.
+
+### MCP Detection
+
+Scans these config files for MCP server definitions:
+
+- `.claude/settings.json` (project) + `~/.claude/settings.json` (global)
+- `.cursor/mcp.json`
+- `.codex/config.toml`
+- `~/Library/Application Support/Claude/claude_desktop_config.json`
+- `.vscode/settings.json`
+- `.kiro/settings/mcp.json`
+
+Detected MCPs are classified by category (build, test, database, deployment, project-mgmt) and matched to adapter references in `references/mcp-adapters/`.
+
+### Adapter Loading (Lazy)
+
+Adapters are markdown files in `references/mcp-adapters/` that tell Claude HOW to use each MCP in each feature-marker phase. They are loaded **only when that MCP is detected** — keeping the context window small.
+
+Available adapters:
+
+- `xcodebuild.md` — Xcode project discovery, build, simulator
+- `playwright.md` — browser E2E testing and screenshots
+- `docker.md` — container build verification
+
+### Stack Pattern References
+
+Stack-specific conventions are loaded from `references/stack-patterns/` when that stack is detected:
+
+- `swift.md` — MVVM/Clean Architecture, Swift Testing, error handling
+- `react.md` — Component/Hook/Service layering, React Testing Library
+- `python.md` — pytest fixtures, type hints, FastAPI/Django patterns
+
+### Phase 0 Behavior
+
+When the workflow starts, before Phase 1:
+
+1. Run `scripts/discover-env.sh` to generate `environment_manifest.json`
+2. Read the manifest to identify detected MCPs and stack
+3. Load matching adapter references for detected MCPs
+4. Load matching stack pattern reference for detected platform
+5. Pass environment context to context-gatherer and prompt-enricher
+
 ## Usage
 
 ```
@@ -35,6 +99,7 @@ The platform is auto-detected once at workflow start and cached — no configura
 ```
 
 **Example**:
+
 ```
 /feature-marker prd-user-authentication
 ```
@@ -46,6 +111,7 @@ The platform is auto-detected once at workflow start and cached — no configura
 ```
 
 Opens a menu to select execution mode:
+
 - **Full Workflow** - Default, generates missing files and executes all phases
 - **Tasks Only** - Uses existing files, skips generation phase
 - **Ralph Loop** - Autonomous continuous execution with ralph-wiggum
@@ -55,6 +121,7 @@ Opens a menu to select execution mode:
 Works both in terminal (TTY menu) and Claude CLI (AskUserQuestion prompt).
 
 **Direct mode selection** (skip menu):
+
 ```
 /feature-marker --mode full <feature-slug>
 /feature-marker --mode tasks-only <feature-slug>
@@ -78,6 +145,7 @@ The following commands must be available in `~/.claude/commands/`:
 The commands above read templates from `~/.claude/docs/specs/` to generate structured documents.
 
 Required templates:
+
 - `~/.claude/docs/specs/prd-template.md` - Product Requirements Document template
 - `~/.claude/docs/specs/techspec-template.md` - Technical Specification template
 - `~/.claude/docs/specs/tasks-template.md` - Tasks breakdown template
@@ -85,16 +153,23 @@ Required templates:
 **Template Format**: Templates should be markdown files with placeholders and structure that commands will use to generate feature-specific documents.
 
 **Setup**: Ensure these templates exist before running feature-marker:
+
 ```bash
 ls ~/.claude/docs/specs/
 # Should show: prd-template.md, techspec-template.md, tasks-template.md
 ```
 
-**Note**: If templates are missing, commands in `~/.claude/commands/` will fail to generate files.
+**Bundled Fallback**: If user templates are missing, feature-marker includes bundled templates in `templates/` that will be used as fallback:
+
+- `templates/prd-template.md` — basic PRD structure
+- `templates/techspec-template.md` — basic tech spec structure
+
+User templates in `~/.claude/docs/specs/` always have priority over bundled versions.
 
 ### Project Structure
 
 **Feature Documents** (generated in project):
+
 ```
 ./tasks/
 └── prd-{feature-name}/
@@ -105,6 +180,7 @@ ls ~/.claude/docs/specs/
 ```
 
 **State Directory** (checkpoint & progress):
+
 ```
 .claude/feature-state/{feature-name}/
 ├── checkpoint.json
@@ -116,6 +192,7 @@ ls ~/.claude/docs/specs/
 ```
 
 **User Configuration** (required setup):
+
 ```
 ~/.claude/
 ├── commands/           ← Commands that generate files
@@ -153,6 +230,7 @@ When invoked, the skill:
 5. **Persists state** - Saves checkpoints after each phase/task for resume capability
 
 **Important**: The workflow is smart about file detection and dependencies:
+
 - ✅ Files/skills/commands exist → Uses them directly, no regeneration or reinstallation
 - ⚠️ Missing → Installs/generates only what's needed
 - 🔒 Never overwrites existing content
@@ -167,6 +245,7 @@ Feature-marker automatically installs missing dependencies to enhance the workfl
 **What it does**: Provides advanced PRD analysis, requirements validation, and product management capabilities.
 
 **Installation**:
+
 - **Check**: Phase 1 checks for `~/.claude/skills/product-manager/SKILL.md`
 - **Install**: If missing and `npx` available, runs:
   ```bash
@@ -176,6 +255,7 @@ Feature-marker automatically installs missing dependencies to enhance the workfl
 - **Fallback**: Continues without it if installation fails (non-blocking)
 
 **Benefits**:
+
 - Enhanced requirement analysis
 - Better PRD validation
 - Improved feature planning
@@ -185,12 +265,14 @@ Feature-marker automatically installs missing dependencies to enhance the workfl
 **What it does**: Professional commit workflow with validation, splitting, and conventional commit format.
 
 **Installation**:
+
 - **Check**: Phase 4 checks for `~/.claude/commands/commit.md`
 - **Install**: If missing, copies from bundled `resources/commit.md` to `~/.claude/commands/commit.md`
 - **Priority**: Uses user's existing command if already installed
 - **Fallback**: Uses standard commit workflow if installation fails
 
 **Features**:
+
 - Pre-commit validation (lint, build, docs)
 - Intelligent commit splitting
 - Conventional commit format with emojis
@@ -198,6 +280,7 @@ Feature-marker automatically installs missing dependencies to enhance the workfl
 - No Co-Authored-By footer (as per command design)
 
 **Example Output**:
+
 ```bash
 ✨ feat: add user authentication system
 🐛 fix: resolve memory leak in rendering process
@@ -210,11 +293,13 @@ Feature-marker automatically installs missing dependencies to enhance the workfl
 If auto-installation fails, you can install manually:
 
 **Product Manager Skill**:
+
 ```bash
 npx skills add https://github.com/aj-geddes/claude-code-bmad-skills --skill product-manager
 ```
 
 **Commit Command**:
+
 ```bash
 cp ~/.claude/skills/feature-marker/resources/commit.md ~/.claude/commands/commit.md
 ```
@@ -242,6 +327,7 @@ Commands in `~/.claude/commands/` read templates from a centralized location:
 ### Template Content
 
 Each template should be a markdown file with:
+
 - Clear section structure
 - Placeholder text or variables
 - Examples and formatting guidelines
@@ -276,6 +362,7 @@ When the user has used Claude's built-in plan mode before invoking feature-marke
 This is automatic and requires no additional flags or options. If no plan or CLAUDE.md exists, the workflow proceeds normally.
 
 **Recommended flow**:
+
 ```
 1. Use Claude plan mode to explore the codebase and think through the feature
 2. Exit plan mode
@@ -293,6 +380,7 @@ If interrupted (Ctrl+C, session crash, etc.), re-invoke with the same feature sl
 ```
 
 The skill will:
+
 - Detect existing checkpoint
 - Show current progress (phase, task index)
 - Ask if you want to resume or start fresh
@@ -301,13 +389,13 @@ The skill will:
 
 In Phase 4, the skill auto-detects your git platform and selects the appropriate PR skill:
 
-| Platform | Detection | PR Skill |
-|----------|-----------|----------|
-| GitHub | `github.com` in remote URL | `checking-pr` |
-| Azure DevOps | `dev.azure.com` in remote URL | `azure-pr` |
-| GitLab | `gitlab.com` in remote URL | `checking-pr` |
-| Bitbucket | `bitbucket.org` in remote URL | `checking-pr` |
-| Other | (fallback) | `checking-pr` |
+| Platform     | Detection                     | PR Skill      |
+| ------------ | ----------------------------- | ------------- |
+| GitHub       | `github.com` in remote URL    | `checking-pr` |
+| Azure DevOps | `dev.azure.com` in remote URL | `azure-pr`    |
+| GitLab       | `gitlab.com` in remote URL    | `checking-pr` |
+| Bitbucket    | `bitbucket.org` in remote URL | `checking-pr` |
+| Other        | (fallback)                    | `checking-pr` |
 
 ## Configuration
 
@@ -325,18 +413,19 @@ Override default behavior with `.feature-marker.json` in your repository root:
 
 ## Error Handling
 
-| Scenario | Behavior |
-|----------|----------|
-| Missing files | Auto-generate via commands |
-| No git repo | Fail early with helpful message |
-| No tests | Skip Phase 3 with warning |
-| Test failures | Report issues, allow fix, offer retry |
-| Unknown platform | Fallback to `checking-pr` |
-| PR skill unavailable | Commit only, log manual instructions |
+| Scenario             | Behavior                              |
+| -------------------- | ------------------------------------- |
+| Missing files        | Auto-generate via commands            |
+| No git repo          | Fail early with helpful message       |
+| No tests             | Skip Phase 3 with warning             |
+| Test failures        | Report issues, allow fix, offer retry |
+| Unknown platform     | Fallback to `checking-pr`             |
+| PR skill unavailable | Commit only, log manual instructions  |
 
 ## Example Sessions
 
 ### Example 1: All Files Exist (No Generation Needed)
+
 ```
 > /feature-marker prd-user-authentication
 
@@ -361,6 +450,7 @@ Phase 2: Implementation
 ```
 
 ### Example 2: Partial Files (Generates Only Missing)
+
 ```
 > /feature-marker prd-payment-integration
 
@@ -382,6 +472,7 @@ Checkpoint saved.
 ```
 
 ### Example 3: Complete Workflow with Auto-Install
+
 ```
 > /feature-marker prd-new-feature
 
@@ -426,6 +517,7 @@ PR URL: https://github.com/user/repo/pull/42
 ```
 
 ### Example 4: Using Existing User Tools
+
 ```
 > /feature-marker prd-payment-feature
 
