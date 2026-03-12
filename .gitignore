@@ -22,6 +22,9 @@
 dist/
 build/
 target/
+.build/
+out/
+*.app
 
 # Node (if using any tooling)
 node_modules/
@@ -31,3 +34,6 @@ npm/dist/
 
 # Homebrew tap (separate repository)
 homebrew-tap/
+
+# Tool caches
+.entire/
