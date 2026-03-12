@@ -1,0 +1,49 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "356dad2ea146",
+  "session_id": "4dbb0a44-8fe3-41fd-a976-55cce26955ff",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-12T23:24:49.311076Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".claude/settings.json",
+    ".claude/settings.local.json",
+    "feature-marker-dist/.claude/settings.local.json",
+    "feature-marker-dist/feature-marker/.claude/settings.local.json",
+    "feature-marker-dist/feature-marker/SKILL.md",
+    "feature-marker-dist/feature-marker/feature-marker.sh",
+    "feature-marker-dist/feature-marker/lib/mcp-detector.sh",
+    "feature-marker-dist/feature-marker/references/mcp-adapters/docker.md",
+    "feature-marker-dist/feature-marker/references/mcp-adapters/playwright.md",
+    "feature-marker-dist/feature-marker/references/mcp-adapters/xcodebuild.md",
+    "feature-marker-dist/feature-marker/references/stack-patterns/python.md",
+    "feature-marker-dist/feature-marker/references/stack-patterns/react.md",
+    "feature-marker-dist/feature-marker/references/stack-patterns/swift.md",
+    "feature-marker-dist/feature-marker/resources/spec-workflow/skills/context-gatherer/SKILL.md",
+    "feature-marker-dist/feature-marker/resources/spec-workflow/skills/ios-workflow/SKILL.md",
+    "feature-marker-dist/feature-marker/resources/spec-workflow/skills/prompt-enricher/SKILL.md",
+    "feature-marker-dist/feature-marker/resources/spec-workflow/skills/spec-executor/SKILL.md",
+    "feature-marker-dist/feature-marker/scripts/discover-env.sh",
+    "feature-marker-dist/feature-marker/templates/prd-template.md",
+    "feature-marker-dist/feature-marker/templates/techspec-template.md"
+  ],
+  "agent": "Claude Code",
+  "token_usage": {
+    "input_tokens": 28,
+    "cache_creation_tokens": 180962,
+    "cache_read_tokens": 1586817,
+    "output_tokens": 20414,
+    "api_call_count": 22
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-12T23:24:48.087789Z",
+    "agent_lines": 0,
+    "human_added": 6,
+    "human_modified": 84,
+    "human_removed": 0,
+    "total_committed": 90,
+    "agent_percentage": 0
+  },
+  "transcript_path": ".claude/projects/-Users-viniciuscarvalho-Documents-Feature-marker/4dbb0a44-8fe3-41fd-a976-55cce26955ff.jsonl"
+}

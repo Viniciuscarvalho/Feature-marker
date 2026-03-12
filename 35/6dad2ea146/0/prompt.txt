@@ -1,0 +1,232 @@
+Implement the following plan:
+
+# Plan: MCP Awareness + Skill as Dispatcher
+
+## Context
+
+Feature-marker already has stack detection (`lib/stack-detector.sh`), context gathering, and prompt enrichment — but it has **zero MCP awareness** beyond a single boolean `xcodebuildmcp_available` in the iOS detector. The ios-workflow skill hardcodes XcodeBuildMCP usage but doesn't generalize to other MCPs.
+
+This plan adds two interconnected features:
+
+1. **MCP Awareness** — detect configured MCP servers across all agent config files, generate `environment_manifest.json`
+2. **Skill as Dispatcher** — new directory structure (`scripts/`, `references/mcp-adapters/`, `references/stack-patterns/`, `templates/`) so SKILL.md can load the right references based on detected environment
+
+## environment_manifest.json Format
+
+```json
+{
+  "version": "1.0",
+  "detected_at": "ISO timestamp",
+  "stack": {
+    /* ...full platform-context.json content... */
+  },
+  "mcps": [
+    {
+      "name": "XcodeBuildMCP",
+      "server_key": "xcodebuildmcp",
+      "category": "build",
+      "source": ".claude/settings.json",
+      "adapter": "references/mcp-adapters/xcodebuild.md",
+      "tools_hint": ["discover_projs", "session_set_defaults", "build_run_sim"]
+    }
+  ],
+  "clis": [
+    { "name": "swiftlint", "available": true },
+    { "name": "docker", "available": true }
+  ],
+  "ci": {
+    "detected": true,
+    "type": "github-actions",
+    "config_path": ".github/workflows/"
+  }
+}
+```
+
+## Implementation Steps
+
+### Step 1: Create `lib/mcp-detector.sh` (~200 lines)
+
+**Path:** `feature-marker-dist/feature-marker/lib/mcp-detector.sh`
+
+Follow `stack-detector.sh` patterns exactly: public API, private `_detect_*` helpers, JSON via `python3 -c`, CLI mode.
+
+Public API:
+
+- `detect_mcps <project_root> <state_dir>` — scans configs, writes `mcp-context.json`
+- `get_mcp_context <state_dir>` — reads cached result
+
+Config paths to scan:
+
+- `.claude/settings.json` (project) + `~/.claude/settings.json` (global) → `mcpServers` key
+- `.cursor/mcp.json` → `mcpServers` key
+- `.codex/config.toml` → `[mcp_servers]` section (python3 `tomllib`)
+- `~/Library/Application Support/Claude/claude_desktop_config.json` → `mcpServers`
+- `.vscode/settings.json` → `mcp.servers` key (VS Code MCP extension)
+- `.kiro/settings/mcp.json` → `mcpServers` key
+
+Known MCP registry (case-insensitive matching with aliases):
+
+| Server name pattern       | Category     | Adapter       |
+| ------------------------- | ------------ | ------------- |
+| `xcodebuild*`, `xcbuild*` | build        | xcodebuild.md |
+| `playwright*`             | test         | playwright.md |
+| `postgres*`, `supabase*`  | database     | _(future)_    |
+| `docker*`                 | deployment   | docker.md     |
+| `github*`                 | project-mgmt | _(future)_    |
+| `linear*`                 | project-mgmt | _(future)_    |
+
+### Step 2: Create `scripts/discover-env.sh` (~80 lines)
+
+**Path:** `feature-marker-dist/feature-marker/scripts/discover-env.sh`
+
+Unified entry point that:
+
+1. Sources `lib/stack-detector.sh` + `lib/mcp-detector.sh`
+2. Runs both detectors
+3. Detects CLIs in PATH (docker, gh, swiftlint, ruff, cargo-clippy, etc.)
+4. Detects CI config (.github/workflows/, .gitlab-ci.yml, azure-pipelines.yml)
+5. Merges all into `environment_manifest.json`
+
+### Step 3: Create MCP adapter references
+
+**Path:** `feature-marker-dist/feature-marker/references/mcp-adapters/`
+
+Each adapter is a markdown file telling Claude HOW to use that MCP in each feature-marker phase. Loaded lazily — only when that MCP is detected.
+
+**3a.** `xcodebuild.md` (~60 lines) — extracted/generalized from `ios-workflow/SKILL.md`:
+
+- Context phase: `discover_projs` for project info
+- Tasks: `session_set_defaults` to configure scheme
+- Implementation: `build_run_sim` after each task (non-blocking)
+- Validation: full build verification before PR
+- Fallback: `xcodebuild` CLI commands
+
+**3b.** `playwright.md` (~60 lines):
+
+- Context: detect test URLs / dev server config
+- Tasks: E2E test criteria with browser assertions
+- Implementation: `browser_navigate` + `browser_click` + `browser_screenshot`
+- Validation: visual regression via screenshots
+- Fallback: skip E2E, rely on unit tests
+
+**3c.** `docker.md` (~40 lines):
+
+- Context: detect Dockerfile / docker-compose.yml
+- Implementation: `docker build` verification after infra changes
+- Validation: container build check before PR
+- Fallback: skip container validation
+
+### Step 4: Create stack pattern references
+
+**Path:** `feature-marker-dist/feature-marker/references/stack-patterns/`
+
+Conventions for each stack — loaded when that stack is detected. Informs PRD/TechSpec/Task generation with real patterns.
+
+**4a.** `swift.md` (~80 lines): MVVM/Clean Architecture, Swift Testing patterns, error handling, file naming
+**4b.** `react.md` (~80 lines): Component/Hook/Service layering, React Testing Library, state management
+**4c.** `python.md` (~60 lines): pytest fixtures, type hints, FastAPI/Django patterns
+
+### Step 5: Create templates
+
+**Path:** `feature-marker-dist/feature-marker/templates/`
+
+**5a.** `prd-template.md` — bundled fallback (currently requires `~/.claude/docs/specs/`)
+**5b.** `techspec-template.md` — bundled fallback
+
+These let feature-marker work without user having templates pre-installed.
+
+### Step 6: Update `feature-marker.sh`
+
+Add:
+
+- Source `lib/mcp-detector.sh`
+- New `--env` flag to show full environment info
+- After `show_platform_info` (line 217), add MCP info display
+- Call `scripts/discover-env.sh` to generate manifest in state dir
+
+### Step 7: Update `SKILL.md`
+
+Add:
+
+- New "Environment Awareness" section explaining MCP detection + adapter loading
+- In Phase 0 behavior: run `scripts/discover-env.sh`, read manifest, load matching adapter + stack-pattern references
+- Update "Platform Support" section to mention MCP-enhanced validation
+- Document that adapters are loaded lazily based on detection results
+
+### Step 8: Update `context-gatherer/SKILL.md`
+
+Add Step 2.5 after "Search codebase":
+
+- Read `environment_manifest.json` if exists
+- Add "Available Tools" section to `context.md` output listing MCPs, CLIs, CI
+- Suggest MCP tools for deeper scanning (but don't invoke them in this phase)
+
+### Step 9: Update `prompt-enricher/SKILL.md`
+
+Add to Step 1 (constraint detection):
+
+- Tool-based constraints table: XcodeBuildMCP → "build verification possible", Playwright → "E2E testing possible", etc.
+- Add `### Tool Constraints` sub-heading to `enriched-prompt.md` output
+
+### Step 10: Update `spec-executor/SKILL.md`
+
+Add to Phase 0 (Project Context):
+
+- Load `environment_manifest.json`, extract MCP list
+- Read matching adapter references for execution guidance
+
+Update Post-Task Validation:
+
+- MCP-enhanced validation step (non-blocking): run adapter-guided verification after lint/test
+- Example: XcodeBuildMCP `build_run_sim` after iOS task completion
+
+### Step 11: Update `ios-workflow/SKILL.md`
+
+Add note that XcodeBuildMCP integration is now also documented in `references/mcp-adapters/xcodebuild.md` for cross-phase consistency. The ios-workflow skill remains the iOS-specific test pipeline; the adapter is the cross-phase MCP integration guide.
+
+## File Summary
+
+| File                                                       | Action | ~Lines |
+| ---------------------------------------------------------- | ------ | ------ |
+| `lib/mcp-detector.sh`                                      | CREATE | 200    |
+| `scripts/discover-env.sh`                                  | CREATE | 80     |
+| `references/mcp-adapters/xcodebuild.md`                    | CREATE | 60     |
+| `references/mcp-adapters/playwright.md`                    | CREATE | 60     |
+| `references/mcp-adapters/docker.md`                        | CREATE | 40     |
+| `references/stack-patterns/swift.md`                       | CREATE | 80     |
+| `references/stack-patterns/react.md`                       | CREATE | 80     |
+| `references/stack-patterns/python.md`                      | CREATE | 60     |
+| `templates/prd-template.md`                                | CREATE | 40     |
+| `templates/techspec-template.md`                           | CREATE | 40     |
+| `SKILL.md`                                                 | MODIFY | +40    |
+| `feature-marker.sh`                                        | MODIFY | +15    |
+| `resources/spec-workflow/skills/context-gatherer/SKILL.md` | MODIFY | +25    |
+| `resources/spec-workflow/skills/prompt-enricher/SKILL.md`  | MODIFY | +20    |
+| `resources/spec-workflow/skills/spec-executor/SKILL.md`    | MODIFY | +30    |
+| `resources/spec-workflow/skills/ios-workflow/SKILL.md`     | MODIFY | +5     |
+
+## Design Decisions
+
+1. **`environment_manifest.json` is a superset** — embeds full `platform-context.json` + MCP + CLI + CI data. `platform-context.json` still written separately for backward compat.
+2. **Config-based detection, not runtime** — we scan config files, never call MCP servers during discovery.
+3. **Adapters loaded lazily** — SKILL.md only reads adapter files for detected MCPs. Keeps context window small.
+4. **MCP failures are always non-blocking** — CLI fallback is always the primary path; MCPs enhance, never gate.
+5. **Case-insensitive matching with aliases** — handles "xcodebuildmcp", "XcodeBuildMCP", "xcode-build-mcp".
+
+## Verification
+
+1. Run `lib/mcp-detector.sh <project_root> <state_dir>` on a project with `.claude/settings.json` containing MCPs — verify `mcp-context.json` output
+2. Run `scripts/discover-env.sh <project_root> <state_dir>` — verify `environment_manifest.json` merges stack + MCP + CLI + CI
+3. Run `scripts/discover-env.sh` on a project with NO MCP configs — verify `"mcps": []` and no errors
+4. Invoke `/feature-marker --env` — verify environment info displays
+5. Run spec-driven workflow on an iOS project with XcodeBuildMCP — verify adapter is loaded and MCP tools suggested in context.md and enriched-prompt.md
+6. Run full workflow on a Node.js project with Playwright MCP — verify E2E testing suggestions appear
+
+
+If you need specific details from before exiting plan mode (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/viniciuscarvalho/.REDACTED.jsonl
+
+If this plan can be broken down into multiple independent tasks, consider using the TeamCreate tool to create a team and parallelize the work.
+
+---
+
+Essa feature de feed tem que está toda coberta por uma feature flag que eu consiga habilitar no Firebase Remote Config
