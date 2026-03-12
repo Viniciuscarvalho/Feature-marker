@@ -39,7 +39,7 @@ services:
 execution:
   batchSize: 5
   checkpoint:
-    behavior: "smart"           # "pause" | "continue" | "smart"
+    behavior: "smart" # "pause" | "continue" | "smart"
   parallel:
     enabled: true
     maxAgents: 3
@@ -73,6 +73,15 @@ Before any execution, load permanent project context:
    - **Known Constraints** → avoid assuming unavailable infrastructure
    - **"Done" criteria** → validate against when marking tasks complete
 3. If not found: proceed without it (non-blocking)
+
+### Environment Manifest
+
+4. Check for `environment_manifest.json` in `.claude/feature-state/{slug}/`
+   - If found: extract MCP list, CLI availability, CI config
+   - For each MCP with a non-null `adapter` field: read the adapter reference file
+   - Adapter files provide phase-specific guidance on how to use the MCP during execution
+   - Store loaded adapters as EXECUTION_TOOLS context
+5. If not found: proceed without MCP-enhanced execution (non-blocking)
 
 ---
 
@@ -113,6 +122,7 @@ Proceed in current directory, but warn user that changes won't be isolated.
 3. **Review critically before starting**
 
    Present a summary:
+
    ```
    **Spec Review: [Feature Name]**
 
@@ -166,6 +176,7 @@ Before implementing each task:
    - Are the functions/classes the task will extend actually present?
 
 3. **Save index** to `.claude/feature-state/{slug}/task-{n}-index.json`:
+
    ```json
    {
      "task": 3,
@@ -196,6 +207,7 @@ For each task in the current batch:
 After implementing each task:
 
 1. **Lint modified files only** (not full project):
+
    ```bash
    # TypeScript/JavaScript
    npx eslint {files_to_modify}
@@ -215,6 +227,7 @@ After implementing each task:
    ```
 
 2. **Run related tests only**:
+
    ```bash
    # TypeScript/JavaScript
    jest --findRelatedTests {files_to_modify}
@@ -233,6 +246,7 @@ After implementing each task:
    ```
 
 3. **Report per-task result**:
+
    ```
    Task {N} — Post-Task Validation
    Files modified: {list}
@@ -240,8 +254,14 @@ After implementing each task:
    Tests: ✅ {N} passed / ❌ {N} failed
    ```
 
-4. **If validation passes** → mark task ✅ and continue
-5. **If validation fails** → invoke Failure Recovery (see below)
+4. **MCP-enhanced validation** (non-blocking, if adapters loaded):
+   - For each loaded adapter, check if it specifies per-task validation
+   - Example: XcodeBuildMCP adapter → run `build_run_sim` after Swift file changes
+   - Example: Playwright adapter → run `browser_screenshot` after UI changes
+   - MCP validation failures are logged as warnings, never block task completion
+
+5. **If validation passes** → mark task ✅ and continue
+6. **If validation fails** → invoke Failure Recovery (see below)
 
 ### Failure Recovery
 
@@ -249,13 +269,13 @@ When a task fails post-task validation:
 
 **Level 1 — Auto-correction (up to 2 attempts):**
 
-| Failure type | Auto-fix |
-|-------------|---------|
-| Missing import | Add import, re-run lint |
-| Unused variable | Remove or use it |
+| Failure type                 | Auto-fix                        |
+| ---------------------------- | ------------------------------- |
+| Missing import               | Add import, re-run lint         |
+| Unused variable              | Remove or use it                |
 | TypeScript type simple error | Infer correct type from context |
-| Snapshot test outdated | Update snapshot (if configured) |
-| Lint warning (not error) | Fix inline, continue |
+| Snapshot test outdated       | Update snapshot (if configured) |
+| Lint warning (not error)     | Fix inline, continue            |
 
 After each auto-fix attempt, re-run lint + tests.
 If still failing after 2 attempts → Level 2.
@@ -288,6 +308,7 @@ Proceed with: A / B / C / D ?
 **Level 3 — Replan remaining tasks:**
 
 When user chooses option B:
+
 1. Identify tasks that depend on the failing task
 2. Propose alternative tasks that cover the same ACs
 3. Present new task plan to user for confirmation
@@ -295,10 +316,12 @@ When user chooses option B:
 5. Log in `failure-log.md`
 
 **Failure log** (`.claude/feature-state/{slug}/failure-log.md`):
+
 ```markdown
 ## Failure Log
 
 ### Task {N} — {timestamp}
+
 Error: {message}
 Auto-fix attempts: {0|1|2}
 Resolution: {Option A/B/C/D chosen}
@@ -307,6 +330,7 @@ Status: Resolved ✅ | Replanned ♻️ | Blocked ⏸️
 ```
 
 **Configurable via `.feature-marker.json`:**
+
 ```json
 {
   "per_task_validation": {
@@ -346,12 +370,14 @@ Respect `execution.parallel.maxAgents` from config.
 ### Following the Spec
 
 **DO:**
+
 - Follow Implementation Steps in order (respecting dependencies)
 - Use patterns described in Architecture & Design section
 - Implement exactly what's specified in Requirements
 - Run verifications specified in Validation & Testing Plan
 
 **DON'T:**
+
 - Add features not in the spec
 - Skip steps or combine tasks arbitrarily
 - Ignore the spec's design decisions
@@ -383,6 +409,7 @@ After each batch (based on `batchSize`):
 ```
 
 Checkpoint behavior (from config or argument):
+
 - `pause`: Always pause for user review
 - `continue`: Auto-continue if no issues
 - `smart`: Pause on warnings/errors, continue otherwise
@@ -418,6 +445,7 @@ After all tasks complete:
    - Add completion date
 
 3. **Final summary**
+
    ```
    **Spec Execution Complete: [Feature Name]**
 
