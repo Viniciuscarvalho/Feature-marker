@@ -3,11 +3,13 @@
   "checkpoint_id": "356dad2ea146",
   "strategy": "manual-commit",
   "branch": "main",
-  "checkpoints_count": 1,
+  "checkpoints_count": 2,
   "files_touched": [
     ".claude/settings.json",
     ".claude/settings.local.json",
+    "CHANGELOG.md",
     "feature-marker-dist/.claude/settings.local.json",
+    "feature-marker-dist/CHANGELOG.md",
     "feature-marker-dist/feature-marker/.claude/settings.local.json",
     "feature-marker-dist/feature-marker/SKILL.md",
     "feature-marker-dist/feature-marker/feature-marker.sh",
@@ -24,7 +26,9 @@
     "feature-marker-dist/feature-marker/resources/spec-workflow/skills/spec-executor/SKILL.md",
     "feature-marker-dist/feature-marker/scripts/discover-env.sh",
     "feature-marker-dist/feature-marker/templates/prd-template.md",
-    "feature-marker-dist/feature-marker/templates/techspec-template.md"
+    "feature-marker-dist/feature-marker/templates/techspec-template.md",
+    "homebrew/feature-marker.rb",
+    "npm/package.json"
   ],
   "sessions": [
     {
@@ -33,13 +37,20 @@
       "context": "/35/6dad2ea146/0/context.md",
       "content_hash": "/35/6dad2ea146/0/content_hash.txt",
       "prompt": "/35/6dad2ea146/0/prompt.txt"
+    },
+    {
+      "metadata": "/35/6dad2ea146/1/metadata.json",
+      "transcript": "/35/6dad2ea146/1/full.jsonl",
+      "context": "/35/6dad2ea146/1/context.md",
+      "content_hash": "/35/6dad2ea146/1/content_hash.txt",
+      "prompt": "/35/6dad2ea146/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 28,
-    "cache_creation_tokens": 180962,
-    "cache_read_tokens": 1586817,
-    "output_tokens": 20414,
-    "api_call_count": 22
+    "input_tokens": 118,
+    "cache_creation_tokens": 246054,
+    "cache_read_tokens": 3140710,
+    "output_tokens": 26230,
+    "api_call_count": 53
   }
 }
