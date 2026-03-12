@@ -1,0 +1,45 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "356dad2ea146",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".claude/settings.json",
+    ".claude/settings.local.json",
+    "feature-marker-dist/.claude/settings.local.json",
+    "feature-marker-dist/feature-marker/.claude/settings.local.json",
+    "feature-marker-dist/feature-marker/SKILL.md",
+    "feature-marker-dist/feature-marker/feature-marker.sh",
+    "feature-marker-dist/feature-marker/lib/mcp-detector.sh",
+    "feature-marker-dist/feature-marker/references/mcp-adapters/docker.md",
+    "feature-marker-dist/feature-marker/references/mcp-adapters/playwright.md",
+    "feature-marker-dist/feature-marker/references/mcp-adapters/xcodebuild.md",
+    "feature-marker-dist/feature-marker/references/stack-patterns/python.md",
+    "feature-marker-dist/feature-marker/references/stack-patterns/react.md",
+    "feature-marker-dist/feature-marker/references/stack-patterns/swift.md",
+    "feature-marker-dist/feature-marker/resources/spec-workflow/skills/context-gatherer/SKILL.md",
+    "feature-marker-dist/feature-marker/resources/spec-workflow/skills/ios-workflow/SKILL.md",
+    "feature-marker-dist/feature-marker/resources/spec-workflow/skills/prompt-enricher/SKILL.md",
+    "feature-marker-dist/feature-marker/resources/spec-workflow/skills/spec-executor/SKILL.md",
+    "feature-marker-dist/feature-marker/scripts/discover-env.sh",
+    "feature-marker-dist/feature-marker/templates/prd-template.md",
+    "feature-marker-dist/feature-marker/templates/techspec-template.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/35/6dad2ea146/0/metadata.json",
+      "transcript": "/35/6dad2ea146/0/full.jsonl",
+      "context": "/35/6dad2ea146/0/context.md",
+      "content_hash": "/35/6dad2ea146/0/content_hash.txt",
+      "prompt": "/35/6dad2ea146/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 28,
+    "cache_creation_tokens": 180962,
+    "cache_read_tokens": 1586817,
+    "output_tokens": 20414,
+    "api_call_count": 22
+  }
+}
