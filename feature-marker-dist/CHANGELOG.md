@@ -5,14 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.1.0] - 2026-03-12
+
+### Added
+
+- **MCP Awareness & Skill Dispatcher** - Automatic detection and integration of MCP servers in the development environment
+  - `mcp-detector.sh` script for discovering active MCP servers and their capabilities
+  - `discover-env.sh` script for comprehensive environment discovery
+  - Stack-specific reference patterns for React, Python, and Swift projects
+  - MCP adapter references for Docker, Playwright, and XcodeBuild
+  - PRD and TechSpec templates for standardized document generation
+  - Enhanced context-gatherer and prompt-enricher skills with MCP awareness
+  - iOS-specific workflow skill for Apple platform development
+  - Spec-executor enhanced with MCP tool integration during implementation
+
 ## [6.0.0] - 2026-03-02
 
 ### Added
+
 - Enrichment prompt, spec accuracy pipeline and tests for ios validated
 
 ## [5.2.1] - 2026-02-24
 
 ### Added
+
 - **Plan Mode Integration** - Agent automatically detects and uses Claude plan mode output to enrich PRD generation
   - Auto-detects most recent plan file from `~/.claude/plans/` (sorted by modification time)
   - Reads project conventions from `./CLAUDE.md` at project root (if present)
@@ -21,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fully backward-compatible: no plan = unchanged behavior
 
 ### Changed
+
 - Added "Pre-Phase: Context Loading" section to agent definition
 - Enhanced Phase 0 "Missing PRD" logic with conditional plan context injection
 - Enhanced Phase 1 to leverage plan context and CLAUDE.md conventions
@@ -29,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [4.0.0] - 2026-02-09
 
 ### Added
+
 - **Feature-Marker Menu Bar** - Native macOS menu bar application built with Tauri v2
   - System tray icon with quick access menu
   - Real-time process output streaming (no external Terminal needed)
@@ -43,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.0.0] - 2026-02-08
 
 ### Added
+
 - **Feature-Marker TUI** - Terminal User Interface application built with Ratatui
   - Full-screen terminal interface with real-time output
   - Feature list panel with status indicators
@@ -54,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.0] - 2026-02-05
 
 ### Added
+
 - **Spec-Driven Mode (Spec Kit Pattern)** - New execution mode (option 4) with multi-agent review and isolated worktrees
   - Multi-agent spec review with 6 built-in personas (Pragmatic Architect, Paranoid Engineer, Operator, Simplifier, User Advocate, Product Strategist)
   - Isolated worktree creation for safe development in separate git branches
@@ -71,6 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Configuration support** - Optional `.claude/spec-workflow/config.yaml` for customizing review and execution behavior
 
 ### Changed
+
 - Updated interactive menu to include option 4 (Spec-Driven Mode)
 - Updated `dependency-installer.sh` to use bundled spec-workflow skills path
 - Updated `menu.sh` with spec-workflow availability check and auto-installation
@@ -78,6 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated CLI to support `--mode spec-driven` flag
 
 ### Technical Details
+
 - Skills bundled in `resources/spec-workflow/skills/`
 - References bundled in `resources/spec-workflow/references/`
 - Priority path resolution: installed skill → FEATURE_MARKER_ROOT → script directory
@@ -86,40 +108,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.6.0] - 2026-02-01
 
 ### Added
+
 - **Smart Dependency Management** - Automatic detection and installation of dependencies
 - **Bundled commit command** - Enhanced commit workflow included as bundled resource
 
 ### Changed
+
 - Improved error handling for missing dependencies
 - Better feedback during dependency installation
 
 ## [1.5.0] - 2026-01-30
 
 ### Added
+
 - **XcodeBuildMCP Integration** - iOS simulator validation in Phase 3
 - Automatic detection of XcodeBuildMCP skill
 - Auto-configuration via `discover_projs` and `session_set_defaults`
 - `build_run_sim` for building and running iOS apps on simulator
 
 ### Changed
+
 - test-results.md now includes simulator build/run section for iOS projects
 - Non-blocking build failures (logs warnings but workflow continues)
 
 ## [1.4.0] - 2026-01-30
 
 ### Added
+
 - **Documentation improvements** - Templates location clarified
 - File generation flow diagrams
 - Architecture overview showing complete file flow
 - Template setup guide
 
 ### Changed
+
 - README.md comprehensively updated with examples and troubleshooting
 - Error handling documentation for missing templates
 
 ## [1.3.0] - 2026-01-28
 
 ### Added
+
 - **AskUserQuestion support in Claude CLI** - Interactive mode now works inside Claude CLI using AskUserQuestion tool when TTY is not available
   - Script outputs `INTERACTIVE_MODE_REQUESTED` marker when no TTY detected
   - Agent detects marker and presents options via Claude's native AskUserQuestion
@@ -130,6 +159,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `--mode ralph-loop` - Ralph Loop mode
 
 ### Changed
+
 - Updated `lib/menu.sh` to output marker instead of error when no TTY
 - Updated `feature-marker.sh` to capture exit code 100 and propagate marker
 - Enhanced agent documentation with AskUserQuestion handling instructions
@@ -138,6 +168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.0] - 2026-01-26
 
 ### Fixed
+
 - **Interactive menu TTY detection** - Menu now properly detects when running without a terminal and provides clear guidance instead of hanging
 - **Template paths corrected** - Commands now use global templates from `~/.claude/docs/` instead of project-relative paths:
   - PRD template: `~/.claude/docs/specs/prd-template.md`
@@ -147,6 +178,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-01-19
 
 ### Added
+
 - **Interactive CLI Panel** - New `--interactive` flag launches a beautiful menu to select execution mode
   - Full Workflow Mode: Generate + Execute all phases (default behavior)
   - Tasks Only Mode: Skip file generation, execute existing tasks directly
@@ -158,6 +190,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation for all three execution modes
 
 ### Changed
+
 - Updated `feature-marker.sh` to support `--interactive` flag
 - Enhanced agent behavior to respect execution modes
 - Updated help text to include interactive mode option
@@ -165,12 +198,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Version bumped from 1.0 to 1.1.0
 
 ### Fixed
+
 - Menu validation ensures Tasks Only mode has all required files
 - Clear error messages when ralph-wiggum is not installed but Loop mode is selected
 
 ## [1.0.0] - 2026-01-18
 
 ### Added
+
 - Initial release of feature-marker skill + agent
 - 4-phase workflow automation (Inputs Gate → Analysis → Implementation → Tests → Commit & PR)
 - Smart file detection that never overwrites existing files
@@ -184,9 +219,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TodoWrite integration for task management
 
 ### Changed
+
 - Migrated from template-based to command-based file generation
 - Simplified directory structure (./tasks instead of ./docs/tasks)
 
+[6.1.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v6.0.0...v6.1.0
+[6.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.2.1...v6.0.0
 [5.2.1]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.2.0...v5.2.1
 [4.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v3.0.0...v4.0.0
 [3.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v2.0.0...v3.0.0
