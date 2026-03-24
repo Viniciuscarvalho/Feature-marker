@@ -1,0 +1,51 @@
+[package]
+name = "feature-marker-tui"
+version = "0.1.0"
+edition = "2021"
+authors = ["Vinicius Carvalho"]
+description = "Terminal User Interface for Feature-Marker workflow automation"
+license = "MIT"
+repository = "https://github.com/viniciuscarvalho/feature-marker"
+keywords = ["tui", "cli", "automation", "workflow"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+# TUI Framework
+ratatui = "0.29"
+crossterm = "0.28"
+
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error Handling
+anyhow = "1"
+thiserror = "2"
+
+# CLI Arguments
+clap = { version = "4", features = ["derive"] }
+
+# File Watching
+notify = "7"
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# System directories
+dirs = "5"
+
+# Logging (optional, for debugging)
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tempfile = "3"
+pretty_assertions = "1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

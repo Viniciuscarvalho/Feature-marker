@@ -1,0 +1,54 @@
+{
+  "name": "@viniciuscarvalho/feature-marker",
+  "version": "2.0.0",
+  "description": "Automate your complete feature development lifecycle: PRD → Tech Spec → Tasks → Implementation → Tests → PR. AI-powered skill for Claude Code with TUI and menubar apps. Integrates with Linear, GitHub, Notion. Structured outputs: JSON specs, task templates, test cases, PR descriptions.",
+  "displayName": "Feature Marker",
+  "author": "Vinicius Carvalho",
+  "license": "MIT",
+  "homepage": "https://github.com/Viniciuscarvalho/Feature-marker",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Viniciuscarvalho/Feature-marker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Viniciuscarvalho/Feature-marker/issues"
+  },
+  "keywords": [
+    "feature-management",
+    "feature-lifecycle",
+    "prd",
+    "tech-spec",
+    "task-automation",
+    "documentation",
+    "claude-code",
+    "skill",
+    "linear",
+    "github",
+    "notion",
+    "product-management",
+    "engineering",
+    "automation",
+    "workflow",
+    "structured-output",
+    "test-generation",
+    "pr-description",
+    "team-collaboration"
+  ],
+  "bin": {
+    "feature-marker": "./feature-marker-dist/feature-marker/bin/cli.js",
+    "feature-marker-install": "./feature-marker-dist/feature-marker/install.sh",
+    "feature-marker-uninstall": "./feature-marker-dist/feature-marker/uninstall.sh",
+    "feature-marker-tui": "./feature-marker-tui/bin/tui.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "feature-marker-dist/",
+    "feature-marker-tui/",
+    "feature-marker-menubar/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ]
+}
