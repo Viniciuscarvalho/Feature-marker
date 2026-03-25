@@ -1,11 +1,10 @@
-
 <!-- Banner -->
 <p align="center">
-  <img src="assets/banner.svg" alt="feature-marker Banner" width="800">
+  <img src="assets/banner.svg" alt="feature-marker — AI-powered feature development orchestrator for Claude Code" width="800">
 </p>
 
 <p align="center">
-  <strong>Automate your feature development workflow with AI-powered checkpoints</strong>
+  <strong>AI-powered feature development orchestrator — PRD → Tech Spec → Tasks → Implementation → Tests → PR — with checkpoint/resume, 5 execution modes, and auto-detection for GitHub/GitLab/Azure DevOps. Claude Code skill.</strong>
 </p>
 
 <p align="center">
@@ -24,11 +23,18 @@
   <a href="https://github.com/Viniciuscarvalho/Feature-marker">
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome">
   </a>
+  <a href="https://github.com/sponsors/Viniciuscarvalho">
+    <img src="https://img.shields.io/badge/sponsor-♥-ea4aaa.svg" alt="Sponsor">
+  </a>
+</p>
+
+<p align="center">
+  <code>claude code skill</code> · <code>feature workflow automation</code> · <code>PRD to PR pipeline</code> · <code>checkpoint resume</code> · <code>AI development orchestrator</code>
 </p>
 
 ---
 
-**feature-marker** is a Claude Code skill that guides you through the complete feature development lifecycle: PRD → Tech Spec → Tasks → Implementation → Tests → PR.
+**feature-marker** is a Claude Code skill that orchestrates the complete feature development lifecycle — from requirements to pull request — with checkpoint/resume, multi-platform support, and 5 execution modes.
 
 <p align="center">
   <img src="assets/feature-marker-demo.gif" alt="feature-marker Demo" width="700">
@@ -40,9 +46,21 @@
 
 Choose your preferred installation method:
 
-### NPX (Recommended)
+### Skills CLI (Recommended)
 
-The fastest way to install. Requires Node.js 18+.
+The fastest way to install and keep up to date.
+
+```bash
+# Install
+npx skills add Viniciuscarvalho/Feature-marker
+
+# Update to latest version
+npx skills update
+```
+
+### NPX
+
+Requires Node.js 18+.
 
 ```bash
 # Install
@@ -69,6 +87,7 @@ feature-marker-install
 ```
 
 **Uninstall:**
+
 ```bash
 feature-marker-uninstall
 brew uninstall feature-marker
@@ -145,13 +164,13 @@ This installs personas to `.claude/spec-workflow/personas/` for the current proj
 
 ### Built-in Personas
 
-| Persona | Triggers | Focus |
-|---------|----------|-------|
-| **Firebase Cost Reviewer** | firestore, collection, query, listener | Query costs, N+1, unbounded reads |
-| **iOS Performance Reviewer** | swift, ios, swiftui, list, scroll, animation | Main thread, image caching, lazy rendering |
-| **API Security Reviewer** | api, route, endpoint, auth, token, webhook | Auth bypass, input validation, rate limiting |
-| **Payment Flow Reviewer** | stripe, payment, checkout, webhook, subscription | Idempotency, replay, network failure |
-| **Data Migration Reviewer** | migration, schema, breaking, rename, remove | Rollback plan, zero-downtime, data integrity |
+| Persona                      | Triggers                                         | Focus                                        |
+| ---------------------------- | ------------------------------------------------ | -------------------------------------------- |
+| **Firebase Cost Reviewer**   | firestore, collection, query, listener           | Query costs, N+1, unbounded reads            |
+| **iOS Performance Reviewer** | swift, ios, swiftui, list, scroll, animation     | Main thread, image caching, lazy rendering   |
+| **API Security Reviewer**    | api, route, endpoint, auth, token, webhook       | Auth bypass, input validation, rate limiting |
+| **Payment Flow Reviewer**    | stripe, payment, checkout, webhook, subscription | Idempotency, replay, network failure         |
+| **Data Migration Reviewer**  | migration, schema, breaking, rename, remove      | Rollback plan, zero-downtime, data integrity |
 
 ### Custom Personas
 
@@ -167,12 +186,15 @@ applies_to: [large-feature, api-change]
 You review specs for [your domain].
 
 ### Your perspective
+
 [What you care about and why]
 
 ### What you look for
+
 [Specific issues to catch]
 
 ### When to pass
+
 "[Your LGTM phrase]"
 ```
 
@@ -182,24 +204,26 @@ Custom personas always have priority over built-in personas with the same `name`
 
 ## Execution Modes
 
-| Mode | Description |
-|------|-------------|
-| **Full Workflow** | Generate artifacts + run all phases |
-| **Tasks Only** | Skip generation, use existing files |
-| **Ralph Loop** | Autonomous self-correcting execution |
-| **Spec-Driven** | Multi-agent review with worktree isolation |
-| **Test Only** | Run tests phase exclusively (Swift Testing, Jest, pytest, etc.) |
+| Mode              | Description                                                     |
+| ----------------- | --------------------------------------------------------------- |
+| **Full Workflow** | Generate artifacts + run all phases                             |
+| **Tasks Only**    | Skip generation, use existing files                             |
+| **Ralph Loop**    | Autonomous self-correcting execution                            |
+| **Spec-Driven**   | Multi-agent review with worktree isolation                      |
+| **Test Only**     | Run tests phase exclusively (Swift Testing, Jest, pytest, etc.) |
 
 ---
 
 ## Requirements
 
 Commands in `~/.claude/commands/`:
+
 - `create-prd.md`
 - `generate-spec.md`
 - `generate-tasks.md`
 
 Templates in `~/.claude/docs/specs/`:
+
 - `prd-template.md`
 - `techspec-template.md`
 - `tasks-template.md`

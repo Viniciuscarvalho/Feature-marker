@@ -1,6 +1,28 @@
 ---
 name: feature-marker
-description: Platform-agnostic workflow automation with checkpoints (PRD/TechSpec/Tasks generation + implementation + tests + commit/PR).
+description: >
+  End-to-end feature development orchestrator that automates the full lifecycle
+  from requirements to pull request. Generates PRD, Tech Spec, and Task
+  breakdown artifacts, then executes a 4-phase workflow: Analysis →
+  Implementation → Tests → Commit & PR. Supports 5 execution modes: Full
+  Workflow (generate all artifacts + run all phases), Tasks Only (skip
+  generation, use existing files), Ralph Loop (autonomous self-correcting
+  execution), Spec-Driven (multi-agent review with worktree isolation), and
+  Test Only (run tests phase exclusively). Includes checkpoint/resume so work
+  can be paused and resumed at any phase, and auto-detects GitHub, Azure DevOps,
+  or GitLab for PR creation. Platform-agnostic with auto stack detection for
+  iOS/Swift, Node.js/TypeScript, Rust, Python, and Go.
+
+  ALWAYS use this skill when the user says "implement this feature", "build
+  feature X", "start a new feature", "create a PRD", "generate tech spec",
+  "break down tasks", "feature workflow", "plan this feature", "implement
+  from spec", "run the full workflow", "resume feature", "continue where I
+  left off", asks to go from requirements to implementation, wants to automate
+  feature development end-to-end, mentions PRD-to-PR pipelines, or says
+  "/feature-marker" — even if they just say "I need to build X" without
+  explicitly mentioning a workflow. Also trigger when the user mentions
+  "Ralph Loop", "spec-driven mode", "checkpoint", or asks to generate tasks
+  from a PRD or tech spec.
 tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill
 ---
 
@@ -35,6 +57,7 @@ The platform is auto-detected once at workflow start and cached — no configura
 ```
 
 **Example**:
+
 ```
 /feature-marker prd-user-authentication
 ```
@@ -46,6 +69,7 @@ The platform is auto-detected once at workflow start and cached — no configura
 ```
 
 Opens a menu to select execution mode:
+
 - **Full Workflow** - Default, generates missing files and executes all phases
 - **Tasks Only** - Uses existing files, skips generation phase
 - **Ralph Loop** - Autonomous continuous execution with ralph-wiggum
@@ -55,6 +79,7 @@ Opens a menu to select execution mode:
 Works both in terminal (TTY menu) and Claude CLI (AskUserQuestion prompt).
 
 **Direct mode selection** (skip menu):
+
 ```
 /feature-marker --mode full <feature-slug>
 /feature-marker --mode tasks-only <feature-slug>
@@ -78,6 +103,7 @@ The following commands must be available in `~/.claude/commands/`:
 The commands above read templates from `~/.claude/docs/specs/` to generate structured documents.
 
 Required templates:
+
 - `~/.claude/docs/specs/prd-template.md` - Product Requirements Document template
 - `~/.claude/docs/specs/techspec-template.md` - Technical Specification template
 - `~/.claude/docs/specs/tasks-template.md` - Tasks breakdown template
@@ -85,6 +111,7 @@ Required templates:
 **Template Format**: Templates should be markdown files with placeholders and structure that commands will use to generate feature-specific documents.
 
 **Setup**: Ensure these templates exist before running feature-marker:
+
 ```bash
 ls ~/.claude/docs/specs/
 # Should show: prd-template.md, techspec-template.md, tasks-template.md
@@ -95,6 +122,7 @@ ls ~/.claude/docs/specs/
 ### Project Structure
 
 **Feature Documents** (generated in project):
+
 ```
 ./tasks/
 └── prd-{feature-name}/
@@ -105,6 +133,7 @@ ls ~/.claude/docs/specs/
 ```
 
 **State Directory** (checkpoint & progress):
+
 ```
 .claude/feature-state/{feature-name}/
 ├── checkpoint.json
@@ -116,6 +145,7 @@ ls ~/.claude/docs/specs/
 ```
 
 **User Configuration** (required setup):
+
 ```
 ~/.claude/
 ├── commands/           ← Commands that generate files
@@ -153,6 +183,7 @@ When invoked, the skill:
 5. **Persists state** - Saves checkpoints after each phase/task for resume capability
 
 **Important**: The workflow is smart about file detection and dependencies:
+
 - ✅ Files/skills/commands exist → Uses them directly, no regeneration or reinstallation
 - ⚠️ Missing → Installs/generates only what's needed
 - 🔒 Never overwrites existing content
@@ -167,6 +198,7 @@ Feature-marker automatically installs missing dependencies to enhance the workfl
 **What it does**: Provides advanced PRD analysis, requirements validation, and product management capabilities.
 
 **Installation**:
+
 - **Check**: Phase 1 checks for `~/.claude/skills/product-manager/SKILL.md`
 - **Install**: If missing and `npx` available, runs:
   ```bash
@@ -176,6 +208,7 @@ Feature-marker automatically installs missing dependencies to enhance the workfl
 - **Fallback**: Continues without it if installation fails (non-blocking)
 
 **Benefits**:
+
 - Enhanced requirement analysis
 - Better PRD validation
 - Improved feature planning
@@ -185,12 +218,14 @@ Feature-marker automatically installs missing dependencies to enhance the workfl
 **What it does**: Professional commit workflow with validation, splitting, and conventional commit format.
 
 **Installation**:
+
 - **Check**: Phase 4 checks for `~/.claude/commands/commit.md`
 - **Install**: If missing, copies from bundled `resources/commit.md` to `~/.claude/commands/commit.md`
 - **Priority**: Uses user's existing command if already installed
 - **Fallback**: Uses standard commit workflow if installation fails
 
 **Features**:
+
 - Pre-commit validation (lint, build, docs)
 - Intelligent commit splitting
 - Conventional commit format with emojis
@@ -198,6 +233,7 @@ Feature-marker automatically installs missing dependencies to enhance the workfl
 - No Co-Authored-By footer (as per command design)
 
 **Example Output**:
+
 ```bash
 ✨ feat: add user authentication system
 🐛 fix: resolve memory leak in rendering process
@@ -210,11 +246,13 @@ Feature-marker automatically installs missing dependencies to enhance the workfl
 If auto-installation fails, you can install manually:
 
 **Product Manager Skill**:
+
 ```bash
 npx skills add https://github.com/aj-geddes/claude-code-bmad-skills --skill product-manager
 ```
 
 **Commit Command**:
+
 ```bash
 cp ~/.claude/skills/feature-marker/resources/commit.md ~/.claude/commands/commit.md
 ```
@@ -242,6 +280,7 @@ Commands in `~/.claude/commands/` read templates from a centralized location:
 ### Template Content
 
 Each template should be a markdown file with:
+
 - Clear section structure
 - Placeholder text or variables
 - Examples and formatting guidelines
@@ -276,6 +315,7 @@ When the user has used Claude's built-in plan mode before invoking feature-marke
 This is automatic and requires no additional flags or options. If no plan or CLAUDE.md exists, the workflow proceeds normally.
 
 **Recommended flow**:
+
 ```
 1. Use Claude plan mode to explore the codebase and think through the feature
 2. Exit plan mode
@@ -293,6 +333,7 @@ If interrupted (Ctrl+C, session crash, etc.), re-invoke with the same feature sl
 ```
 
 The skill will:
+
 - Detect existing checkpoint
 - Show current progress (phase, task index)
 - Ask if you want to resume or start fresh
@@ -301,13 +342,13 @@ The skill will:
 
 In Phase 4, the skill auto-detects your git platform and selects the appropriate PR skill:
 
-| Platform | Detection | PR Skill |
-|----------|-----------|----------|
-| GitHub | `github.com` in remote URL | `checking-pr` |
-| Azure DevOps | `dev.azure.com` in remote URL | `azure-pr` |
-| GitLab | `gitlab.com` in remote URL | `checking-pr` |
-| Bitbucket | `bitbucket.org` in remote URL | `checking-pr` |
-| Other | (fallback) | `checking-pr` |
+| Platform     | Detection                     | PR Skill      |
+| ------------ | ----------------------------- | ------------- |
+| GitHub       | `github.com` in remote URL    | `checking-pr` |
+| Azure DevOps | `dev.azure.com` in remote URL | `azure-pr`    |
+| GitLab       | `gitlab.com` in remote URL    | `checking-pr` |
+| Bitbucket    | `bitbucket.org` in remote URL | `checking-pr` |
+| Other        | (fallback)                    | `checking-pr` |
 
 ## Configuration
 
@@ -325,18 +366,19 @@ Override default behavior with `.feature-marker.json` in your repository root:
 
 ## Error Handling
 
-| Scenario | Behavior |
-|----------|----------|
-| Missing files | Auto-generate via commands |
-| No git repo | Fail early with helpful message |
-| No tests | Skip Phase 3 with warning |
-| Test failures | Report issues, allow fix, offer retry |
-| Unknown platform | Fallback to `checking-pr` |
-| PR skill unavailable | Commit only, log manual instructions |
+| Scenario             | Behavior                              |
+| -------------------- | ------------------------------------- |
+| Missing files        | Auto-generate via commands            |
+| No git repo          | Fail early with helpful message       |
+| No tests             | Skip Phase 3 with warning             |
+| Test failures        | Report issues, allow fix, offer retry |
+| Unknown platform     | Fallback to `checking-pr`             |
+| PR skill unavailable | Commit only, log manual instructions  |
 
 ## Example Sessions
 
 ### Example 1: All Files Exist (No Generation Needed)
+
 ```
 > /feature-marker prd-user-authentication
 
@@ -361,6 +403,7 @@ Phase 2: Implementation
 ```
 
 ### Example 2: Partial Files (Generates Only Missing)
+
 ```
 > /feature-marker prd-payment-integration
 
@@ -382,6 +425,7 @@ Checkpoint saved.
 ```
 
 ### Example 3: Complete Workflow with Auto-Install
+
 ```
 > /feature-marker prd-new-feature
 
@@ -426,6 +470,7 @@ PR URL: https://github.com/user/repo/pull/42
 ```
 
 ### Example 4: Using Existing User Tools
+
 ```
 > /feature-marker prd-payment-feature
 
