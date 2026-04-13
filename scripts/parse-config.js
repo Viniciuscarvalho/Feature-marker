@@ -2,6 +2,7 @@
 
 // scripts/parse-config.js
 // Simple YAML config parser — outputs flat KEY=value pairs for shell consumption
+// Supports up to 3 levels of nesting: section.subsection.key
 // Usage: eval "$(node scripts/parse-config.js orchestrator/config.yml)"
 
 const fs = require('fs');
@@ -16,44 +17,64 @@ if (!fs.existsSync(configPath)) {
 
 const content = fs.readFileSync(configPath, 'utf-8');
 const config = {};
-let currentSection = '';
+let section = '';      // 0-indent section
+let subsection = '';   // 2-indent subsection
 
 for (const line of content.split('\n')) {
-  // Skip comments and empty lines
   if (/^\s*#/.test(line) || /^\s*$/.test(line)) continue;
 
-  // Section header (top-level key with no value or empty array)
-  const sectionMatch = line.match(/^(\w[\w_]*)\s*:\s*(\[\])?\s*(#.*)?$/);
-  if (sectionMatch) {
-    currentSection = sectionMatch[1];
-    if (sectionMatch[2] === '[]') {
-      config[`CFG_${currentSection.toUpperCase()}`] = '';
+  // Measure indent
+  const indent = line.match(/^(\s*)/)[1].length;
+
+  // Top-level key (indent 0)
+  if (indent === 0) {
+    const m = line.match(/^(\w[\w_]*)\s*:\s*(.*)/);
+    if (!m) continue;
+    const [, key, rawVal] = m;
+    const val = rawVal.replace(/#.*$/, '').trim();
+    if (val && val !== '[]' && val !== '{}') {
+      // Top-level key with value
+      section = '';
+      subsection = '';
+      config[`CFG_${key.toUpperCase()}`] = val;
+    } else {
+      // Section header
+      section = key;
+      subsection = '';
+      if (val === '[]') config[`CFG_${key.toUpperCase()}`] = '';
     }
     continue;
   }
 
-  // Top-level key with inline value
-  const topMatch = line.match(/^(\w[\w_]*)\s*:\s*(.+)/);
-  if (topMatch) {
-    const [, key, val] = topMatch;
-    const cleanVal = val.replace(/#.*$/, '').trim();
-    currentSection = '';
-    config[`CFG_${key.toUpperCase()}`] = cleanVal;
+  // Level 1 nested (indent 2)
+  if (indent >= 2 && indent <= 3 && section) {
+    const m = line.match(/^\s{2,3}(\w[\w_]*)\s*:\s*(.*)/);
+    if (!m) continue;
+    const [, key, rawVal] = m;
+    const val = rawVal.replace(/#.*$/, '').trim();
+    if (val && val !== '[]' && val !== '{}') {
+      // Key with value under section
+      subsection = '';
+      config[`CFG_${section.toUpperCase()}_${key.toUpperCase()}`] = val;
+    } else {
+      // Subsection header (e.g., source.markdown:)
+      subsection = key;
+      if (val === '[]') config[`CFG_${section.toUpperCase()}_${key.toUpperCase()}`] = '';
+    }
     continue;
   }
 
-  // Nested key under section
-  const nestedMatch = line.match(/^\s+(\w[\w_]*)\s*:\s*(.+)/);
-  if (nestedMatch && currentSection) {
-    const [, key, val] = nestedMatch;
-    const cleanVal = val.replace(/#.*$/, '').trim();
-    config[`CFG_${currentSection.toUpperCase()}_${key.toUpperCase()}`] = cleanVal;
+  // Level 2 nested (indent 4+)
+  if (indent >= 4 && section && subsection) {
+    const m = line.match(/^\s{4,}(\w[\w_]*)\s*:\s*(.+)/);
+    if (!m) continue;
+    const [, key, rawVal] = m;
+    const val = rawVal.replace(/#.*$/, '').trim();
+    config[`CFG_${section.toUpperCase()}_${subsection.toUpperCase()}_${key.toUpperCase()}`] = val;
   }
 }
 
-// Output as shell-safe export statements
 for (const [key, val] of Object.entries(config)) {
-  // Escape single quotes in values
   const safe = val.replace(/'/g, "'\\''");
   console.log(`${key}='${safe}'`);
 }

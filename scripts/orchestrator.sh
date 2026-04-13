@@ -16,30 +16,49 @@ CONFIG_DIR="$ROOT_DIR/.orchestrator"
 STATE_DIR="$CONFIG_DIR/state"
 RESULTS_DIR="$CONFIG_DIR/results"
 
+# ── load .env secrets (ADR-005: never in config.yml) ─────────────
+
+if [ -f "$ROOT_DIR/.env" ]; then
+  set -a
+  source "$ROOT_DIR/.env" 2>/dev/null || true
+  set +a
+fi
+
 # ── load config ──────────────────────────────────────────────────
 
 eval "$(node "$SCRIPT_DIR/parse-config.js" "$ROOT_DIR/orchestrator/config.yml" 2>/dev/null || echo '')"
+
+# Source config — provider-agnostic (ADR-005)
+ADAPTER="${CFG_SOURCE_ADAPTER:-markdown}"
+BACKLOG_OUTPUT="${CFG_SOURCE_OUTPUT:-orchestration-backlog.json}"
+
+# Per-adapter config (only the active adapter's section is used)
+SOURCE_FILE="${CFG_SOURCE_MARKDOWN_FILE:-features.md}"
+SOURCE_LABEL="${CFG_SOURCE_GITHUB_LABEL:-feature-marker}"
+SOURCE_STATE="${CFG_SOURCE_GITHUB_STATE:-open}"
+SOURCE_TEAM="${CFG_SOURCE_LINEAR_TEAM:-ENG}"
+
+# Core config
 BASE_BRANCH="${CFG_EXECUTION_BASE_BRANCH:-main}"
 SKIP_DONE="${CFG_EXECUTION_SKIP_DONE:-true}"
 SKIP_BLOCKED="${CFG_EXECUTION_SKIP_BLOCKED:-true}"
-ADAPTER="${CFG_SOURCE_ADAPTER:-markdown}"
-SOURCE_FILE="${CFG_SOURCE_FILE:-features.md}"
-SOURCE_LABEL="${CFG_SOURCE_LABEL:-feature-marker}"
 AUTONOMY="${CFG_AUTONOMY:-checkpoint}"
-PROPAGATE_CONTEXT="${CFG_FEATURES_PROPAGATE_CONTEXT:-true}"
-TRACK_ERRORS="${CFG_FEATURES_TRACK_ERRORS:-true}"
 MAX_RETRIES="${CFG_FEATURES_MAX_RETRIES:-2}"
 PR_STRATEGY="${CFG_PR_CREATION_STRATEGY:-draft}"
+
+# Memory (ADR-002)
 UPDATE_MANIFEST="${CFG_MEMORY_ENV_REFRESH:-true}"
-COLLECT_PATTERNS="${CFG_FEEDBACK_COLLECT_PATTERNS:-true}"
-GLOBAL_CONTEXT_ENABLED="${CFG_FEEDBACK_GLOBAL_CONTEXT:-true}"
+ERROR_PATTERN_WINDOW="${CFG_MEMORY_ERROR_PATTERN_WINDOW:-5}"
+GLOBAL_CONTEXT_ENABLED="${CFG_MEMORY_CARRY_FORWARD_FROM:+true}"
+COLLECT_PATTERNS="${CFG_FEATURES_TRACK_ERRORS:-true}"
+
+# Safety
 BREAKING_PAUSE="${CFG_SAFETY_BREAKING_CHANGE_PAUSE:-true}"
 SCHEMA_WARNING="${CFG_SAFETY_SCHEMA_MIGRATION_REVIEW:-true}"
 MAX_FILE_CHANGES="${CFG_SAFETY_MAX_FILE_CHANGES:-50}"
-ERROR_PATTERN_WINDOW="${CFG_MEMORY_ERROR_PATTERN_WINDOW:-5}"
 AUTO_CLEANUP="${CFG_WORKTREES_AUTO_CLEANUP:-true}"
 
-# Worktree config (read by worktree-manager.sh)
+# Worktree config
 WORKTREE_BASE="${CFG_WORKTREES_BASE_PATH:-.worktrees}"
 BRANCH_PREFIX="${CFG_WORKTREES_BRANCH_PREFIX:-feat}"
 WORKTREE_ROOT="$ROOT_DIR/$WORKTREE_BASE"
@@ -68,11 +87,11 @@ write_status() {
 
 mkdir -p "$STATE_DIR" "$RESULTS_DIR"
 
-BACKLOG_FILE="$ROOT_DIR/orchestration-backlog.json"
+BACKLOG_FILE="$ROOT_DIR/$BACKLOG_OUTPUT"
 
 info "Config: adapter=$ADAPTER autonomy=$AUTONOMY base=$BASE_BRANCH"
-info "Safety: breaking_pause=$BREAKING_PAUSE schema_warning=$SCHEMA_WARNING"
-info "Feedback: manifest=$UPDATE_MANIFEST patterns=$COLLECT_PATTERNS global_ctx=$GLOBAL_CONTEXT_ENABLED"
+info "Safety: breaking_pause=$BREAKING_PAUSE schema_warning=$SCHEMA_WARNING max_files=$MAX_FILE_CHANGES"
+info "Memory: env_refresh=$UPDATE_MANIFEST error_window=$ERROR_PATTERN_WINDOW"
 
 # ── Environment manifest (initial) ──────────────────────────────
 
@@ -82,27 +101,60 @@ if [ "$UPDATE_MANIFEST" = "true" ] && [ -f "$SCRIPT_DIR/environment-discovery.sh
 fi
 
 # ══════════════════════════════════════════════════════════════════
-# Step 1: Load backlog
+# Step 1: Load backlog — provider-agnostic adapter resolution (ADR-005)
 # ══════════════════════════════════════════════════════════════════
 
-case "$ADAPTER" in
-  markdown)
-    info "Running markdown adapter on $SOURCE_FILE..."
-    node "$SCRIPT_DIR/adapters/markdown.js" "$ROOT_DIR/$SOURCE_FILE"
-    ;;
-  github)
-    info "Running GitHub adapter with label=$SOURCE_LABEL..."
-    node "$SCRIPT_DIR/adapters/github.js" "$SOURCE_LABEL"
-    ;;
-  linear)
-    info "Running Linear adapter..."
-    node "$SCRIPT_DIR/adapters/linear.js" "$SOURCE_LABEL"
-    ;;
-  *)
-    err "Unknown adapter: $ADAPTER"
-    exit 1
-    ;;
-esac
+ADAPTER_SCRIPT="$SCRIPT_DIR/adapters/${ADAPTER}.js"
+
+if [ ! -f "$ADAPTER_SCRIPT" ]; then
+  err "No adapter found for source.adapter: $ADAPTER"
+  err "Expected: $ADAPTER_SCRIPT"
+  err "Available: $(ls "$SCRIPT_DIR/adapters/"*.js 2>/dev/null | xargs -I{} basename {} .js | tr '\n' ', ')"
+  exit 1
+fi
+
+# Each adapter reads its own config section + env vars.
+# The orchestrator only passes provider-specific parameters.
+run_adapter() {
+  case "$ADAPTER" in
+    markdown)
+      info "Running markdown adapter on $SOURCE_FILE..."
+      node "$ADAPTER_SCRIPT" "$ROOT_DIR/$SOURCE_FILE"
+      ;;
+    github)
+      # gh CLI handles auth — verify it's logged in
+      if ! command -v gh &>/dev/null; then
+        err "gh CLI not installed. Install: https://cli.github.com"
+        exit 1
+      fi
+      gh auth status >/dev/null 2>&1 || {
+        err "gh is not authenticated. Run: gh auth login"
+        exit 1
+      }
+      info "Running GitHub adapter (label=$SOURCE_LABEL, state=$SOURCE_STATE)..."
+      node "$ADAPTER_SCRIPT" "$SOURCE_LABEL"
+      ;;
+    linear)
+      # LINEAR_API_KEY from .env
+      if [ -z "${LINEAR_API_KEY:-}" ]; then
+        err "LINEAR_API_KEY not set. Add it to .env (see .env.example)"
+        exit 1
+      fi
+      info "Running Linear adapter (team=$SOURCE_TEAM)..."
+      node "$ADAPTER_SCRIPT" "$SOURCE_TEAM"
+      ;;
+    *)
+      # Future adapters: try generic invocation
+      info "Running $ADAPTER adapter..."
+      node "$ADAPTER_SCRIPT" 2>&1 || {
+        err "Adapter $ADAPTER failed"
+        exit 1
+      }
+      ;;
+  esac
+}
+
+run_adapter
 
 if [ ! -f "$BACKLOG_FILE" ]; then
   err "Adapter produced no output: $BACKLOG_FILE"

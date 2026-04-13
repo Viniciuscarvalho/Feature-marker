@@ -1,20 +1,56 @@
-# orchestrator/config.yml
+# orchestrator — Backlog Source Configuration
+#
+# This file contains provider parameters but NOT API keys.
+# Keys are loaded from .env at runtime.
+# This file defines WHICH provider and HOW to fetch.
 
 source:
-  adapter: markdown          # markdown | github | linear
-  label: feature-marker      # for github/linear
-  file: features.md          # for markdown adapter
+  # Active adapter to run before starting the loop.
+  # One of: markdown | github | linear
+  adapter: markdown
 
-autonomy: checkpoint         # supervised | checkpoint | full_auto
+  # File to write adapter output. The orchestrator reads this.
+  output: orchestration-backlog.json
 
-# Future — not implemented in this plan
+  # Provider-specific parameters.
+  # Only the active adapter's section is used.
+  # All others are ignored at runtime.
+
+  markdown:
+    file: features.md          # Relative to project root
+    # That's all — no auth needed
+
+  github:
+    label: feature-marker      # Filter issues by label (optional)
+    state: open                # open | closed | all
+    # Auth: uses gh CLI auth, no env vars needed
+    # Run: gh auth login
+
+  linear:
+    team: ENG                  # Filter issues by team
+    # Auth: LINEAR_API_KEY from .env
+
+  jira:
+    project: PRJ               # Jira project key
+    jql: status = "To Do"      # JQL filter (optional)
+    # Auth: JIRA_URL, JIRA_EMAIL, JIRA_TOKEN from .env
+
+  notion:
+    database_id: abc123        # Notion database ID
+    filter_property: Status
+    filter_value: To Do
+    # Auth: NOTION_TOKEN from .env
+
+autonomy: checkpoint           # supervised | checkpoint | full_auto
+
+# Future — not implemented in this plan (ADR-003)
 preprocessing:
   enabled: false
   model: null
   limits: {}
 
 execution:
-  max_concurrent: 1          # parallel worktrees (v1)
+  max_concurrent: 1            # parallel worktrees (v1)
   skip_done: true
   skip_blocked: true
   base_branch: main
@@ -26,18 +62,17 @@ worktrees:
 
 # Memory (per ADR-002)
 memory:
-  carry_forward_from: global-context.md    # Layer 1: propagate changes between features
-  error_pattern_window: 5                  # Layer 2: keep last N errors
-  env_refresh: true                        # Layer 3: re-run env discovery
+  carry_forward_from: global-context.md
+  error_pattern_window: 5
+  env_refresh: true
 
 safety:
   breaking_change_pause: true
   schema_migration_review: true
   max_file_changes: 50
 
-# PR creation
 pr_creation:
-  strategy: draft            # draft | ready | none
+  strategy: draft              # draft | ready | none
   auto_assign: true
 
 notifications:

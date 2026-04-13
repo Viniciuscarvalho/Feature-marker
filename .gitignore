@@ -32,6 +32,9 @@ npm/dist/
 # Homebrew tap (separate repository)
 homebrew-tap/
 
+# Secrets
+.env
+
 # Orchestrator generated artifacts
 orchestration-backlog.json
 .worktrees/
