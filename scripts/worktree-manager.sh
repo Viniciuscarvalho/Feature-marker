@@ -2,13 +2,14 @@
 # scripts/worktree-manager.sh
 # Worktree lifecycle management for the orchestrator.
 # Can be sourced as a library or invoked directly.
+# STATE_DIR and WORKTREE_ROOT can be set before sourcing.
 
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_BRANCH="${BASE_BRANCH:-main}"
-WORKTREE_ROOT="$ROOT_DIR/.worktrees"
-STATE_DIR="$ROOT_DIR/state"
+WORKTREE_ROOT="${WORKTREE_ROOT:-$ROOT_DIR/.worktrees}"
+STATE_DIR="${STATE_DIR:-$ROOT_DIR/.orchestrator/state}"
 
 mkdir -p "$WORKTREE_ROOT" "$STATE_DIR"
 
@@ -47,8 +48,8 @@ remove_worktree() {
   local wt_path="$WORKTREE_ROOT/$feat_id"
 
   if [ -d "$wt_path" ]; then
-    git worktree remove "$wt_path" --force 2>/dev/null || true
-    git branch -D "feat/$feat_id" 2>/dev/null || true
+    git worktree remove "$wt_path" --force >/dev/null 2>&1 || true
+    git branch -D "feat/$feat_id" >/dev/null 2>&1 || true
   fi
 }
 
