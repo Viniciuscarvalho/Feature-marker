@@ -184,19 +184,30 @@ autonomy: checkpoint         # supervised | checkpoint | full_auto
 
 execution:
   base_branch: main
-  pr_strategy: draft         # draft | ready | none
   skip_done: true
   skip_blocked: true
 
-features:
-  propagate_context: true    # cross-feature context carry-forward
-  track_errors: true         # error pattern detection
-  max_retries: 2             # retry failed features
+worktrees:
+  base_path: .worktrees      # where worktrees are created
+  branch_prefix: feat        # branches named feat/<id>
+  auto_cleanup: true         # remove worktrees after done/pr-created
+
+memory:
+  carry_forward_from: global-context.md  # cross-feature context file
+  error_pattern_window: 5                # keep last N error patterns
+  env_refresh: true                      # re-run env discovery between features
 
 safety:
-  breaking_change_pause: true   # pause on breaking changes
-  schema_change_warning: true   # warn on schema changes
+  breaking_change_pause: true    # pause on breaking changes
+  schema_migration_review: true  # pause on schema changes
+  max_file_changes: 50           # pause if feature touches >50 files
+
+pr_creation:
+  strategy: draft            # draft | ready | none
+  auto_assign: true
 ```
+
+Inline priority is also supported in feature titles: `## [FEAT] feat-001: My Feature [p:high]`
 
 ### How It Works
 
