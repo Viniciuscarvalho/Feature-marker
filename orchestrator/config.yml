@@ -7,30 +7,43 @@ source:
 
 autonomy: checkpoint         # supervised | checkpoint | full_auto
 
+# Future — not implemented in this plan
+preprocessing:
+  enabled: false
+  model: null
+  limits: {}
+
 execution:
   max_concurrent: 1          # parallel worktrees (v1)
-  skip_done: true            # skip items with status=done
-  skip_blocked: true         # verify blocked features
-  base_branch: main          # branch to create worktrees from
-  pr_strategy: draft         # draft | ready | none
+  skip_done: true
+  skip_blocked: true
+  base_branch: main
 
-features:
-  propagate_context: true    # propagate context from completed features
-  track_errors: true         # log error patterns for future avoidance
-  resume_on_restart: true    # resume from last checkpoint on restart
-  max_retries: 2             # retry failed features up to N times
+worktrees:
+  base_path: .worktrees
+  branch_prefix: feat
+  auto_cleanup: true
 
-feedback:
-  update_manifest: true      # re-run environment discovery between features
-  collect_patterns: true     # collect error patterns for cross-feature awareness
-  global_context: true       # append rich context after each feature
+# Memory (per ADR-002)
+memory:
+  carry_forward_from: global-context.md    # Layer 1: propagate changes between features
+  error_pattern_window: 5                  # Layer 2: keep last N errors
+  env_refresh: true                        # Layer 3: re-run env discovery
 
 safety:
-  breaking_change_pause: true   # pause on breaking changes regardless of autonomy
-  schema_change_warning: true   # warn when schema changes detected
-  lint_before_commit: true      # verify repo at each step
+  breaking_change_pause: true
+  schema_migration_review: true
+  max_file_changes: 50
 
+# PR creation
 pr_creation:
-  strategy: draft            # draft | ready
-  auto_assign: true          # auto-assign reviewers
-  auto_merge: false          # auto-merge after CI (full_auto only)
+  strategy: draft            # draft | ready | none
+  auto_assign: true
+
+notifications:
+  on_complete: true
+  on_failure: true
+
+metrics:
+  enabled: true
+  collect_timing: true

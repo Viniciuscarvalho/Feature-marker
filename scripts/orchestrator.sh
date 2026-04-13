@@ -14,9 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 CONFIG_DIR="$ROOT_DIR/.orchestrator"
 STATE_DIR="$CONFIG_DIR/state"
-WORKTREE_ROOT="$ROOT_DIR/.worktrees"
 RESULTS_DIR="$CONFIG_DIR/results"
-export ROOT_DIR CONFIG_DIR STATE_DIR WORKTREE_ROOT
 
 # ── load config ──────────────────────────────────────────────────
 
@@ -31,13 +29,22 @@ AUTONOMY="${CFG_AUTONOMY:-checkpoint}"
 PROPAGATE_CONTEXT="${CFG_FEATURES_PROPAGATE_CONTEXT:-true}"
 TRACK_ERRORS="${CFG_FEATURES_TRACK_ERRORS:-true}"
 MAX_RETRIES="${CFG_FEATURES_MAX_RETRIES:-2}"
-PR_STRATEGY="${CFG_EXECUTION_PR_STRATEGY:-draft}"
-UPDATE_MANIFEST="${CFG_FEEDBACK_UPDATE_MANIFEST:-true}"
+PR_STRATEGY="${CFG_PR_CREATION_STRATEGY:-draft}"
+UPDATE_MANIFEST="${CFG_MEMORY_ENV_REFRESH:-true}"
 COLLECT_PATTERNS="${CFG_FEEDBACK_COLLECT_PATTERNS:-true}"
 GLOBAL_CONTEXT_ENABLED="${CFG_FEEDBACK_GLOBAL_CONTEXT:-true}"
 BREAKING_PAUSE="${CFG_SAFETY_BREAKING_CHANGE_PAUSE:-true}"
-SCHEMA_WARNING="${CFG_SAFETY_SCHEMA_CHANGE_WARNING:-true}"
-export BASE_BRANCH ADAPTER AUTONOMY
+SCHEMA_WARNING="${CFG_SAFETY_SCHEMA_MIGRATION_REVIEW:-true}"
+MAX_FILE_CHANGES="${CFG_SAFETY_MAX_FILE_CHANGES:-50}"
+ERROR_PATTERN_WINDOW="${CFG_MEMORY_ERROR_PATTERN_WINDOW:-5}"
+AUTO_CLEANUP="${CFG_WORKTREES_AUTO_CLEANUP:-true}"
+
+# Worktree config (read by worktree-manager.sh)
+WORKTREE_BASE="${CFG_WORKTREES_BASE_PATH:-.worktrees}"
+BRANCH_PREFIX="${CFG_WORKTREES_BRANCH_PREFIX:-feat}"
+WORKTREE_ROOT="$ROOT_DIR/$WORKTREE_BASE"
+export ROOT_DIR CONFIG_DIR STATE_DIR WORKTREE_ROOT
+export BASE_BRANCH ADAPTER AUTONOMY WORKTREE_BASE BRANCH_PREFIX
 
 # ── source worktree manager ─────────────────────────────────────
 
@@ -338,7 +345,21 @@ EOPRD
     " 2>/dev/null || echo "false")
 
     if [ "$HAS_SCHEMA" = "true" ] && [ "$SCHEMA_WARNING" = "true" ]; then
-      info "⚠ Schema changes detected in $FEATURE_ID — logged for next feature awareness"
+      info "⚠ Schema migration detected in $FEATURE_ID — pausing for review"
+      update_status "$FEATURE_ID" "paused" "schema-migration-review"
+      write_status
+    fi
+
+    # Check max file changes
+    FILE_COUNT=$(node -p "
+      const r = JSON.parse(require('fs').readFileSync('$RESULTS_FILE','utf-8'));
+      (r.context_generated?.files_created || []).length + (r.context_generated?.files_modified || []).length
+    " 2>/dev/null || echo "0")
+
+    if [ "$FILE_COUNT" -gt "$MAX_FILE_CHANGES" ]; then
+      info "⚠ $FEATURE_ID touched $FILE_COUNT files (limit: $MAX_FILE_CHANGES) — pausing"
+      update_status "$FEATURE_ID" "paused" "max-files-review"
+      write_status
     fi
   fi
 
@@ -408,12 +429,21 @@ EOPRD
     bash "$SCRIPT_DIR/feedback-collector.sh" "$FEATURE_ID" "$WT_PATH" "$RESULTS_FILE" context 2>/dev/null || true
   fi
 
-  # Error pattern collection
+  # Error pattern collection + window trimming
   if [ "$COLLECT_PATTERNS" = "true" ] && [ -f "$SCRIPT_DIR/feedback-collector.sh" ]; then
     bash "$SCRIPT_DIR/feedback-collector.sh" "$FEATURE_ID" "$WT_PATH" "$RESULTS_FILE" errors 2>/dev/null || true
+    # Trim to keep only last N error patterns (ADR-002 Layer 2)
+    if [ -f "$CONFIG_DIR/error-patterns.json" ]; then
+      node -e "
+        const fs = require('fs');
+        let p = JSON.parse(fs.readFileSync('$CONFIG_DIR/error-patterns.json','utf-8'));
+        if (p.length > $ERROR_PATTERN_WINDOW) p = p.slice(-$ERROR_PATTERN_WINDOW);
+        fs.writeFileSync('$CONFIG_DIR/error-patterns.json', JSON.stringify(p, null, 2));
+      " 2>/dev/null || true
+    fi
   fi
 
-  # Environment manifest refresh between features
+  # Environment manifest refresh between features (ADR-002 Layer 3)
   if [ "$UPDATE_MANIFEST" = "true" ] && [ -f "$SCRIPT_DIR/environment-discovery.sh" ]; then
     bash "$SCRIPT_DIR/environment-discovery.sh" > "$CONFIG_DIR/environment.manifest.json" 2>/dev/null || true
   fi
@@ -431,19 +461,22 @@ done
 # Step 4: Cleanup completed worktrees
 # ══════════════════════════════════════════════════════════════════
 
-CLEANED=""
-for dir in "$STATE_DIR"/*/; do
-  [ -d "$dir" ] || continue
-  fid=$(basename "$dir")
-  st=$(get_status "$fid")
-  if [ "$st" = "done" ] || [ "$st" = "pr-created" ]; then
-    cp "$STATE_DIR/$fid/logs/"* "$RESULTS_DIR/" 2>/dev/null || true
-    remove_worktree "$fid"
-    CLEANED="$CLEANED $fid"
-  fi
-done
-
-[ -n "$CLEANED" ] && git worktree prune 2>/dev/null || true && info "Cleaned:$CLEANED"
+if [ "$AUTO_CLEANUP" = "true" ]; then
+  CLEANED=""
+  for dir in "$STATE_DIR"/*/; do
+    [ -d "$dir" ] || continue
+    fid=$(basename "$dir")
+    st=$(get_status "$fid")
+    if [ "$st" = "done" ] || [ "$st" = "pr-created" ]; then
+      cp "$STATE_DIR/$fid/logs/"* "$RESULTS_DIR/" 2>/dev/null || true
+      remove_worktree "$fid"
+      CLEANED="$CLEANED $fid"
+    fi
+  done
+  [ -n "$CLEANED" ] && git worktree prune 2>/dev/null || true && info "Cleaned:$CLEANED"
+else
+  info "Auto-cleanup disabled (worktrees.auto_cleanup=false)"
+fi
 
 # ══════════════════════════════════════════════════════════════════
 # Step 5: Terminal progress + status.json

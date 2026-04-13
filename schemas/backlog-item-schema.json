@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Canonical Backlog Item",
+  "title": "Backlog Item Schema v2",
   "description": "Every backlog adapter MUST produce items conforming to this schema.",
   "type": "object",
   "required": ["id", "source_id", "source", "title", "body", "labels", "priority", "status"],
@@ -8,7 +8,7 @@
     "id": {
       "type": "string",
       "description": "Unique feature identifier (e.g. feat-001)",
-      "pattern": "^[\\w-]+$"
+      "pattern": "^[a-zA-Z]+-[0-9a-zA-Z-]+$"
     },
     "source_id": {
       "type": "string",
@@ -19,13 +19,17 @@
       "enum": ["linear", "github", "markdown"],
       "description": "Adapter that produced this item"
     },
+    "source_url": {
+      "type": ["string", "null"],
+      "description": "Reference back to origin (issue maker, UI/mention, Linear URL)"
+    },
     "title": {
       "type": "string",
       "description": "Short feature title"
     },
     "body": {
       "type": "string",
-      "description": "Full description or PRD-ready text with acceptance criteria"
+      "description": "Full description to pass to feature-marker"
     },
     "labels": {
       "type": "array",
@@ -45,7 +49,7 @@
     "dependencies": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "IDs of features this item depends on"
+      "description": "IDs of features that must complete before this one"
     },
     "metadata": {
       "type": "object",

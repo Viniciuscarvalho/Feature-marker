@@ -1,28 +1,34 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # scripts/worktree-manager.sh
-# Worktree lifecycle management for the orchestrator.
-# Can be sourced as a library or invoked directly.
-# STATE_DIR and WORKTREE_ROOT can be set before sourcing.
+# Manages git worktree lifecycle for the orchestrator.
+# Usage: source this file, then call functions directly
+#   source scripts/worktree-manager.sh
+#   create_worktree feat-001
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BASE_BRANCH="${BASE_BRANCH:-main}"
-WORKTREE_ROOT="${WORKTREE_ROOT:-$ROOT_DIR/.worktrees}"
-STATE_DIR="${STATE_DIR:-$ROOT_DIR/.orchestrator/state}"
+WORKTREE_BASE="${WORKTREE_BASE:-$PWD/.worktrees}"
+BRANCH_PREFIX="${BRANCH_PREFIX:-feat}"
+STATE_DIR="${STATE_DIR:-$PWD/.orchestrator/state}"
 
-mkdir -p "$WORKTREE_ROOT" "$STATE_DIR"
+mkdir -p "$WORKTREE_BASE"
 
 create_worktree() {
   local feat_id="$1"
-  local wt_path="$WORKTREE_ROOT/$feat_id"
+  local base="${2:-${BASE_BRANCH:-main}}"
+  local wt_path="$WORKTREE_BASE/$feat_id"
+  local branch="$BRANCH_PREFIX/$feat_id"
 
   if [ -d "$wt_path" ]; then
-    git worktree remove "$wt_path" --force >/dev/null 2>&1 || true
-    git branch -D "feat/$feat_id" >/dev/null 2>&1 || true
+    # Worktree exists — remove and recreate
+    if git worktree list | grep -q "$wt_path"; then
+      git worktree remove "$wt_path" --force >/dev/null 2>&1 || true
+    fi
+    git branch -D "$branch" >/dev/null 2>&1 || true
+    rm -rf "$wt_path" 2>/dev/null || true
   fi
 
-  git worktree add "$wt_path" -b "feat/$feat_id" "$BASE_BRANCH" >&2
+  git worktree add "$wt_path" -b "$branch" "$base" >&2
 
   # Persist state
   mkdir -p "$STATE_DIR/$feat_id/logs"
@@ -33,7 +39,7 @@ create_worktree() {
   "feature_id": "$feat_id",
   "status": "created",
   "worktree": "$wt_path",
-  "branch": "feat/$feat_id",
+  "branch": "$branch",
   "created_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "updated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "phase": "pending"
@@ -45,11 +51,13 @@ EOJSON
 
 remove_worktree() {
   local feat_id="$1"
-  local wt_path="$WORKTREE_ROOT/$feat_id"
+  local wt_path="$WORKTREE_BASE/$feat_id"
 
   if [ -d "$wt_path" ]; then
+    local branch
+    branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null) || branch="$BRANCH_PREFIX/$feat_id"
     git worktree remove "$wt_path" --force >/dev/null 2>&1 || true
-    git branch -D "feat/$feat_id" >/dev/null 2>&1 || true
+    [ -n "$branch" ] && git branch -D "$branch" >/dev/null 2>&1 || true
   fi
 }
 
@@ -60,7 +68,7 @@ update_status() {
   local status_file="$STATE_DIR/$feat_id/status.json"
 
   if [ ! -f "$status_file" ]; then
-    echo "✗ No state found for $feat_id" >&2
+    echo "\u2717 No state found for $feat_id" >&2
     return 1
   fi
 
@@ -93,10 +101,25 @@ get_status() {
   "
 }
 
+rebase_pending() {
+  local base="${1:-${BASE_BRANCH:-main}}"
+
+  for wt in "$WORKTREE_BASE"/*/; do
+    [ -d "$wt" ] || continue
+    local fid
+    fid=$(basename "$wt")
+
+    echo "  Rebasing $fid against $base..."
+    (cd "$wt" && git fetch origin "$base" >/dev/null 2>&1 && \
+      git rebase "origin/$base" >/dev/null 2>&1) || \
+      echo "  \u26a0 Rebase conflict in $fid — skipping, will resolve at PR time"
+  done
+}
+
 cleanup() {
   local completed_branches=""
 
-  for wt in "$WORKTREE_ROOT"/*/; do
+  for wt in "$WORKTREE_BASE"/*/; do
     [ -d "$wt" ] || continue
     local fid
     fid=$(basename "$wt")
@@ -112,8 +135,20 @@ cleanup() {
   echo "Cleaned:$completed_branches"
 }
 
+clean_all() {
+  for wt in "$WORKTREE_BASE"/*/; do
+    [ -d "$wt" ] || continue
+    local fid
+    fid=$(basename "$wt")
+    remove_worktree "$fid"
+  done
+  rm -rf "$WORKTREE_BASE"
+  git worktree prune 2>/dev/null || true
+  echo "\u2713 All worktrees cleaned"
+}
+
 list_worktrees() {
-  git worktree list --porcelain | grep "worktree" | grep "$WORKTREE_ROOT" 2>/dev/null | sed 's/worktree //' || true
+  git worktree list --porcelain | grep "worktree" | grep "$WORKTREE_BASE" 2>/dev/null | sed 's/worktree //' || true
 }
 
 # Only dispatch if executed directly (not sourced)

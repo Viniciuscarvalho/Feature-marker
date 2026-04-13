@@ -12,11 +12,11 @@ const TEAM = process.argv[2] || 'ENG';
 const OUTPUT = 'orchestration-backlog.json';
 
 if (!API_KEY) {
-  console.error('\u2717 LINEAR_API_KEY env var is required');
+  console.error('\u2717 LINEAR_API_KEY env var is not set');
   process.exit(1);
 }
 
-const PRIO = { 0: 'none', 1: 'high', 2: 'high', 3: 'medium', 4: 'low' };
+const PRIO_MAP = { 0: 'none', 1: 'high', 2: 'high', 3: 'medium', 4: 'low' };
 
 const STATE_MAP = {
   'started': 'in-progress',
@@ -71,17 +71,17 @@ const req = https.request(options, (res) => {
         id: issue.identifier,
         source_id: issue.identifier,
         source: 'linear',
+        source_url: issue.url || null,
         title: issue.title,
         body: issue.description || '',
         labels: issue.labels.nodes.map(l => l.name),
-        priority: PRIO[issue.priority] || 'none',
+        priority: PRIO_MAP[issue.priority] || 'none',
         status: STATE_MAP[issue.state.type] || 'backlog',
         dependencies: [],
         metadata: { url: issue.url }
       }));
 
-      const output = JSON.stringify(items, null, 2);
-      fs.writeFileSync(OUTPUT, output);
+      fs.writeFileSync(OUTPUT, JSON.stringify(items, null, 2));
       console.log(`\u2713 Fetched ${items.length} issues from Linear team "${TEAM}" \u2192 ${OUTPUT}`);
     } catch (e) {
       console.error('\u2717 Failed to parse Linear response:', e.message);
@@ -91,7 +91,11 @@ const req = https.request(options, (res) => {
 });
 
 req.on('error', (e) => {
-  console.error('\u2717 Linear API request failed:', e.message);
+  if (e.message.includes('ECONNREFUSED') || e.message.includes('getaddrinfo')) {
+    console.error('\u2717 Cannot reach Linear API. Check your network connection.');
+  } else {
+    console.error('\u2717 Linear API request failed:', e.message);
+  }
   process.exit(1);
 });
 
