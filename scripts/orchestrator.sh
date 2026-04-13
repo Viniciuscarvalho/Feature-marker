@@ -1,7 +1,7 @@
 #!/bin/bash
 # scripts/orchestrator.sh
 # Main loop: read backlog, create worktrees, run feature-marker
-# Phase 3 — priority sorting, cross-feature context, pipeline invocation
+# Phase 4 — PR creation, retry logic, cleanup, full summary
 
 set -euo pipefail
 
@@ -24,6 +24,8 @@ SOURCE_LABEL="${CFG_SOURCE_LABEL:-feature-marker}"
 AUTONOMY="${CFG_AUTONOMY:-checkpoint}"
 PROPAGATE_CONTEXT="${CFG_FEATURES_PROPAGATE_CONTEXT:-true}"
 TRACK_ERRORS="${CFG_FEATURES_TRACK_ERRORS:-true}"
+MAX_RETRIES="${CFG_FEATURES_MAX_RETRIES:-2}"
+PR_STRATEGY="${CFG_EXECUTION_PR_STRATEGY:-draft}"
 export BASE_BRANCH STATE_DIR WORKTREE_ROOT ADAPTER AUTONOMY
 
 # ── source worktree manager ─────────────────────────────────────
@@ -48,6 +50,7 @@ BACKLOG_FILE="$ROOT_DIR/orchestration-backlog.json"
 
 info "Config loaded: adapter=$ADAPTER, autonomy=$AUTONOMY, base=$BASE_BRANCH"
 info "State: $STATE_DIR | Results: $RESULTS_DIR"
+info "PR strategy: $PR_STRATEGY | Max retries: $MAX_RETRIES"
 
 # ══════════════════════════════════════════════════════════════════
 # Step 1: Load backlog
@@ -137,8 +140,10 @@ echo "$ITEMS" | node -e "
 # Step 3: Main processing loop
 # ══════════════════════════════════════════════════════════════════
 
+BACKLOG_PROCESSED=0
 SUCCEEDED=0
 FAILED=0
+RETRIED=0
 INDEX=0
 
 echo "$ITEMS" | node -e "
@@ -217,14 +222,19 @@ $(cat "$CONFIG_DIR/cross-context.md" 2>/dev/null || echo "No prior context avail
 EOCTX
 
   info "Created context at $CONTEXT_FILE"
-
-  # Copy context into worktree for feature-marker to consume
   cp "$CONTEXT_FILE" "$WT_PATH/.orchestrator-context.md"
 
   # ── 3f: Feature Marker — pipeline invocation ──
   update_status "$FEATURE_ID" "in-progress" "implementation"
   LOG_FILE="$STATE_DIR/$FEATURE_ID/logs/run-$(date -u +%Y%m%d-%H%M%S).log"
+  RESULTS_FILE="$STATE_DIR/$FEATURE_ID/results.json"
   EXIT_CODE=0
+
+  # Set orchestrator env vars for feature-marker
+  export ORCHESTRATOR_MODE=true
+  export FEATURE_ID
+  export CONTEXT_FILE
+  export RESULTS_FILE
 
   # Find the SKILL.md if available
   SKILL_PATH=""
@@ -233,17 +243,24 @@ EOCTX
     info "Found feature-marker SKILL at $SKILL_PATH"
   fi
 
+  START_TIME=$(date +%s)
+
   if [ "$AUTONOMY" = "full_auto" ]; then
     info "Autonomy=full_auto — invoking feature-marker pipeline..."
 
-    # The actual Claude Code invocation
+    # The actual Claude Code invocation:
     # (cd "$WT_PATH" && claude --skill feature-marker "prd-$FEATURE_ID") 2>&1 | tee "$LOG_FILE" || EXIT_CODE=$?
     #
     # Placeholder: simulate pipeline execution
-    echo "▶ Running feature-marker on $FEATURE_ID..." | tee "$LOG_FILE"
-    echo "  Worktree: $WT_PATH" >> "$LOG_FILE"
-    echo "  Started: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$LOG_FILE"
-    echo "  [simulated] Pipeline would execute here" >> "$LOG_FILE"
+    {
+      echo "▶ Running feature-marker on $FEATURE_ID..."
+      echo "  Worktree: $WT_PATH"
+      echo "  Started: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      echo "  ORCHESTRATOR_MODE=$ORCHESTRATOR_MODE"
+      echo "  CONTEXT_FILE=$CONTEXT_FILE"
+      echo "  RESULTS_FILE=$RESULTS_FILE"
+      echo "  [simulated] Pipeline would execute here"
+    } | tee "$LOG_FILE"
 
   elif [ "$AUTONOMY" = "checkpoint" ]; then
     info "Autonomy=checkpoint — worktree ready for review before pipeline"
@@ -254,34 +271,126 @@ EOCTX
     echo "supervised: manual execution required for $FEATURE_ID" > "$LOG_FILE"
   fi
 
+  END_TIME=$(date +%s)
+  DURATION=$((END_TIME - START_TIME))
+
   # ── 3g: Collect results ──
   if [ -f "$LOG_FILE" ]; then
     cp "$LOG_FILE" "$RESULTS_DIR/${FEATURE_ID}_run.log"
     info "Results saved to $RESULTS_DIR/${FEATURE_ID}_run.log"
   fi
 
-  # ── 3h: Update final status ──
+  # Write machine-readable results if pipeline didn't write one
+  if [ ! -f "$RESULTS_FILE" ]; then
+    node -e "
+      const status = $EXIT_CODE === 0 ? 'completed' : 'failed';
+      const results = {
+        feature_id: '$FEATURE_ID',
+        status,
+        pr_url: null,
+        commits: 0,
+        tests_passed: $EXIT_CODE === 0,
+        artifacts: [],
+        duration_seconds: $DURATION,
+        error: $EXIT_CODE === 0 ? null : 'exit code $EXIT_CODE'
+      };
+      require('fs').writeFileSync('$RESULTS_FILE', JSON.stringify(results, null, 2));
+    "
+  fi
+
+  # ── Step 4: Handle result — PR creation ──
+  BACKLOG_PROCESSED=$((BACKLOG_PROCESSED + 1))
+
   if [ "$EXIT_CODE" -eq 0 ]; then
     if [ "$AUTONOMY" = "full_auto" ]; then
-      update_status "$FEATURE_ID" "done" "complete"
+
+      # Create PR based on strategy
+      if [ "$PR_STRATEGY" != "none" ]; then
+        PR_URL=""
+
+        if command -v gh &>/dev/null; then
+          info "Creating PR for $FEATURE_ID..."
+
+          (
+            cd "$WT_PATH"
+            git add -A 2>/dev/null || true
+            git commit -m "feat: $FEATURE_TITLE
+
+Automated by feature-marker orchestrator" --allow-empty 2>/dev/null || true
+            git push origin "feat/$FEATURE_ID" 2>&1 || true
+          ) >> "$LOG_FILE" 2>&1
+
+          PR_CMD="gh pr create --base $BASE_BRANCH --head feat/$FEATURE_ID"
+          PR_CMD="$PR_CMD --title \"feature-marker:automated: $FEATURE_ID\""
+          PR_CMD="$PR_CMD --body \"Automated by feature-marker orchestrator.\n\n- Feature: $FEATURE_TITLE\n- Priority: $FEATURE_PRIORITY\n- Labels: $FEATURE_LABELS\""
+
+          if [ "$PR_STRATEGY" = "draft" ]; then
+            PR_CMD="$PR_CMD --draft"
+          fi
+
+          PR_URL=$(eval "$PR_CMD" 2>/dev/null) || true
+
+          if [ -n "$PR_URL" ]; then
+            update_status "$FEATURE_ID" "pr-created" "complete"
+            info "✓ PR created: $PR_URL"
+
+            # Update results with PR URL
+            node -e "
+              const fs = require('fs');
+              const r = JSON.parse(fs.readFileSync('$RESULTS_FILE', 'utf-8'));
+              r.pr_url = '$PR_URL';
+              fs.writeFileSync('$RESULTS_FILE', JSON.stringify(r, null, 2));
+            "
+          else
+            update_status "$FEATURE_ID" "done" "complete"
+            info "✓ $FEATURE_ID done (PR creation skipped — gh unavailable or failed)"
+          fi
+        else
+          update_status "$FEATURE_ID" "done" "complete"
+          info "✓ $FEATURE_ID done (no gh CLI — skipping PR)"
+        fi
+      else
+        update_status "$FEATURE_ID" "done" "complete"
+        info "✓ $FEATURE_ID done (pr_strategy=none)"
+      fi
+
       SUCCEEDED=$((SUCCEEDED + 1))
       info "✓ $FEATURE_ID completed successfully"
+
     else
+      # checkpoint or supervised — awaiting manual pipeline
       update_status "$FEATURE_ID" "ready" "awaiting-pipeline"
       info "⏸ $FEATURE_ID ready for pipeline execution"
     fi
-  else
-    update_status "$FEATURE_ID" "failed" "pipeline-error"
-    FAILED=$((FAILED + 1))
-    err "$FEATURE_ID failed (exit code: $EXIT_CODE)"
 
-    # Track error if enabled
-    if [ "$TRACK_ERRORS" = "true" ]; then
-      echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) | $FEATURE_ID | exit=$EXIT_CODE" >> "$CONFIG_DIR/error-log.txt"
+  else
+    # ── Retry on failure ──
+    RETRY_COUNT=0
+    if [ -f "$STATE_DIR/$FEATURE_ID/retry-count" ]; then
+      RETRY_COUNT=$(cat "$STATE_DIR/$FEATURE_ID/retry-count")
+    fi
+
+    if [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; then
+      RETRY_COUNT=$((RETRY_COUNT + 1))
+      echo "$RETRY_COUNT" > "$STATE_DIR/$FEATURE_ID/retry-count"
+      update_status "$FEATURE_ID" "retrying" "retry-$RETRY_COUNT"
+      RETRIED=$((RETRIED + 1))
+      info "⟳ $FEATURE_ID failed — retrying ($RETRY_COUNT/$MAX_RETRIES)"
+
+      # Log retry attempt
+      echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) | $FEATURE_ID | retry=$RETRY_COUNT/$MAX_RETRIES | exit=$EXIT_CODE" >> "$CONFIG_DIR/error-log.txt"
+    else
+      update_status "$FEATURE_ID" "failed" "pipeline-error"
+      FAILED=$((FAILED + 1))
+      err "$FEATURE_ID failed after $MAX_RETRIES attempts"
+
+      if [ "$TRACK_ERRORS" = "true" ]; then
+        echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) | $FEATURE_ID | FINAL_FAILURE | exit=$EXIT_CODE" >> "$CONFIG_DIR/error-log.txt"
+      fi
     fi
   fi
 
-  # ── 3i: Propagate cross-feature context ──
+  # ── Propagate cross-feature context ──
   if [ "$PROPAGATE_CONTEXT" = "true" ]; then
     cat >> "$CONFIG_DIR/cross-context.md" <<EOXCTX
 
@@ -299,7 +408,31 @@ EOXCTX
 done
 
 # ══════════════════════════════════════════════════════════════════
-# Step 4: Summary
+# Step 5: Cleanup worktrees based on policy
+# ══════════════════════════════════════════════════════════════════
+
+CLEANED=""
+for dir in "$STATE_DIR"/*/; do
+  [ -d "$dir" ] || continue
+  fid=$(basename "$dir")
+  st=$(get_status "$fid")
+  if [ "$st" = "done" ] || [ "$st" = "pr-created" ]; then
+    # Move any remaining logs to results
+    if [ -f "$STATE_DIR/$fid/logs" ]; then
+      cp "$STATE_DIR/$fid/logs/"* "$RESULTS_DIR/" 2>/dev/null || true
+    fi
+    remove_worktree "$fid"
+    CLEANED="$CLEANED $fid"
+  fi
+done
+
+if [ -n "$CLEANED" ]; then
+  git worktree prune 2>/dev/null || true
+  info "Cleaned worktrees:$CLEANED"
+fi
+
+# ══════════════════════════════════════════════════════════════════
+# Step 6: Summary
 # ══════════════════════════════════════════════════════════════════
 
 banner "Orchestrator Summary"
@@ -308,6 +441,7 @@ banner "Orchestrator Summary"
 DONE_COUNT=0
 READY_FINAL=0
 FAILED_COUNT=0
+PR_COUNT=0
 
 for dir in "$STATE_DIR"/*/; do
   [ -d "$dir" ] || continue
@@ -315,14 +449,15 @@ for dir in "$STATE_DIR"/*/; do
   if [ -f "$dir/status.json" ]; then
     st=$(get_status "$fid")
     case "$st" in
-      done|pr-created) DONE_COUNT=$((DONE_COUNT + 1)) ;;
-      ready)           READY_FINAL=$((READY_FINAL + 1)) ;;
-      failed)          FAILED_COUNT=$((FAILED_COUNT + 1)) ;;
+      done)       DONE_COUNT=$((DONE_COUNT + 1)) ;;
+      pr-created) PR_COUNT=$((PR_COUNT + 1)) ;;
+      ready)      READY_FINAL=$((READY_FINAL + 1)) ;;
+      failed)     FAILED_COUNT=$((FAILED_COUNT + 1)) ;;
     esac
   fi
 done
 
-info "Results: done=$DONE_COUNT, ready=$READY_FINAL, failed=$FAILED_COUNT"
+info "Results: done=$DONE_COUNT, pr=$PR_COUNT, ready=$READY_FINAL, failed=$FAILED_COUNT"
 echo ""
 
 log "Per-feature status:"
@@ -331,20 +466,33 @@ for dir in "$STATE_DIR"/*/; do
   fid=$(basename "$dir")
   if [ -f "$dir/status.json" ]; then
     status=$(node -p "const s=JSON.parse(require('fs').readFileSync('$dir/status.json','utf-8'));s.status+' ('+s.phase+')'")
-    info "  $fid: $status"
+
+    # Show PR URL if available
+    PR_INFO=""
+    if [ -f "$STATE_DIR/$fid/results.json" ]; then
+      PR_INFO=$(node -p "const r=JSON.parse(require('fs').readFileSync('$STATE_DIR/$fid/results.json','utf-8'));r.pr_url||''" 2>/dev/null || echo "")
+    fi
+
+    if [ -n "$PR_INFO" ]; then
+      info "  $fid: $status → $PR_INFO"
+    else
+      info "  $fid: $status"
+    fi
   fi
 done
 
-# Cross-context report
+# Log entries for future features
 if [ -f "$CONFIG_DIR/cross-context.md" ]; then
   echo ""
   info "Cross-context log: $CONFIG_DIR/cross-context.md"
 fi
 
-# Error log report
 if [ -f "$CONFIG_DIR/error-log.txt" ]; then
   echo ""
   info "Errors logged: $CONFIG_DIR/error-log.txt"
+  while IFS= read -r line; do
+    info "  $line"
+  done < "$CONFIG_DIR/error-log.txt"
 fi
 
 info "Results dir: $RESULTS_DIR"

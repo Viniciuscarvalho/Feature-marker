@@ -18,6 +18,7 @@ features:
   propagate_context: true    # propagate context from completed features
   track_errors: true         # log error patterns for future avoidance
   resume_on_restart: true    # resume from last checkpoint on restart
+  max_retries: 2             # retry failed features up to N times
 
 auto_create_prd: true        # create PR on completion
 template: ./templates/BUDGET_TEMPLATE.md

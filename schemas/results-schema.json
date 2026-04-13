@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Feature-marker Pipeline Results",
+  "description": "Machine-readable output written by feature-marker when invoked by the orchestrator.",
+  "type": "object",
+  "required": ["feature_id", "status"],
+  "properties": {
+    "feature_id": {
+      "type": "string",
+      "description": "Feature identifier matching the backlog item"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "failed"],
+      "description": "Pipeline outcome"
+    },
+    "pr_url": {
+      "type": ["string", "null"],
+      "description": "URL of the created pull request"
+    },
+    "commits": {
+      "type": "integer",
+      "description": "Number of commits created"
+    },
+    "tests_passed": {
+      "type": "boolean",
+      "description": "Whether all tests passed"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Generated artifact filenames (prd.md, techspec.md, tasks.md)"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "description": "Total pipeline execution time in seconds"
+    },
+    "error": {
+      "type": ["string", "null"],
+      "description": "Error message if status is failed"
+    }
+  },
+  "additionalProperties": false
+}
