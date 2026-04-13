@@ -304,6 +304,38 @@ ls -l ~/.claude/commands/
 
 If templates are missing, create them in `~/.claude/docs/specs/` before running feature-marker.
 
+## Orchestrator Integration
+
+When invoked by the orchestrator, feature-marker reads these env vars:
+
+- `ORCHESTRATOR_MODE=true` — Enables machine-readable output
+- `FEATURE_ID=feat-001` — Which ID to tag outputs and PR titles
+- `CONTEXT_FILE=path/to/context.md` — Path to orchestrator context file (cross-feature context)
+- `RESULTS_FILE=path/to/results.json` — Where to write structured completion results
+
+### Completion Protocol
+
+On completion, feature-marker writes `$RESULTS_FILE`:
+
+```json
+{
+  "feature_id": "feat-001",
+  "status": "completed",
+  "pr_url": "https://github.com/user/repo/pull/42",
+  "commits": 3,
+  "tests_passed": true,
+  "artifacts": ["prd.md", "techspec.md", "tasks.md"],
+  "duration_seconds": 120,
+  "error": null
+}
+```
+
+All output filenames are determined by env vars set by the orchestrator. When `ORCHESTRATOR_MODE` is not set, feature-marker behaves normally with interactive output.
+
+### Context Injection
+
+When `CONTEXT_FILE` is set, feature-marker reads the file at startup and uses its contents as additional context during PRD generation and implementation planning. This enables cross-feature awareness — later features benefit from decisions made in earlier ones.
+
 ## Plan Mode Integration
 
 When the user has used Claude's built-in plan mode before invoking feature-marker, the agent automatically:

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Backlog Item Schema v2",
+  "description": "Every backlog adapter MUST produce items conforming to this schema.",
+  "type": "object",
+  "required": ["id", "source_id", "source", "title", "body", "labels", "priority", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique feature identifier (e.g. feat-001)",
+      "pattern": "^[a-zA-Z]+-[0-9a-zA-Z-]+$"
+    },
+    "source_id": {
+      "type": "string",
+      "description": "Source-qualified identifier (e.g. LIN-1234, #42, features.md#feat-1)"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["linear", "github", "markdown"],
+      "description": "Adapter that produced this item"
+    },
+    "source_url": {
+      "type": ["string", "null"],
+      "description": "Reference back to origin (issue maker, UI/mention, Linear URL)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short feature title"
+    },
+    "body": {
+      "type": "string",
+      "description": "Full description to pass to feature-marker"
+    },
+    "labels": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Classification labels"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["high", "medium", "low", "none"],
+      "description": "Priority level"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["backlog", "in-progress", "done", "blocked"],
+      "description": "Current workflow status"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "IDs of features that must complete before this one"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Adapter-specific extra data"
+    }
+  },
+  "additionalProperties": false
+}
