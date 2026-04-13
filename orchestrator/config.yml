@@ -1,0 +1,32 @@
+# orchestrator/config.yml
+
+source:
+  adapter: markdown          # markdown | github | linear
+  label: feature-marker      # for github/linear
+  file: features.md          # for markdown adapter
+
+autonomy: checkpoint         # supervised | checkpoint | full_auto
+
+execution:
+  max_concurrent: 1          # parallel worktrees (v1)
+  skip_done: true            # skip items with status=done
+  skip_blocked: true         # verify blocked features
+  base_branch: main          # branch to create worktrees from
+  pr_strategy: draft         # draft | ready | none
+
+features:
+  propagate_context: true    # propagate context from completed features
+  track_errors: true         # log error patterns for future avoidance
+  resume_on_restart: true    # resume from last checkpoint on restart
+
+auto_create_prd: true        # create PR on completion
+template: ./templates/BUDGET_TEMPLATE.md
+
+reviewers: []
+
+pr_creation:
+  strategy: draft            # draft | ready
+  auto_assign: true          # auto-assign reviewers
+
+validation:
+  lint_before_commit: true   # for sanity verification

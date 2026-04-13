@@ -1,165 +1,205 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # scripts/orchestrator.sh
-# Main orchestrator — the loop controller.
-# Reads backlog.json, creates worktrees per feature, and drives the
-# feature-marker pipeline for each item.
+# Main loop: read backlog, create worktrees, run feature-marker
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 STATE_DIR="$ROOT_DIR/state"
-WORKTREE_MGR="$SCRIPT_DIR/worktree-manager.sh"
-BACKLOG_FILE="${1:-$ROOT_DIR/orchestration-backlog.json}"
-BASE_BRANCH="${2:-main}"
+
+# ── load config ──────────────────────────────────────────────────
+
+eval "$(node "$SCRIPT_DIR/parse-config.js" "$ROOT_DIR/orchestrator/config.yml")"
+
+ADAPTER="${CFG_SOURCE_ADAPTER:-markdown}"
+SOURCE_FILE="${CFG_SOURCE_FILE:-features.md}"
+SOURCE_LABEL="${CFG_SOURCE_LABEL:-feature-marker}"
+BASE_BRANCH="${CFG_EXECUTION_BASE_BRANCH:-main}"
+SKIP_DONE="${CFG_EXECUTION_SKIP_DONE:-true}"
+SKIP_BLOCKED="${CFG_EXECUTION_SKIP_BLOCKED:-true}"
+AUTONOMY="${CFG_AUTONOMY:-checkpoint}"
+
+export BASE_BRANCH
+
+# ── source worktree manager ─────────────────────────────────────
+
+source "$SCRIPT_DIR/worktree-manager.sh"
 
 # ── helpers ──────────────────────────────────────────────────────
 
 log()    { echo "▶ [orchestrator] $*"; }
 info()   { echo "  [orchestrator] $*"; }
 err()    { echo "✗ [orchestrator] $*" >&2; }
-banner() { echo ""; echo "═══════════════════════════════════════════════════"; echo "  $*"; echo "═══════════════════════════════════════════════════"; }
+banner() {
+  echo ""
+  echo "═══════════════════════════════════════════════════"
+  echo "  $*"
+  echo "═══════════════════════════════════════════════════"
+}
 
-# ── pre-flight ───────────────────────────────────────────────────
+# ── Step 1: Run adapter to produce backlog ───────────────────────
+
+BACKLOG_FILE="$ROOT_DIR/orchestration-backlog.json"
+
+info "Config loaded: adapter=$ADAPTER, autonomy=$AUTONOMY, base=$BASE_BRANCH"
+
+case "$ADAPTER" in
+  markdown)
+    info "Running markdown adapter on $SOURCE_FILE..."
+    node "$SCRIPT_DIR/adapters/markdown.js" "$ROOT_DIR/$SOURCE_FILE"
+    ;;
+  github)
+    info "Running GitHub adapter with label=$SOURCE_LABEL..."
+    node "$SCRIPT_DIR/adapters/github.js" "$SOURCE_LABEL"
+    ;;
+  linear)
+    info "Running Linear adapter..."
+    node "$SCRIPT_DIR/adapters/linear.js" "$SOURCE_LABEL"
+    ;;
+  *)
+    err "Unknown adapter: $ADAPTER"
+    exit 1
+    ;;
+esac
 
 if [ ! -f "$BACKLOG_FILE" ]; then
-  err "Backlog file not found: $BACKLOG_FILE"
-  err "Run an adapter first:  node scripts/adapters/markdown.js features.md"
+  err "Adapter produced no output: $BACKLOG_FILE"
   exit 1
 fi
 
-mkdir -p "$STATE_DIR"
+# ── Step 2: Filter actionable items ──────────────────────────────
 
-# ── read backlog ─────────────────────────────────────────────────
-
-# Extract actionable items (status=backlog, respecting dependency order)
 ITEMS=$(node -e "
   const items = JSON.parse(require('fs').readFileSync('$BACKLOG_FILE', 'utf-8'));
-  const actionable = items.filter(i => i.status === 'backlog');
 
-  // Topological sort: items with no deps first
+  const skipDone = $SKIP_DONE;
+  const skipBlocked = $SKIP_BLOCKED;
+
   const done = new Set(items.filter(i => i.status === 'done').map(i => i.id));
   const ready = [];
   const blocked = [];
 
-  for (const item of actionable) {
+  for (const item of items) {
+    if (item.status === 'done' && skipDone) continue;
+    if (item.status === 'blocked' && skipBlocked) continue;
+    if (item.status !== 'backlog') continue;
+
     const unmet = (item.dependencies || []).filter(d => !done.has(d));
     if (unmet.length === 0) {
       ready.push(item);
     } else {
-      blocked.push({ ...item, _unmet: unmet });
+      blocked.push(item);
     }
   }
 
-  // Output ready items as JSON array
-  console.log(JSON.stringify(ready));
+  console.log(JSON.stringify({ ready, blocked, total: items.length }));
 ")
 
-ITEM_COUNT=$(echo "$ITEMS" | node -e "
-  const d = require('fs').readFileSync('/dev/stdin','utf-8');
-  console.log(JSON.parse(d).length);
+READY_COUNT=$(echo "$ITEMS" | node -e "
+  const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));
+  console.log(d.ready.length);
+")
+BLOCKED_COUNT=$(echo "$ITEMS" | node -e "
+  const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));
+  console.log(d.blocked.length);
+")
+TOTAL_COUNT=$(echo "$ITEMS" | node -e "
+  const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));
+  console.log(d.total);
 ")
 
-if [ "$ITEM_COUNT" -eq 0 ]; then
-  info "No actionable backlog items found. All done or blocked."
+banner "Orchestrator — $READY_COUNT ready, $BLOCKED_COUNT blocked, $TOTAL_COUNT total"
+
+if [ "$READY_COUNT" -eq 0 ]; then
+  info "No actionable backlog items. All done or blocked."
   exit 0
 fi
 
-banner "Orchestrator starting — $ITEM_COUNT features to process"
-
-# ── main loop ────────────────────────────────────────────────────
+# ── Step 3: Main loop ────────────────────────────────────────────
 
 INDEX=0
 echo "$ITEMS" | node -e "
-  const items = JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));
-  items.forEach(i => console.log(JSON.stringify(i)));
+  const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));
+  d.ready.forEach(i => console.log(JSON.stringify(i)));
 " | while IFS= read -r ITEM_JSON; do
   INDEX=$((INDEX + 1))
 
-  FEATURE_ID=$(echo "$ITEM_JSON" | node -e "
-    const d=require('fs').readFileSync('/dev/stdin','utf-8');
-    console.log(JSON.parse(d).id);
-  ")
-  FEATURE_TITLE=$(echo "$ITEM_JSON" | node -e "
-    const d=require('fs').readFileSync('/dev/stdin','utf-8');
-    console.log(JSON.parse(d).title);
-  ")
+  FEATURE_ID=$(echo "$ITEM_JSON" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).id")
+  FEATURE_TITLE=$(echo "$ITEM_JSON" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).title")
 
-  banner "[$INDEX/$ITEM_COUNT] $FEATURE_ID: $FEATURE_TITLE"
+  banner "[$INDEX/$READY_COUNT] $FEATURE_ID: $FEATURE_TITLE"
 
-  # ── Step 1: Check if already processed ──
-  if [ -f "$STATE_DIR/$FEATURE_ID/status.json" ]; then
-    CURRENT_STATUS=$(node -e "
-      const s=JSON.parse(require('fs').readFileSync('$STATE_DIR/$FEATURE_ID/status.json','utf-8'));
-      console.log(s.status);
-    ")
-    if [ "$CURRENT_STATUS" = "done" ] || [ "$CURRENT_STATUS" = "pr-created" ]; then
-      info "Skipping $FEATURE_ID (status: $CURRENT_STATUS)"
-      continue
-    fi
-    info "Resuming $FEATURE_ID (status: $CURRENT_STATUS)"
+  # ── 3a: Check if already processed ──
+  CURRENT=$(get_status "$FEATURE_ID")
+  if [ "$CURRENT" = "done" ] || [ "$CURRENT" = "pr-created" ]; then
+    info "Skipping $FEATURE_ID (status: $CURRENT)"
+    continue
   fi
 
-  # ── Step 2: Create worktree ──
-  info "Creating worktree for $FEATURE_ID..."
-  WORKTREE_PATH=$("$WORKTREE_MGR" create "$FEATURE_ID" "$BASE_BRANCH")
+  if [ "$CURRENT" != "none" ]; then
+    info "Resuming $FEATURE_ID (status: $CURRENT)"
+  fi
 
-  # ── Step 3: Update status to in-progress ──
-  "$WORKTREE_MGR" update "$FEATURE_ID" "in-progress" "analysis"
+  # ── 3b: Create worktree ──
+  info "Creating worktree..."
+  WT_PATH=$(create_worktree "$FEATURE_ID")
+  info "Worktree: $WT_PATH"
 
-  # ── Step 4: Write feature context for feature-marker ──
-  FEATURE_BODY=$(echo "$ITEM_JSON" | node -e "
-    const d=require('fs').readFileSync('/dev/stdin','utf-8');
-    console.log(JSON.parse(d).body);
-  ")
+  # ── 3c: Update status ──
+  update_status "$FEATURE_ID" "in-progress" "analysis"
 
-  # Create tasks directory in worktree
-  TASK_DIR="$WORKTREE_PATH/tasks/prd-$FEATURE_ID"
+  # ── 3d: Seed PRD ──
+  FEATURE_BODY=$(echo "$ITEM_JSON" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).body")
+  TASK_DIR="$WT_PATH/tasks/prd-$FEATURE_ID"
   mkdir -p "$TASK_DIR"
 
-  # Seed PRD with backlog body
-  cat > "$TASK_DIR/prd-seed.md" <<EOF
+  cat > "$TASK_DIR/prd-seed.md" <<EOPRD
 # $FEATURE_TITLE
 
 ## Source
 - ID: $FEATURE_ID
-- From: orchestrator backlog
+- From: orchestrator backlog ($ADAPTER)
 
 ## Description
 $FEATURE_BODY
-EOF
+EOPRD
 
   info "Seeded PRD at $TASK_DIR/prd-seed.md"
 
-  # ── Step 5: Invoke feature-marker pipeline ──
-  info "Invoking feature-marker pipeline in worktree..."
-  "$WORKTREE_MGR" update "$FEATURE_ID" "in-progress" "implementation"
-
-  # Log pipeline invocation
+  # ── 3e: Pipeline invocation ──
+  update_status "$FEATURE_ID" "in-progress" "implementation"
   LOG_FILE="$STATE_DIR/$FEATURE_ID/logs/run-$(date -u +%Y%m%d-%H%M%S).log"
-  info "Pipeline log: $LOG_FILE"
 
-  # The actual feature-marker invocation would go here:
-  # (cd "$WORKTREE_PATH" && claude --skill feature-marker "prd-$FEATURE_ID") 2>&1 | tee "$LOG_FILE"
-  #
-  # For now, mark as ready for manual execution
-  "$WORKTREE_MGR" update "$FEATURE_ID" "ready" "awaiting-pipeline"
-  info "Worktree ready at: $WORKTREE_PATH"
-  info "Run feature-marker manually:  cd $WORKTREE_PATH && /feature-marker prd-$FEATURE_ID"
+  if [ "$AUTONOMY" = "full_auto" ]; then
+    info "Autonomy=full_auto — would invoke feature-marker pipeline here"
+    # (cd "$WT_PATH" && claude --skill feature-marker "prd-$FEATURE_ID") 2>&1 | tee "$LOG_FILE"
+    update_status "$FEATURE_ID" "ready" "awaiting-pipeline"
+  elif [ "$AUTONOMY" = "checkpoint" ]; then
+    info "Autonomy=checkpoint — worktree ready for review before pipeline"
+    update_status "$FEATURE_ID" "ready" "awaiting-pipeline"
+  else
+    info "Autonomy=supervised — manual execution required"
+    update_status "$FEATURE_ID" "ready" "awaiting-manual"
+  fi
 
+  info "Log: $LOG_FILE"
   echo ""
 done
 
-banner "Orchestrator loop complete"
+# ── Step 4: Summary ──────────────────────────────────────────────
 
-# ── summary ──────────────────────────────────────────────────────
+banner "Orchestrator loop complete"
 
 log "Summary:"
 for dir in "$STATE_DIR"/*/; do
   [ -d "$dir" ] || continue
   fid=$(basename "$dir")
   if [ -f "$dir/status.json" ]; then
-    status=$(node -e "const s=JSON.parse(require('fs').readFileSync('$dir/status.json','utf-8'));console.log(s.status+' ('+s.phase+')');")
+    status=$(node -p "const s=JSON.parse(require('fs').readFileSync('$dir/status.json','utf-8'));s.status+' ('+s.phase+')'")
     info "  $fid: $status"
   fi
 done
+
+# ── cleanup generated backlog ────────────────────────────────────
+rm -f "$BACKLOG_FILE"
