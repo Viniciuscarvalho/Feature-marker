@@ -20,14 +20,17 @@ features:
   resume_on_restart: true    # resume from last checkpoint on restart
   max_retries: 2             # retry failed features up to N times
 
-auto_create_prd: true        # create PR on completion
-template: ./templates/BUDGET_TEMPLATE.md
+feedback:
+  update_manifest: true      # re-run environment discovery between features
+  collect_patterns: true     # collect error patterns for cross-feature awareness
+  global_context: true       # append rich context after each feature
 
-reviewers: []
+safety:
+  breaking_change_pause: true   # pause on breaking changes regardless of autonomy
+  schema_change_warning: true   # warn when schema changes detected
+  lint_before_commit: true      # verify repo at each step
 
 pr_creation:
   strategy: draft            # draft | ready
   auto_assign: true          # auto-assign reviewers
-
-validation:
-  lint_before_commit: true   # for sanity verification
+  auto_merge: false          # auto-merge after CI (full_auto only)

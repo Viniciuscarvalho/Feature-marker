@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Feature-marker Pipeline Results",
+  "title": "Feature-marker Pipeline Results (v2)",
   "description": "Machine-readable output written by feature-marker when invoked by the orchestrator.",
   "type": "object",
   "required": ["feature_id", "status"],
@@ -11,33 +11,101 @@
     },
     "status": {
       "type": "string",
-      "enum": ["completed", "failed"],
+      "enum": ["completed", "failed", "paused"],
       "description": "Pipeline outcome"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable feature title"
+    },
+    "pipeline": {
+      "type": "object",
+      "description": "Per-phase status breakdown",
+      "properties": {
+        "prd": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["completed", "failed", "skipped", "pending"] },
+            "file": { "type": "string" }
+          }
+        },
+        "techspec": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["completed", "failed", "skipped", "pending"] },
+            "file": { "type": "string" }
+          }
+        },
+        "tasks": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["completed", "failed", "skipped", "pending"] },
+            "total": { "type": "integer" },
+            "completed": { "type": "integer" }
+          }
+        },
+        "implementation": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["completed", "failed", "skipped", "pending"] },
+            "files_changed": { "type": "integer" }
+          }
+        },
+        "tests": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["completed", "failed", "skipped", "pending"] },
+            "passed": { "type": "integer" },
+            "failed": { "type": "integer" }
+          }
+        },
+        "review": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["completed", "failed", "skipped", "pending"] },
+            "pr_url": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "context_generated": {
+      "type": "object",
+      "description": "Changes produced by this feature for cross-feature awareness",
+      "properties": {
+        "files_created": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "files_modified": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "schema_changes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "new_dependencies": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "breaking_changes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
     },
     "pr_url": {
       "type": ["string", "null"],
       "description": "URL of the created pull request"
     },
-    "commits": {
-      "type": "integer",
-      "description": "Number of commits created"
-    },
-    "tests_passed": {
-      "type": "boolean",
-      "description": "Whether all tests passed"
-    },
-    "artifacts": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Generated artifact filenames (prd.md, techspec.md, tasks.md)"
-    },
     "duration_seconds": {
       "type": "number",
       "description": "Total pipeline execution time in seconds"
     },
-    "error": {
-      "type": ["string", "null"],
-      "description": "Error message if status is failed"
+    "errors": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Error messages collected during execution"
     }
   },
   "additionalProperties": false

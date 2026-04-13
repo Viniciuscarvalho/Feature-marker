@@ -35,8 +35,5 @@ homebrew-tap/
 # Orchestrator generated artifacts
 orchestration-backlog.json
 .worktrees/
-.orchestrator/state/*/
-.orchestrator/results/
-.orchestrator/cross-context.md
-.orchestrator/error-log.txt
+.orchestrator/
 state/*/
