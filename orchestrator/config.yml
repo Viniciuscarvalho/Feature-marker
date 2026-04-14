@@ -82,3 +82,13 @@ notifications:
 metrics:
   enabled: true
   collect_timing: true
+
+# Agent Discovery and Task Routing (ADR-006)
+discovery:
+  enabled: true              # Run agent discovery before each orchestration
+  scan_only_threshold: 0     # Min agents required to run split mode (0 = always if any)
+
+routing:
+  prefer_agents: true        # Prefer discovered agents over feature-marker
+  fallback: feature-marker   # "fallback" tagged tasks to feature-marker regardless of agents
+  force_review: false        # Force all "review" tagged tasks to a specific agent
