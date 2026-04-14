@@ -89,9 +89,28 @@ mkdir -p "$STATE_DIR" "$RESULTS_DIR"
 
 BACKLOG_FILE="$ROOT_DIR/$BACKLOG_OUTPUT"
 
+# Discovery & Routing (ADR-006)
+AGENT_DISCOVERY="${CFG_DISCOVERY_ENABLED:-true}"
+AGENT_THRESHOLD="${CFG_DISCOVERY_SCAN_ONLY_THRESHOLD:-0}"
+ROUTING_PREFER="${CFG_ROUTING_PREFER_AGENTS:-true}"
+ROUTING_FALLBACK="${CFG_ROUTING_FALLBACK:-feature-marker}"
+
 info "Config: adapter=$ADAPTER autonomy=$AUTONOMY base=$BASE_BRANCH"
 info "Safety: breaking_pause=$BREAKING_PAUSE schema_warning=$SCHEMA_WARNING max_files=$MAX_FILE_CHANGES"
 info "Memory: env_refresh=$UPDATE_MANIFEST error_window=$ERROR_PATTERN_WINDOW"
+info "Discovery: enabled=$AGENT_DISCOVERY prefer_agents=$ROUTING_PREFER"
+
+# ── Agent Discovery (ADR-006) ───────────────────────────────────
+
+MANIFEST_FILE="$CONFIG_DIR/agents-manifest.json"
+
+if [ "$AGENT_DISCOVERY" = "true" ] && [ -f "$SCRIPT_DIR/agent-discovery.sh" ]; then
+  bash "$SCRIPT_DIR/agent-discovery.sh" "$ROOT_DIR" "$MANIFEST_FILE"
+  AGENT_COUNT=$(node -p "JSON.parse(require('fs').readFileSync('$MANIFEST_FILE','utf-8')).agents.length" 2>/dev/null || echo "0")
+  info "Discovered $AGENT_COUNT agents"
+else
+  AGENT_COUNT=0
+fi
 
 # ── Environment manifest (initial) ──────────────────────────────
 
@@ -304,7 +323,31 @@ EOPRD
   cp "$CONTEXT_FILE" "$WT_PATH/.orchestrator-context.md"
   info "Context injected (cross-feature + error patterns)"
 
-  # ── 3e: Pipeline invocation ──
+  # ── 3e: Task routing (ADR-006) ──
+  ROUTING_FILE="$STATE_DIR/$FEATURE_ID/routing.json"
+  TASKS_FILE=$(find "$WT_PATH" -name "tasks.md" -path "*/prd-*" 2>/dev/null | head -1)
+
+  if [ "$AGENT_COUNT" -gt "$AGENT_THRESHOLD" ] && [ "$ROUTING_PREFER" = "true" ] && [ -f "$MANIFEST_FILE" ]; then
+    if [ -n "$TASKS_FILE" ] && [ -f "$TASKS_FILE" ]; then
+      bash "$SCRIPT_DIR/route-tasks.sh" "$WT_PATH" "$MANIFEST_FILE" "$TASKS_FILE" > "$ROUTING_FILE" 2>/dev/null || echo "[]" > "$ROUTING_FILE"
+      ROUTED_COUNT=$(node -p "JSON.parse(require('fs').readFileSync('$ROUTING_FILE','utf-8')).filter(r=>r.agent!=='feature-marker').length" 2>/dev/null || echo "0")
+      TOTAL_TASKS=$(node -p "JSON.parse(require('fs').readFileSync('$ROUTING_FILE','utf-8')).length" 2>/dev/null || echo "0")
+      if [ "$TOTAL_TASKS" -gt 0 ]; then
+        info "Task routing: $ROUTED_COUNT/$TOTAL_TASKS tasks matched to specialized agents"
+        node -e "
+          const r = JSON.parse(require('fs').readFileSync('$ROUTING_FILE','utf-8'));
+          r.forEach(t => console.log('    Task ' + t.task_id + ': ' + t.title.substring(0,40) + ' → ' + t.agent));
+        " 2>/dev/null || true
+      fi
+    else
+      echo "[]" > "$ROUTING_FILE"
+      info "No tasks.md yet — routing deferred to pipeline execution"
+    fi
+  else
+    echo "[]" > "$ROUTING_FILE"
+  fi
+
+  # ── 3f: Pipeline invocation ──
   update_status "$FEATURE_ID" "in-progress" "implementation"
   write_status
   LOG_FILE="$STATE_DIR/$FEATURE_ID/logs/run-$(date -u +%Y%m%d-%H%M%S).log"
