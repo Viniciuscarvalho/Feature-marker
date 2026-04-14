@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.0] - 2026-04-14
+
+### Added
+
+- **Agent Discovery and Task Routing (ADR-006)** — The orchestrator now scans `.claude/agents/` for specialized agents, builds a capability manifest, and routes individual tasks to the best-matching agent instead of running everything through feature-marker's generic pipeline
+  - `scripts/agent-discovery.sh` — Scans `.claude/agents/*.md` recursively, parses YAML frontmatter (`name`, `description`, `capabilities`, `phase`), outputs `agents-manifest.json`
+  - `scripts/route-tasks.sh` — Reads task tags from `tasks.md`, matches against agent capabilities using priority scoring (phase match > capability overlap > fallback), outputs routing JSON
+  - `schemas/agents-manifest-schema.json` — JSON Schema for the agent manifest format
+  - Routing rules: phase exact match (100 pts), capability overlap (10 pts each), phase=any bonus (5 pts), fallback to feature-marker
+  - Tag inference from task content when no explicit tags: detects language (Swift, React, Python, Rust, Go) and phase (testing, review, implementation)
+- **Provider-Agnostic Config & Secrets Management (ADR-005)** — The orchestrator never accesses external services directly; adapters handle all provider communication
+  - Per-adapter config blocks in `orchestrator/config.yml` (`source.markdown`, `source.github`, `source.linear`, `source.jira`, `source.notion`)
+  - `.env` for runtime secrets (never committed), `.env.example` as committed template
+  - Dynamic adapter resolution with per-provider auth validation (`gh auth status`, `LINEAR_API_KEY` check)
+  - 3-level YAML config parser for nested adapter sections
+- **Enhanced Safety Guardrails** — `max_file_changes` limit pauses execution when a feature touches too many files; `schema_migration_review` pauses on schema changes
+- **Error Pattern Windowing (ADR-002)** — Keeps only the last N error patterns (configurable via `memory.error_pattern_window`) to prevent unbounded growth
+- **Worktree Manager v2** — `rebase_pending()` rebases in-progress worktrees against base branch; `clean_all()` removes all worktrees; configurable `WORKTREE_BASE` and `BRANCH_PREFIX` via config
+- **Backlog Adapter Improvements** — `source_url` field on all adapters; markdown adapter supports inline priority in title `[p:high]`, file existence check, better dependency regex; GitHub adapter filters `priority/*` labels, adds `--state open`; Linear adapter promotes URL to top-level field
+
+### Changed
+
+- **Config schema expanded** — New sections: `discovery`, `routing`, `worktrees`, `memory`, `safety` (with `max_file_changes`, `schema_migration_review`), `notifications`, `metrics`, `preprocessing` (future/deferred per ADR-003)
+- **Orchestrator loop** — Agent discovery runs before main loop; task routing phase inserted between context injection and pipeline invocation; auto-cleanup respects `worktrees.auto_cleanup` config
+- **Backlog item schema v2** — Added `source_url` field, relaxed `id` pattern for broader adapter compatibility
+
 ## [7.0.0] - 2026-04-13
 
 ### Added
@@ -352,6 +378,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated from template-based to command-based file generation
 - Simplified directory structure (./tasks instead of ./docs/tasks)
 
+[7.1.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v7.0.0...v7.1.0
 [7.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v6.2.0...v7.0.0
 [6.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.3.0...v6.0.0
 [5.3.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.2.1...v5.3.0
