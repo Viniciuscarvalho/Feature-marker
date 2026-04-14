@@ -114,8 +114,6 @@ cd Feature-marker
 # Interactive mode
 /feature-marker --interactive prd-user-authentication
 
-# Launch TUI
-feature-marker-tui
 ```
 
 ---
@@ -141,22 +139,26 @@ cat orchestrator/config.yml
 
 Features can come from any source. Each adapter normalizes items into a canonical JSON schema:
 
-| Adapter | Source | Command |
-| ------- | ------ | ------- |
-| **Markdown** | Local `features.md` file | `node scripts/adapters/markdown.js features.md` |
-| **GitHub** | Issues by label via `gh` CLI | `node scripts/adapters/github.js feature-marker` |
-| **Linear** | Issues by team via GraphQL | `LINEAR_API_KEY=... node scripts/adapters/linear.js ENG` |
+| Adapter      | Source                       | Command                                                  |
+| ------------ | ---------------------------- | -------------------------------------------------------- |
+| **Markdown** | Local `features.md` file     | `node scripts/adapters/markdown.js features.md`          |
+| **GitHub**   | Issues by label via `gh` CLI | `node scripts/adapters/github.js feature-marker`         |
+| **Linear**   | Issues by team via GraphQL   | `LINEAR_API_KEY=... node scripts/adapters/linear.js ENG` |
 
 Markdown format:
 
 ```markdown
 ## [FEAT] feat-001: Add Multi-Tenant Auth
+
 Description here
+
 - labels: auth, multi-tenant
 - priority: high
 
 ## [BLOCKED] feat-002: Billing Integration
+
 Depends on: feat-001
+
 - labels: billing
 - priority: medium
 ```
@@ -165,11 +167,11 @@ Supported statuses: `FEAT` (backlog), `WIP` (in-progress), `DONE`, `BLOCKED`.
 
 ### Autonomy Levels
 
-| Level | Behavior | Best for |
-| ----- | -------- | -------- |
-| **supervised** | Pauses after each pipeline phase for explicit approval | New projects, critical features |
-| **checkpoint** (default) | Runs full pipeline, creates PR, human reviews and merges | Established projects, medium-risk |
-| **full_auto** | Runs pipeline, creates PR, enables auto-merge after CI | Low-risk features, batch operations |
+| Level                    | Behavior                                                 | Best for                            |
+| ------------------------ | -------------------------------------------------------- | ----------------------------------- |
+| **supervised**           | Pauses after each pipeline phase for explicit approval   | New projects, critical features     |
+| **checkpoint** (default) | Runs full pipeline, creates PR, human reviews and merges | Established projects, medium-risk   |
+| **full_auto**            | Runs pipeline, creates PR, enables auto-merge after CI   | Low-risk features, batch operations |
 
 ### Configuration
 
@@ -177,10 +179,10 @@ All orchestrator behavior is controlled via `orchestrator/config.yml`:
 
 ```yaml
 source:
-  adapter: markdown          # markdown | github | linear
-  file: features.md          # for markdown adapter
+  adapter: markdown # markdown | github | linear
+  file: features.md # for markdown adapter
 
-autonomy: checkpoint         # supervised | checkpoint | full_auto
+autonomy: checkpoint # supervised | checkpoint | full_auto
 
 execution:
   base_branch: main
@@ -188,22 +190,22 @@ execution:
   skip_blocked: true
 
 worktrees:
-  base_path: .worktrees      # where worktrees are created
-  branch_prefix: feat        # branches named feat/<id>
-  auto_cleanup: true         # remove worktrees after done/pr-created
+  base_path: .worktrees # where worktrees are created
+  branch_prefix: feat # branches named feat/<id>
+  auto_cleanup: true # remove worktrees after done/pr-created
 
 memory:
-  carry_forward_from: global-context.md  # cross-feature context file
-  error_pattern_window: 5                # keep last N error patterns
-  env_refresh: true                      # re-run env discovery between features
+  carry_forward_from: global-context.md # cross-feature context file
+  error_pattern_window: 5 # keep last N error patterns
+  env_refresh: true # re-run env discovery between features
 
 safety:
-  breaking_change_pause: true    # pause on breaking changes
-  schema_migration_review: true  # pause on schema changes
-  max_file_changes: 50           # pause if feature touches >50 files
+  breaking_change_pause: true # pause on breaking changes
+  schema_migration_review: true # pause on schema changes
+  max_file_changes: 50 # pause if feature touches >50 files
 
 pr_creation:
-  strategy: draft            # draft | ready | none
+  strategy: draft # draft | ready | none
   auto_assign: true
 ```
 
@@ -229,13 +231,13 @@ features.md → adapter → backlog.json → orchestrator loop:
 
 ### Benchmark
 
-| Metric | Baseline | With Orchestrator |
-| ------ | -------- | ----------------- |
-| Features per session | 1 | **5+** |
+| Metric                          | Baseline        | With Orchestrator       |
+| ------------------------------- | --------------- | ----------------------- |
+| Features per session            | 1               | **5+**                  |
 | Manual intervention per feature | ~10 touchpoints | **0** (checkpoint mode) |
-| Context-aware task completion | ~60% | **85%+** |
-| Cross-feature conflicts | Unknown | **<10%** |
-| Time from backlog to PR | Manual | **<10min per feature** |
+| Context-aware task completion   | ~60%            | **85%+**                |
+| Cross-feature conflicts         | Unknown         | **<10%**                |
+| Time from backlog to PR         | Manual          | **<10min per feature**  |
 
 ---
 
@@ -269,8 +271,6 @@ iOS/Xcode projects get additional simulator validation via XcodeBuildMCP (option
 - **Autonomy Levels** — Supervised (pause per phase), Checkpoint (human reviews PR), or Full Auto (end-to-end)
 - **Safety Guardrails** — Breaking change detection pauses execution; schema change warnings; configurable retry limits
 - **Status & Observability** — Real-time `status.json` for Kanban integration, terminal progress display, per-feature timing
-- **TUI Application** — Rich terminal interface for visual workflow management
-- **Menu Bar App** — Native Swift/SwiftUI macOS app (839 KB binary)
 
 ---
 
