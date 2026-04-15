@@ -51,6 +51,8 @@ OPT_AUTONOMY=""
 OPT_ADAPTER=""
 OPT_CONFIG="orchestrator/config.yml"
 OPT_DRY_RUN=false
+OPT_FEATURE=""
+OPT_RESUME=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -66,23 +68,31 @@ while [ $# -gt 0 ]; do
     --config)
       shift; OPT_CONFIG="$1"
       ;;
+    --feature)
+      shift; OPT_FEATURE="$1"
+      ;;
     --plan|--dry-run)
       OPT_DRY_RUN=true
+      ;;
+    --resume)
+      OPT_RESUME=true
       ;;
     --help|-h)
       echo "Usage: orchestrate.sh <command> [flags]"
       echo ""
       echo "Commands:"
-      echo "  init     Scaffold config, .env, features.md, .gitignore"
-      echo "  run      Execute the orchestration loop"
-      echo "  status   Show current feature states"
-      echo "  clean    Remove all worktrees and reset state"
+      echo "  init                 Scaffold config, .env, features.md, .gitignore"
+      echo "  run                  Execute the orchestration loop"
+      echo "  status               Show current orchestrator state"
+      echo "  clean                Remove all worktrees and reset state"
       echo ""
       echo "Flags:"
       echo "  --autonomy <level>   supervised | checkpoint | full_auto"
       echo "  --adapter <type>     markdown | github | linear"
       echo "  --config <path>      Config file (default: orchestrator/config.yml)"
+      echo "  --feature <id>       Run only the specified feature"
       echo "  --plan, --dry-run    Show plan without executing"
+      echo "  --resume             Skip completed, run pending"
       echo "  --help               Show this help"
       exit 0
       ;;
