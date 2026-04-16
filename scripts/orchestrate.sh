@@ -23,9 +23,32 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# ── Path resolution — works from Homebrew, local, or NPX ────────
+
+if [ -n "${ORCHESTRATOR_HOME:-}" ]; then
+  # Set by wrapper (Homebrew or NPX)
+  SCRIPT_DIR="$ORCHESTRATOR_HOME"
+else
+  # Running directly from repo
+  SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")" && pwd)"
+fi
+
+# Project root is always the current working directory
+PROJECT_ROOT="$(pwd)"
+
+# Verify we're in a git repo
+if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+  echo "✗ Not inside a git repository." >&2
+  echo "  Run this from the root of your project." >&2
+  exit 1
+fi
+
+# Source modules from SCRIPT_DIR (Homebrew or local)
 LIB_DIR="$SCRIPT_DIR/lib"
+TEMPLATES_DIR="$SCRIPT_DIR/templates"
+
+# Everything else operates on PROJECT_ROOT
+ROOT_DIR="$PROJECT_ROOT"
 CONFIG_DIR="$ROOT_DIR/.orchestrator"
 STATE_DIR="$CONFIG_DIR/state"
 RESULTS_DIR="$CONFIG_DIR/results"
@@ -112,17 +135,16 @@ done
 # ══════════════════════════════════════════════════════════════════
 
 sub_init() {
-  banner "Initializing orchestrator"
+  banner "Initializing orchestrator in $(basename "$PROJECT_ROOT")"
 
-  # Create directory structure
-  mkdir -p orchestrator
-  mkdir -p .orchestrator/state
-  mkdir -p .orchestrator/results
+  mkdir -p .orchestrator/{results,context,logs}
 
-  # Config template
-  if [ ! -f "orchestrator/config.yml" ]; then
-    cp "$SCRIPT_DIR/../orchestrator/config.yml" "orchestrator/config.yml" 2>/dev/null || \
-    cat > "orchestrator/config.yml" <<'EOCFG'
+  # Copy templates from wherever the orchestrator is installed
+  if [ ! -f .orchestrator/config.yaml ]; then
+    if [ -f "$TEMPLATES_DIR/config.yaml" ]; then
+      cp "$TEMPLATES_DIR/config.yaml" .orchestrator/config.yaml
+    else
+      cat > .orchestrator/config.yaml <<'EOCFG'
 source:
   adapter: markdown
   output: orchestration-backlog.json
@@ -162,26 +184,25 @@ routing:
   prefer_agents: true
   fallback: feature-marker
 EOCFG
-    info "Created orchestrator/config.yml"
+    fi
+    info "Created .orchestrator/config.yaml"
   else
-    info "orchestrator/config.yml already exists — skipping"
+    echo "  .orchestrator/config.yaml already exists"
   fi
 
   # .env.example
   if [ ! -f ".env.example" ]; then
-    cp "$SCRIPT_DIR/../.env.example" ".env.example" 2>/dev/null || \
-    cat > ".env.example" <<'EOENV'
-# Copy this file to .env and fill in your values.
-# Only set secrets for providers you use.
-
+    if [ -f "$TEMPLATES_DIR/env.example" ]; then
+      cp "$TEMPLATES_DIR/env.example" .env.example
+    else
+      cat > .env.example <<'EOENV'
 LINEAR_API_KEY=
 JIRA_URL=
 JIRA_EMAIL=
 JIRA_TOKEN=
 NOTION_TOKEN=
-
-# GitHub: uses gh CLI auth. Run: gh auth login
 EOENV
+    fi
     info "Created .env.example"
   fi
 
@@ -191,43 +212,41 @@ EOENV
     info "Created .env from template"
   fi
 
-  # Update .gitignore
-  if ! grep -q "orchestration-backlog.json" .gitignore 2>/dev/null; then
-    cat >> .gitignore <<'EOGI'
-
-# Orchestrator secrets and runtime state
-.env
-orchestration-backlog.json
-.orchestrator/
-.worktrees/
-EOGI
-    info "Updated .gitignore"
+  # Gitignore entries
+  touch .gitignore
+  if [ -f "$TEMPLATES_DIR/gitignore-entries.txt" ]; then
+    while IFS= read -r entry; do
+      [ -z "$entry" ] && continue
+      [[ "$entry" == \#* ]] && continue
+      grep -qxF "$entry" .gitignore || echo "$entry" >> .gitignore
+    done < "$TEMPLATES_DIR/gitignore-entries.txt"
+  else
+    for entry in ".env" "orchestration-backlog.json" ".orchestrator/" ".worktrees/"; do
+      grep -qxF "$entry" .gitignore || echo "$entry" >> .gitignore
+    done
   fi
+  info "Updated .gitignore"
 
-  # Feature backlog template
-  if [ ! -f "features.md" ]; then
-    cat > features.md <<'EOFEAT'
+  # Starter features.md
+  if [ ! -f features.md ]; then
+    cat > features.md <<'STARTER'
 # Feature Backlog
 
-## [FEAT] feat-001: My First Feature
-Description of the feature here.
-- labels: my-label
+## [FEAT] feat-001: Example feature
+Describe what this feature should do.
+- labels: example
 - priority: high
-
-## [FEAT] feat-002: My Second Feature
-Another feature description.
-- labels: other-label
-- priority: medium
-EOFEAT
-    info "Created features.md template"
+STARTER
+    info "Created features.md (starter)"
   fi
 
   echo ""
-  info "Next steps:"
-  echo "  1. Edit features.md with your features"
-  echo "  2. Edit orchestrator/config.yml if needed"
-  echo "  3. Add API keys to .env (if using GitHub/Linear)"
-  echo "  4. Run: ./scripts/orchestrate.sh run"
+  echo "Next steps:"
+  echo "  1. cp .env.example .env && vim .env"
+  echo "  2. vim .orchestrator/config.yaml"
+  echo "  3. vim features.md"
+  echo "  4. feature-marker-orchestrate --dry-run"
+  echo "  5. feature-marker-orchestrate"
 }
 
 # ══════════════════════════════════════════════════════════════════
@@ -242,8 +261,21 @@ sub_run() {
   source "$LIB_DIR/display.sh"
   source "$LIB_DIR/runner.sh"
 
+  # Resolve config file — check multiple locations
+  local config_file="$OPT_CONFIG"
+  if [ ! -f "$config_file" ]; then
+    # Try .orchestrator/config.yaml (new standard)
+    if [ -f ".orchestrator/config.yaml" ]; then
+      config_file=".orchestrator/config.yaml"
+    elif [ -f ".orchestrator/config.yml" ]; then
+      config_file=".orchestrator/config.yml"
+    elif [ -f "orchestrator/config.yml" ]; then
+      config_file="orchestrator/config.yml"
+    fi
+  fi
+
   # Load config + secrets + validate
-  load_config "$OPT_CONFIG"
+  load_config "$config_file"
 
   WORKTREE_ROOT="$ROOT_DIR/$WORKTREE_BASE"
   export ROOT_DIR CONFIG_DIR STATE_DIR RESULTS_DIR WORKTREE_ROOT
