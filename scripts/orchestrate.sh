@@ -1,0 +1,370 @@
+#!/bin/bash
+# orchestrate.sh — Shell Script Orchestrator CLI
+#
+# Single entry point with 4 subcommands and 6 flags.
+# Reads config, loads secrets, adapts backlog, discovers agents,
+# routes tasks, manages worktrees, runs the loop, and reports status.
+#
+# Usage:
+#   ./scripts/orchestrate.sh init                      # Scaffold project
+#   ./scripts/orchestrate.sh run                       # Execute orchestration
+#   ./scripts/orchestrate.sh run --autonomy full_auto  # Override autonomy
+#   ./scripts/orchestrate.sh run --dry-run             # Show plan, don't execute
+#   ./scripts/orchestrate.sh status                    # Show current state
+#   ./scripts/orchestrate.sh clean                     # Remove all worktrees
+#
+# Flags:
+#   --autonomy <level>   Override: supervised | checkpoint | full_auto
+#   --adapter <type>     Override: markdown | github | linear
+#   --config <path>      Config file (default: orchestrator/config.yml)
+#   --plan               Show the plan, don't execute
+#   --dry-run             Alias for --plan
+#   --help               Show this help
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+LIB_DIR="$SCRIPT_DIR/lib"
+CONFIG_DIR="$ROOT_DIR/.orchestrator"
+STATE_DIR="$CONFIG_DIR/state"
+RESULTS_DIR="$CONFIG_DIR/results"
+
+cd "$ROOT_DIR"
+
+# ── Helpers (available before modules load) ──────────────────────
+
+log()    { echo "▶ [orchestrate] $*"; }
+info()   { echo "  [orchestrate] $*"; }
+err()    { echo "✗ [orchestrate] $*" >&2; }
+banner() {
+  echo ""
+  echo "═══════════════════════════════════════════════════"
+  echo "  $*"
+  echo "═══════════════════════════════════════════════════"
+}
+
+# ── CLI Parsing ──────────────────────────────────────────────────
+
+SUBCOMMAND=""
+OPT_AUTONOMY=""
+OPT_ADAPTER=""
+OPT_CONFIG="orchestrator/config.yml"
+OPT_DRY_RUN=false
+OPT_FEATURE=""
+OPT_RESUME=false
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    init|run|status|clean)
+      SUBCOMMAND="$1"
+      ;;
+    --autonomy)
+      shift; OPT_AUTONOMY="$1"
+      ;;
+    --adapter)
+      shift; OPT_ADAPTER="$1"
+      ;;
+    --config)
+      shift; OPT_CONFIG="$1"
+      ;;
+    --feature)
+      shift; OPT_FEATURE="$1"
+      ;;
+    --plan|--dry-run)
+      OPT_DRY_RUN=true
+      ;;
+    --resume)
+      OPT_RESUME=true
+      ;;
+    --help|-h)
+      echo "Usage: orchestrate.sh <command> [flags]"
+      echo ""
+      echo "Commands:"
+      echo "  init                 Scaffold config, .env, features.md, .gitignore"
+      echo "  run                  Execute the orchestration loop"
+      echo "  status               Show current orchestrator state"
+      echo "  clean                Remove all worktrees and reset state"
+      echo ""
+      echo "Flags:"
+      echo "  --autonomy <level>   supervised | checkpoint | full_auto"
+      echo "  --adapter <type>     markdown | github | linear"
+      echo "  --config <path>      Config file (default: orchestrator/config.yml)"
+      echo "  --feature <id>       Run only the specified feature"
+      echo "  --plan, --dry-run    Show plan without executing"
+      echo "  --resume             Skip completed, run pending"
+      echo "  --help               Show this help"
+      exit 0
+      ;;
+    *)
+      err "Unknown argument: $1"
+      err "Run: ./scripts/orchestrate.sh --help"
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+[ -z "$SUBCOMMAND" ] && { err "No command given. Run: ./scripts/orchestrate.sh --help"; exit 1; }
+
+# ══════════════════════════════════════════════════════════════════
+# Subcommand: init
+# ══════════════════════════════════════════════════════════════════
+
+sub_init() {
+  banner "Initializing orchestrator"
+
+  # Create directory structure
+  mkdir -p orchestrator
+  mkdir -p .orchestrator/state
+  mkdir -p .orchestrator/results
+
+  # Config template
+  if [ ! -f "orchestrator/config.yml" ]; then
+    cp "$SCRIPT_DIR/../orchestrator/config.yml" "orchestrator/config.yml" 2>/dev/null || \
+    cat > "orchestrator/config.yml" <<'EOCFG'
+source:
+  adapter: markdown
+  output: orchestration-backlog.json
+  markdown:
+    file: features.md
+
+autonomy: checkpoint
+
+execution:
+  base_branch: main
+  skip_done: true
+  skip_blocked: true
+
+worktrees:
+  base_path: .worktrees
+  branch_prefix: feat
+  auto_cleanup: true
+
+memory:
+  carry_forward_from: global-context.md
+  error_pattern_window: 5
+  env_refresh: true
+
+safety:
+  breaking_change_pause: true
+  schema_migration_review: true
+  max_file_changes: 50
+
+pr_creation:
+  strategy: draft
+  auto_assign: true
+
+discovery:
+  enabled: true
+
+routing:
+  prefer_agents: true
+  fallback: feature-marker
+EOCFG
+    info "Created orchestrator/config.yml"
+  else
+    info "orchestrator/config.yml already exists — skipping"
+  fi
+
+  # .env.example
+  if [ ! -f ".env.example" ]; then
+    cp "$SCRIPT_DIR/../.env.example" ".env.example" 2>/dev/null || \
+    cat > ".env.example" <<'EOENV'
+# Copy this file to .env and fill in your values.
+# Only set secrets for providers you use.
+
+LINEAR_API_KEY=
+JIRA_URL=
+JIRA_EMAIL=
+JIRA_TOKEN=
+NOTION_TOKEN=
+
+# GitHub: uses gh CLI auth. Run: gh auth login
+EOENV
+    info "Created .env.example"
+  fi
+
+  # .env from template
+  if [ ! -f ".env" ]; then
+    cp .env.example .env 2>/dev/null || true
+    info "Created .env from template"
+  fi
+
+  # Update .gitignore
+  if ! grep -q "orchestration-backlog.json" .gitignore 2>/dev/null; then
+    cat >> .gitignore <<'EOGI'
+
+# Orchestrator secrets and runtime state
+.env
+orchestration-backlog.json
+.orchestrator/
+.worktrees/
+EOGI
+    info "Updated .gitignore"
+  fi
+
+  # Feature backlog template
+  if [ ! -f "features.md" ]; then
+    cat > features.md <<'EOFEAT'
+# Feature Backlog
+
+## [FEAT] feat-001: My First Feature
+Description of the feature here.
+- labels: my-label
+- priority: high
+
+## [FEAT] feat-002: My Second Feature
+Another feature description.
+- labels: other-label
+- priority: medium
+EOFEAT
+    info "Created features.md template"
+  fi
+
+  echo ""
+  info "Next steps:"
+  echo "  1. Edit features.md with your features"
+  echo "  2. Edit orchestrator/config.yml if needed"
+  echo "  3. Add API keys to .env (if using GitHub/Linear)"
+  echo "  4. Run: ./scripts/orchestrate.sh run"
+}
+
+# ══════════════════════════════════════════════════════════════════
+# Subcommand: run
+# ══════════════════════════════════════════════════════════════════
+
+sub_run() {
+  # Load modules
+  source "$LIB_DIR/config.sh"
+  source "$LIB_DIR/worktree.sh"
+  source "$LIB_DIR/memory.sh"
+  source "$LIB_DIR/display.sh"
+  source "$LIB_DIR/runner.sh"
+
+  # Load config + secrets + validate
+  load_config "$OPT_CONFIG"
+
+  WORKTREE_ROOT="$ROOT_DIR/$WORKTREE_BASE"
+  export ROOT_DIR CONFIG_DIR STATE_DIR RESULTS_DIR WORKTREE_ROOT
+  export WORKTREE_BASE BRANCH_PREFIX BASE_BRANCH ADAPTER AUTONOMY
+
+  mkdir -p "$STATE_DIR" "$RESULTS_DIR"
+
+  banner "Orchestrate — $ADAPTER / $AUTONOMY / $BASE_BRANCH"
+
+  # Agent discovery (ADR-006)
+  local manifest_file="$CONFIG_DIR/agents-manifest.json"
+  if [ "$AGENT_DISCOVERY" = "true" ] && [ -f "$SCRIPT_DIR/agent-discovery.sh" ]; then
+    bash "$SCRIPT_DIR/agent-discovery.sh" "$ROOT_DIR" "$manifest_file" 2>&1
+  fi
+
+  # Environment discovery
+  mem_refresh_env
+
+  # Run adapter
+  info "Loading backlog via $ADAPTER adapter..."
+  local count
+  count=$(run_adapter)
+  info "Loaded $count features"
+
+  local backlog_file="$ROOT_DIR/$BACKLOG_OUTPUT"
+
+  # Dry-run: show plan and exit
+  if [ "$OPT_DRY_RUN" = true ]; then
+    banner "Dry Run — Plan"
+    display_backlog "$backlog_file"
+    echo ""
+    info "Autonomy: $AUTONOMY"
+    info "Worktrees: $WORKTREE_ROOT"
+    info "PR strategy: $PR_STRATEGY"
+    rm -f "$backlog_file"
+    exit 0
+  fi
+
+  # Execute
+  run_backlog "$backlog_file"
+
+  # Cleanup backlog file
+  rm -f "$backlog_file"
+}
+
+# ══════════════════════════════════════════════════════════════════
+# Subcommand: status
+# ══════════════════════════════════════════════════════════════════
+
+sub_status() {
+  source "$LIB_DIR/worktree.sh"
+  source "$LIB_DIR/display.sh"
+
+  banner "Orchestrator Status"
+
+  if [ ! -d "$STATE_DIR" ] || [ -z "$(ls -A "$STATE_DIR" 2>/dev/null)" ]; then
+    info "No features tracked yet. Run: ./scripts/orchestrate.sh run"
+    exit 0
+  fi
+
+  local done_n=0 pr_n=0 ready_n=0 failed_n=0 total=0
+
+  for dir in "$STATE_DIR"/*/; do
+    [ -d "$dir" ] || continue
+    local fid
+    fid=$(basename "$dir")
+    [ -f "$dir/status.json" ] || continue
+    total=$((total + 1))
+    display_feature_result "$fid"
+    local st
+    st=$(wt_get_status "$fid")
+    case "$st" in
+      done) done_n=$((done_n+1)) ;;
+      pr-created) pr_n=$((pr_n+1)) ;;
+      ready) ready_n=$((ready_n+1)) ;;
+      failed) failed_n=$((failed_n+1)) ;;
+    esac
+  done
+
+  echo ""
+  info "Total: $total | Done: $done_n | PR: $pr_n | Ready: $ready_n | Failed: $failed_n"
+
+  # Worktrees
+  echo ""
+  log "Worktrees:"
+  wt_list
+
+  # Agent manifest
+  if [ -f "$CONFIG_DIR/agents-manifest.json" ]; then
+    local agent_count
+    agent_count=$(node -p "JSON.parse(require('fs').readFileSync('$CONFIG_DIR/agents-manifest.json','utf-8')).agents.length" 2>/dev/null || echo "0")
+    echo ""
+    info "Discovered agents: $agent_count"
+  fi
+}
+
+# ══════════════════════════════════════════════════════════════════
+# Subcommand: clean
+# ══════════════════════════════════════════════════════════════════
+
+sub_clean() {
+  source "$LIB_DIR/worktree.sh"
+  source "$LIB_DIR/memory.sh"
+
+  banner "Cleaning orchestrator state"
+
+  wt_cleanup_all
+  mem_reset
+  rm -rf "$STATE_DIR" "$RESULTS_DIR"
+  mkdir -p "$STATE_DIR" "$RESULTS_DIR"
+
+  info "All state cleared. Ready for a fresh run."
+}
+
+# ══════════════════════════════════════════════════════════════════
+# Dispatch
+# ══════════════════════════════════════════════════════════════════
+
+case "$SUBCOMMAND" in
+  init)   sub_init ;;
+  run)    sub_run ;;
+  status) sub_status ;;
+  clean)  sub_clean ;;
+esac
