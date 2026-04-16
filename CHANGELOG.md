@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.3.0] - 2026-04-16
+
+### Added
+
+- **Shell Script Orchestration CLI** — New single entry point `orchestrate.sh` with 4 subcommands (`init`, `run`, `status`, `clean`) and 6 flags (`--autonomy`, `--adapter`, `--config`, `--feature`, `--dry-run`, `--resume`)
+  - Modular architecture: 5 library modules in `scripts/lib/` (config, worktree, memory, display, runner) — each independently testable
+  - Full dependency tracking with blocked feature display
+  - Resume support: re-run skips completed features, runs pending
+  - Single-feature mode via `--feature <id>`
+  - Dry-run mode shows backlog plan without executing
+- **Homebrew + NPX distribution** — `feature-marker-orchestrate` command available globally
+  - `brew install feature-marker` now includes the orchestrator alongside the existing skill
+  - `feature-marker-orchestrate init` scaffolds config in any project directory
+  - `feature-marker-orchestrate run` executes the loop from anywhere
+  - NPX wrapper: `npx @viniciuscarvalho/feature-marker orchestrate`
+  - Dual-mode path resolution via `ORCHESTRATOR_HOME` env var — Homebrew, NPX, and local `./scripts/` all work with zero code duplication
+- **Templates** — `config.yaml`, `env.example`, `gitignore-entries.txt` shipped with install, copied into projects by `init`
+- **Wrapper script** — `bin/feature-marker-orchestrate` resolves symlinks to libexec or falls back to local scripts/
+
+### Changed
+
+- **Homebrew formula** — Updated to v7.3.0 with libexec orchestrator installation, wrapper binary, jq + node dependencies, and test block
+- **npm package.json** — Added `feature-marker-orchestrate` bin entry
+- **orchestrate.sh** — Dual-mode path resolution (ORCHESTRATOR_HOME or relative to $0), PROJECT_ROOT is always cwd
+
 ## [7.1.0] - 2026-04-14
 
 ### Added
@@ -378,6 +403,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated from template-based to command-based file generation
 - Simplified directory structure (./tasks instead of ./docs/tasks)
 
+[7.3.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v7.1.0...v7.3.0
 [7.1.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v7.0.0...v7.1.0
 [7.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v6.2.0...v7.0.0
 [6.0.0]: https://github.com/Viniciuscarvalho/Feature-marker/compare/v5.3.0...v6.0.0

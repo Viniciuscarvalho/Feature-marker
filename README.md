@@ -135,67 +135,68 @@ iOS projects also get XcodeBuildMCP simulator validation (optional).
 
 ## Installation
 
-### Skills CLI (Recommended)
-
 ```bash
-# Install
+# Recommended — one command
 npx skills add Viniciuscarvalho/Feature-marker
-
-# Keep up to date
-npx skills update
 ```
 
-### NPX
+Other options:
 
 ```bash
+# Homebrew (includes orchestrator CLI)
+brew tap viniciuscarvalho/tap && brew install feature-marker
+
+# NPX
 npx @viniciuscarvalho/feature-marker install
-```
 
-### Homebrew
-
-```bash
-brew tap viniciuscarvalho/tap
-brew install feature-marker
-feature-marker-install        # copies skill to ~/.claude
-```
-
-### Manual
-
-```bash
+# Manual
 git clone https://github.com/Viniciuscarvalho/Feature-marker.git
-cd Feature-marker
-./feature-marker-dist/feature-marker/install.sh
+cd Feature-marker && ./feature-marker-dist/feature-marker/install.sh
 ```
 
 ---
 
 ## Usage
 
+**Single feature** — in Claude Code:
+
 ```bash
-# Run the full pipeline
 /feature-marker my-feature-name
-
-# Pick a mode interactively
-/feature-marker --interactive my-feature-name
-
-# Run a specific mode directly
-/feature-marker --mode spec-driven my-feature-name
 ```
 
-If interrupted at any point, re-run with the same feature name to resume from the last checkpoint.
+Re-run with the same name to resume from the last checkpoint.
+
+**Multiple features** — from your terminal:
+
+```bash
+# Scaffold config in your project
+feature-marker-orchestrate init
+
+# Preview the plan
+feature-marker-orchestrate --dry-run
+
+# Run the orchestrator
+feature-marker-orchestrate
+```
+
+Or run directly from the repo:
+
+```bash
+./scripts/orchestrate.sh init
+./scripts/orchestrate.sh run
+```
 
 ---
 
 ## Orchestrator
 
-The orchestrator drains an entire backlog autonomously — one isolated git worktree per feature, full pipeline per feature, cross-feature context propagation between runs.
+The orchestrator reads a backlog, creates isolated worktrees, runs the full pipeline per feature, and propagates context between runs.
 
 ```bash
-# 1. Define your backlog
-cat features.md
-
-# 2. Run
-./scripts/orchestrator.sh
+feature-marker-orchestrate init       # scaffold config, .env, features.md
+feature-marker-orchestrate            # process the backlog
+feature-marker-orchestrate status     # check feature states
+feature-marker-orchestrate clean      # reset everything
 ```
 
 ### Backlog Sources
