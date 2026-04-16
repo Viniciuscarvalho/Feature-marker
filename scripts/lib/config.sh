@@ -62,9 +62,22 @@ load_config() {
   ROUTING_PREFER="${CFG_ROUTING_PREFER_AGENTS:-true}"
   ROUTING_FALLBACK="${CFG_ROUTING_FALLBACK:-feature-marker}"
 
+  # Model selection
+  MODEL_DEFAULT="${CFG_MODEL_DEFAULT:-opusplan}"
+  MODEL_PLAN="${CFG_MODEL_PLAN:-}"
+  MODEL_EXECUTE="${CFG_MODEL_EXECUTE:-}"
+
   # Apply CLI overrides
   [ -n "${OPT_AUTONOMY:-}" ] && AUTONOMY="$OPT_AUTONOMY"
   [ -n "${OPT_ADAPTER:-}" ] && ADAPTER="$OPT_ADAPTER"
+  [ -n "${OPT_MODEL:-}" ] && MODEL_DEFAULT="$OPT_MODEL"
+
+  # ANTHROPIC_MODEL env var takes highest precedence
+  if [ -n "${ANTHROPIC_MODEL:-}" ]; then
+    MODEL_DEFAULT="$ANTHROPIC_MODEL"
+    MODEL_PLAN=""
+    MODEL_EXECUTE=""
+  fi
 
   # Validate
   validate_config
