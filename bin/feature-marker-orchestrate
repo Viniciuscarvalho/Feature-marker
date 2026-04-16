@@ -1,0 +1,35 @@
+#!/bin/bash
+# bin/feature-marker-orchestrate
+# Wrapper that resolves Homebrew paths and delegates to orchestrate.sh
+
+set -euo pipefail
+
+# Resolve the real location of this script
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+  DIR="$(cd "$(dirname "$SELF")" && pwd)"
+  SELF="$(readlink "$SELF")"
+  [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
+done
+BIN_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+
+# Homebrew layout: bin/ is sibling to libexec/
+LIBEXEC_DIR=""
+if [ -d "$BIN_DIR/../libexec/orchestrator" ]; then
+  LIBEXEC_DIR="$(cd "$BIN_DIR/../libexec/orchestrator" && pwd)"
+fi
+
+# Fallback: running from the repo (development mode)
+if [ -z "$LIBEXEC_DIR" ] || [ ! -f "$LIBEXEC_DIR/orchestrate.sh" ]; then
+  REPO_DIR="$(cd "$BIN_DIR/.." && pwd)"
+  if [ -f "$REPO_DIR/scripts/orchestrate.sh" ]; then
+    LIBEXEC_DIR="$REPO_DIR/scripts"
+  else
+    echo "x Cannot find orchestrator scripts." >&2
+    echo "  Expected at: $BIN_DIR/../libexec/orchestrator/" >&2
+    exit 1
+  fi
+fi
+
+export ORCHESTRATOR_HOME="$LIBEXEC_DIR"
+exec bash "$LIBEXEC_DIR/orchestrate.sh" "$@"

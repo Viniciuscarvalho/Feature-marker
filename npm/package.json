@@ -25,7 +25,8 @@
   "author": "Vinicius Carvalho <vinicius@example.com>",
   "type": "module",
   "bin": {
-    "feature-marker": "bin/feature-marker.js"
+    "feature-marker": "bin/feature-marker.js",
+    "feature-marker-orchestrate": "bin/orchestrate.js"
   },
   "files": [
     "bin/",

@@ -4,30 +4,27 @@
 # Homebrew formula for feature-marker
 # Install: brew install viniciuscarvalho/tap/feature-marker
 class FeatureMarker < Formula
-  desc "AI-powered feature development workflow automation for Claude Code"
+  desc "AI-powered feature development automation — skill + orchestrator"
   homepage "https://github.com/Viniciuscarvalho/Feature-marker"
-  url "https://github.com/Viniciuscarvalho/Feature-marker/archive/refs/tags/v6.2.0.tar.gz"
-  sha256 "68ab73b9ac050b68ac866d105582cc30dde7bf00ddd3e1ec9e6d0dc3cab6f4b5"
-  version "6.2.0"
+  url "https://github.com/Viniciuscarvalho/Feature-marker/archive/refs/tags/v7.1.0.tar.gz"
+  sha256 "PLACEHOLDER_SHA256"
+  version "7.1.0"
   license "MIT"
   head "https://github.com/Viniciuscarvalho/Feature-marker.git", branch: "main"
 
-  # TUI requires Rust
-  depends_on "rust" => :build if build.with? "tui"
-
-  option "with-tui", "Build and install the TUI application"
+  depends_on "jq"
+  depends_on "node"
 
   def install
-    # Install skill files
+    # ── Existing skill installation ──────────────────
     skill_dir = prefix/"skill"
     skill_dir.install Dir["feature-marker-dist/feature-marker/*"]
 
-    # Install agent file
     agents_dir = prefix/"agents"
     agents_dir.mkpath
     agents_dir.install "feature-marker-dist/agents/feature-marker.md"
 
-    # Create wrapper script
+    # Install existing bin scripts
     (bin/"feature-marker-install").write <<~EOS
       #!/usr/bin/env bash
       set -euo pipefail
@@ -38,12 +35,8 @@ class FeatureMarker < Formula
       AGENT_DST="${HOME}/.claude/agents/feature-marker.md"
 
       echo "Installing feature-marker to ~/.claude..."
+      mkdir -p "${SKILL_DST}" "$(dirname "${AGENT_DST}")"
 
-      # Create directories
-      mkdir -p "${SKILL_DST}"
-      mkdir -p "$(dirname "${AGENT_DST}")"
-
-      # Copy files
       if command -v rsync &> /dev/null; then
         rsync -a --delete "${SKILL_SRC}/" "${SKILL_DST}/"
       else
@@ -52,81 +45,89 @@ class FeatureMarker < Formula
       fi
       cp -f "${AGENT_SRC}" "${AGENT_DST}"
 
-      # Set permissions
       chmod +x "${SKILL_DST}/feature-marker.sh" 2>/dev/null || true
       chmod +x "${SKILL_DST}/lib/"*.sh 2>/dev/null || true
 
-      echo ""
-      echo "✓ feature-marker installed successfully!"
-      echo ""
-      echo "Usage in Claude Code:"
-      echo "  /feature-marker <feature-slug>"
-      echo ""
-      echo "Example:"
-      echo "  /feature-marker prd-user-authentication"
+      echo "✓ feature-marker skill installed to ~/.claude"
     EOS
 
-    # Create uninstall script
     (bin/"feature-marker-uninstall").write <<~EOS
       #!/usr/bin/env bash
       set -euo pipefail
 
-      SKILL_DST="${HOME}/.claude/skills/feature-marker"
-      AGENT_DST="${HOME}/.claude/agents/feature-marker.md"
-
-      echo "Uninstalling feature-marker from ~/.claude..."
-
-      if [[ -d "${SKILL_DST}" ]]; then
-        rm -rf "${SKILL_DST}"
-        echo "✓ Skill removed"
-      fi
-
-      if [[ -f "${AGENT_DST}" ]]; then
-        rm -f "${AGENT_DST}"
-        echo "✓ Agent removed"
-      fi
-
-      echo ""
-      echo "feature-marker has been uninstalled."
+      rm -rf "${HOME}/.claude/skills/feature-marker"
+      rm -f "${HOME}/.claude/agents/feature-marker.md"
+      echo "✓ feature-marker uninstalled from ~/.claude"
     EOS
 
-    # Build TUI if requested
-    if build.with? "tui"
-      cd "feature-marker-tui" do
-        system "cargo", "build", "--release"
-        bin.install "target/release/feature-marker-tui"
-      end
-    end
-  end
+    # ── Orchestrator installation (new) ──────────────
+    # Install orchestrator scripts to libexec (not in PATH)
+    libexec_orch = libexec/"orchestrator"
+    libexec_orch.install "scripts/orchestrate.sh"
+    libexec_orch.install Dir["scripts/lib"]
+    libexec_orch.install Dir["scripts/adapters"]
+    libexec_orch.install "scripts/agent-discovery.sh"
+    libexec_orch.install "scripts/route-tasks.sh"
+    libexec_orch.install "scripts/parse-config.js"
+    libexec_orch.install "scripts/status-writer.js"
+    libexec_orch.install "scripts/environment-discovery.sh"
+    libexec_orch.install "scripts/feedback-collector.sh"
+    libexec_orch.install Dir["scripts/templates"]
 
-  def post_install
-    ohai "Run 'feature-marker-install' to install the skill to ~/.claude"
+    # Make all scripts executable
+    (libexec_orch).glob("**/*.sh").each { |f| f.chmod 0755 }
+
+    # Install wrapper to bin (this goes in PATH)
+    (bin/"feature-marker-orchestrate").write <<~EOS
+      #!/bin/bash
+      set -euo pipefail
+      WRAPPER_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
+      BIN_DIR="$(cd "$(dirname "$WRAPPER_PATH")" && pwd)"
+      LIBEXEC_DIR="$(cd "$BIN_DIR/../libexec/orchestrator" 2>/dev/null && pwd)"
+      if [ -z "$LIBEXEC_DIR" ] || [ ! -f "$LIBEXEC_DIR/orchestrate.sh" ]; then
+        echo "x Cannot find orchestrator scripts." >&2
+        exit 1
+      fi
+      export ORCHESTRATOR_HOME="$LIBEXEC_DIR"
+      exec bash "$LIBEXEC_DIR/orchestrate.sh" "$@"
+    EOS
   end
 
   def caveats
     <<~EOS
-      To complete installation, run:
+      Feature-marker skill installed to:
+        #{prefix}/skill/
+
+      To complete skill setup, run:
         feature-marker-install
 
-      This will install the feature-marker skill to ~/.claude
+      Orchestrator available as:
+        feature-marker-orchestrate init      # scaffold config in your project
+        feature-marker-orchestrate           # run the loop
+        feature-marker-orchestrate status    # check state
+        feature-marker-orchestrate --help    # see all options
 
-      Prerequisites:
-        Make sure you have these commands in ~/.claude/commands/:
-        - create-prd.md
-        - generate-spec.md
-        - generate-tasks.md
-
-        Get these from: https://github.com/Viniciuscarvalho/mindkit
-
-      Usage in Claude Code:
-        /feature-marker <feature-slug>
-
-      Example:
-        /feature-marker prd-user-authentication
+      Dependencies (installed automatically):
+        jq   — JSON processing
+        node — JavaScript runtime
     EOS
   end
 
   test do
-    assert_match "feature-marker", shell_output("#{bin}/feature-marker-install --help 2>&1 || true")
+    # Test skill files exist
+    assert_predicate prefix/"skill/SKILL.md", :exist?
+
+    # Test orchestrator wrapper works
+    assert_match "Usage:", shell_output("#{bin}/feature-marker-orchestrate --help")
+
+    # Test init creates config in a temp dir
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        system "git", "init"
+        system "#{bin}/feature-marker-orchestrate", "init"
+        assert_predicate Pathname(dir)/".orchestrator/config.yaml", :exist?
+        assert_predicate Pathname(dir)/".env.example", :exist?
+      end
+    end
   end
 end
