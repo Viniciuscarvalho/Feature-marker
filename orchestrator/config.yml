@@ -43,6 +43,15 @@ source:
 
 autonomy: checkpoint           # supervised | checkpoint | full_auto
 
+# Model selection — which Claude model to use.
+# Supported: opus | sonnet | haiku | opusplan | full model IDs (claude-opus-4-7)
+# "opusplan" uses Opus for planning, Sonnet for execution automatically.
+# Override via CLI: --model opus | Override via env: ANTHROPIC_MODEL=opus
+model:
+  default: opusplan            # Used when per-phase model is not set
+  # plan: opus                 # PRD, TechSpec, Tasks generation
+  # execute: sonnet            # Implementation, testing, review
+
 # Future — not implemented in this plan (ADR-003)
 preprocessing:
   enabled: false

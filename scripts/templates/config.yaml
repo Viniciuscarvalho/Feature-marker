@@ -11,6 +11,9 @@ source:
 
 autonomy: checkpoint
 
+model:
+  default: opusplan
+
 execution:
   base_branch: main
   skip_done: true

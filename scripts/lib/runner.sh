@@ -233,13 +233,16 @@ EOPRD
   feat_start=$(date +%s)
 
   # Invoke feature-marker via Claude Code
+  local model_flag=""
+  [ -n "${MODEL_DEFAULT:-}" ] && model_flag="--model $MODEL_DEFAULT"
+
   if [ "$AUTONOMY" = "full_auto" ]; then
-    info "Autonomy=full_auto — invoking pipeline..."
+    info "Autonomy=full_auto — invoking pipeline (model: ${MODEL_DEFAULT:-default})..."
     if command -v claude &>/dev/null; then
-      (cd "$wt_path" && claude --skill feature-marker "prd-$feat_id") 2>&1 | tee "$log_file" || exit_code=$?
+      (cd "$wt_path" && claude $model_flag --skill feature-marker "prd-$feat_id") 2>&1 | tee "$log_file" || exit_code=$?
     else
       info "Claude CLI not found — simulating pipeline"
-      echo "full_auto: simulated pipeline for $feat_id" > "$log_file"
+      echo "full_auto: simulated pipeline for $feat_id (model: ${MODEL_DEFAULT:-default})" > "$log_file"
     fi
   elif [ "$AUTONOMY" = "checkpoint" ]; then
     info "Autonomy=checkpoint — pipeline ready, human reviews PR"

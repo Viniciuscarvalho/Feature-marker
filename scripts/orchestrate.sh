@@ -72,6 +72,7 @@ banner() {
 SUBCOMMAND=""
 OPT_AUTONOMY=""
 OPT_ADAPTER=""
+OPT_MODEL=""
 OPT_CONFIG="orchestrator/config.yml"
 OPT_DRY_RUN=false
 OPT_FEATURE=""
@@ -87,6 +88,9 @@ while [ $# -gt 0 ]; do
       ;;
     --adapter)
       shift; OPT_ADAPTER="$1"
+      ;;
+    --model)
+      shift; OPT_MODEL="$1"
       ;;
     --config)
       shift; OPT_CONFIG="$1"
@@ -112,6 +116,7 @@ while [ $# -gt 0 ]; do
       echo "Flags:"
       echo "  --autonomy <level>   supervised | checkpoint | full_auto"
       echo "  --adapter <type>     markdown | github | linear"
+      echo "  --model <name>       opus | sonnet | haiku | opusplan"
       echo "  --config <path>      Config file (default: orchestrator/config.yml)"
       echo "  --feature <id>       Run only the specified feature"
       echo "  --plan, --dry-run    Show plan without executing"
@@ -279,11 +284,11 @@ sub_run() {
 
   WORKTREE_ROOT="$ROOT_DIR/$WORKTREE_BASE"
   export ROOT_DIR CONFIG_DIR STATE_DIR RESULTS_DIR WORKTREE_ROOT
-  export WORKTREE_BASE BRANCH_PREFIX BASE_BRANCH ADAPTER AUTONOMY
+  export WORKTREE_BASE BRANCH_PREFIX BASE_BRANCH ADAPTER AUTONOMY MODEL_DEFAULT MODEL_PLAN MODEL_EXECUTE
 
   mkdir -p "$STATE_DIR" "$RESULTS_DIR"
 
-  banner "Orchestrate — $ADAPTER / $AUTONOMY / $BASE_BRANCH"
+  banner "Orchestrate — $ADAPTER / $AUTONOMY / $BASE_BRANCH / model:$MODEL_DEFAULT"
 
   # Agent discovery (ADR-006)
   local manifest_file="$CONFIG_DIR/agents-manifest.json"
@@ -309,6 +314,7 @@ sub_run() {
     echo ""
     info "Autonomy: $AUTONOMY"
     info "Worktrees: $WORKTREE_ROOT"
+    info "Model: $MODEL_DEFAULT (plan: ${MODEL_PLAN:-inherit}, execute: ${MODEL_EXECUTE:-inherit})"
     info "PR strategy: $PR_STRATEGY"
     rm -f "$backlog_file"
     exit 0
