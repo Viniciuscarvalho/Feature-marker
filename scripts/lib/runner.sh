@@ -3,6 +3,15 @@
 #
 # Handles backlog iteration, dependency checking, agent routing,
 # Claude CLI invocation, PR creation, retry, and state tracking.
+#
+# ADR-008 additions:
+#   - Phase 0 optimisation: skip Claude when artifacts already exist
+#   - run_phase3_tests(): scripted test runner with max 2 fix attempts
+#   - dep_check_merge_state(): hard-block dependency polling via git platform CLI
+#   - cost_record() calls at each phase boundary (cost.sh)
+#   - learning_read() / learning_write() for Phase 3 fix hints (learning.sh)
+#   - router_route_task() for stack-aware agent selection (router.sh)
+#   - cycle_gate_check() before advancing to next feature (cycle_gate.sh)
 
 run_backlog() {
   local backlog_file="$1"
@@ -82,14 +91,38 @@ run_backlog() {
     info "Single-feature mode: $OPT_FEATURE"
     process_item "$single" 1 1
   else
-    # Main loop
+    # Main loop — ADR-008: check hard-block deps + cycle gate per item
     local index=0
     echo "$items" | node -e "
       const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));
       d.ready.forEach(i => console.log(JSON.stringify(i)));
     " | while IFS= read -r item_json; do
       index=$((index + 1))
+
+      # ADR-008 PR-C: hard-block dependency check
+      local feat_id_check
+      feat_id_check=$(echo "$item_json" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).id")
+      local deps_check
+      deps_check=$(echo "$item_json" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).dependencies.join(',')||''")
+
+      if [ -n "$deps_check" ]; then
+        if ! dep_check_merge_state "$feat_id_check" "$deps_check"; then
+          info "Skipping $feat_id_check — unmerged dependencies (hard-block)"
+          continue
+        fi
+      fi
+
       process_item "$item_json" "$index" "$ready_count"
+
+      # ADR-008 PR-D: cycle gate — assert previous feature completed full cycle
+      if [ "${OPT_SKIP_CYCLE_CHECK:-false}" != "true" ]; then
+        if ! cycle_gate_check "$feat_id_check"; then
+          info "Cycle gate: $feat_id_check did not complete full cycle"
+          cycle_gate_report "$feat_id_check"
+          info "Use --skip-cycle-check to bypass. Stopping backlog loop."
+          break
+        fi
+      fi
     done
   fi
 
@@ -170,6 +203,9 @@ run_feature() {
   # Mark as in progress
   wt_update_status "$feat_id" "in-progress" "analysis" 2>/dev/null || true
 
+  # ADR-008 PR-A: initialise cost accumulator
+  cost_init "$feat_id"
+
   # Create worktree (handles stale worktrees from crashed runs)
   info "Creating worktree..."
   local wt_path
@@ -194,13 +230,54 @@ $body
 EOPRD
   info "Seeded PRD"
 
+  # ── ADR-008 PR-A: Phase 0 optimisation ──────────────────────────
+  # If all three artifacts already exist, skip Claude invocation for Phase 0.
+  local phase0_cost=0
+  if [ -f "$task_dir/prd.md" ] && [ -f "$task_dir/techspec.md" ] && [ -f "$task_dir/tasks.md" ]; then
+    info "Phase 0: artifacts exist, skipping generation (cost: 0)"
+  else
+    info "Phase 0: artifacts missing — Claude will generate them (cost: $COST_PHASE_1_PLANNING)"
+    phase0_cost="$COST_PHASE_1_PLANNING"
+  fi
+  cost_record "$feat_id" "phase0" "$phase0_cost"
+
+  # ── ADR-008 PR-D: feature-sizing gate ───────────────────────────
+  # Only run if tasks.md exists (post-generation check on subsequent runs)
+  if [ -f "$task_dir/tasks.md" ]; then
+    if ! size_gate_check "$feat_id" "$wt_path"; then
+      local exceeded_str="${SIZE_EXCEEDED_CRITERIA:+$SIZE_EXCEEDED_CRITERIA }${SIZE_EXCEEDED_TASKS:+$SIZE_EXCEEDED_TASKS }${SIZE_EXCEEDED_FILES:+$SIZE_EXCEEDED_FILES}"
+      if ! size_gate_signal "$feat_id" "$AUTONOMY" "$exceeded_str"; then
+        wt_update_status "$feat_id" "paused" "size-gate"
+        return 0
+      fi
+    fi
+  fi
+
   # Build context (memory layer 1 + error patterns)
   local context_file
   context_file=$(mem_build_context "$feat_id" "$title" "$priority" "$labels" "$deps" "$body" "$wt_path")
   cp "$context_file" "$wt_path/.orchestrator-context.md"
   info "Context injected"
 
-  # Route tasks to agents (ADR-006)
+  # ── ADR-008 PR-B: stack detection + agent routing ────────────────
+  router_init "$feat_id"
+
+  # Detect stack from worktree file structure
+  local wt_file_paths
+  wt_file_paths=$(find "$wt_path" -type f \( -name "*.swift" -o -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.py" -o -name "*.rs" -o -name "*.go" \) 2>/dev/null | head -20 | tr '\n' ':')
+
+  local detected_stack="unknown"
+  local routed_agent="${ROUTING_FALLBACK:-feature-marker}"
+
+  if [ -n "$wt_file_paths" ]; then
+    detected_stack=$(router_detect_stack_from_paths "$wt_file_paths")
+    routed_agent=$(router_route_task "$feat_id" "feature" "$wt_file_paths")
+    info "Stack: $detected_stack → agent: $routed_agent"
+  fi
+
+  export ROUTED_AGENT="$routed_agent"
+
+  # Route tasks via ADR-006 manifest (existing behaviour preserved)
   local routing_file="$STATE_DIR/$feat_id/routing.json"
   local manifest_file="$CONFIG_DIR/agents-manifest.json"
   local agent_count=0
@@ -232,14 +309,31 @@ EOPRD
   local feat_start
   feat_start=$(date +%s)
 
+  # ADR-008 PR-A: Phase 1 cost record
+  cost_record "$feat_id" "phase1" "$COST_PHASE_1_PLANNING"
+
+  # Determine task count and agent type for Phase 2 cost
+  local task_count=1
+  if [ -f "$task_dir/tasks.md" ]; then
+    task_count=$(grep -c "^\- \[" "$task_dir/tasks.md" 2>/dev/null || echo "1")
+    [ "$task_count" -eq 0 ] && task_count=1
+  fi
+  local agent_type="generic"
+  [ "$routed_agent" != "feature-marker" ] && agent_type="specialist"
+  local phase2_cost
+  phase2_cost=$(cost_estimate_phase "2" "$task_count" "$agent_type")
+  cost_record "$feat_id" "phase2" "$phase2_cost"
+
   # Invoke feature-marker via Claude Code
   local model_flag=""
   [ -n "${MODEL_DEFAULT:-}" ] && model_flag="--model $MODEL_DEFAULT"
 
   if [ "$AUTONOMY" = "full_auto" ]; then
-    info "Autonomy=full_auto — invoking pipeline (model: ${MODEL_DEFAULT:-default})..."
+    info "Autonomy=full_auto — invoking pipeline (model: ${MODEL_DEFAULT:-default}, agent: $routed_agent)..."
     if command -v claude &>/dev/null; then
-      (cd "$wt_path" && claude $model_flag --skill feature-marker "prd-$feat_id") 2>&1 | tee "$log_file" || exit_code=$?
+      local skill_arg="feature-marker"
+      [ "$routed_agent" != "feature-marker" ] && skill_arg="$routed_agent"
+      (cd "$wt_path" && claude $model_flag --skill "$skill_arg" "prd-$feat_id") 2>&1 | tee "$log_file" || exit_code=$?
     else
       info "Claude CLI not found — simulating pipeline"
       echo "full_auto: simulated pipeline for $feat_id (model: ${MODEL_DEFAULT:-default})" > "$log_file"
@@ -251,6 +345,21 @@ EOPRD
     info "Autonomy=supervised — paused for review"
     echo "supervised: paused for $feat_id" > "$log_file"
   fi
+
+  # ── ADR-008 PR-A: Phase 3 scripted tests ────────────────────────
+  if [ "$AUTONOMY" = "full_auto" ] && [ "$exit_code" -eq 0 ]; then
+    local phase3_fix_attempts=0
+    run_phase3_tests "$feat_id" "$wt_path"
+    local phase3_exit=$?
+    phase3_fix_attempts=$(cat "$STATE_DIR/$feat_id/phase3-fix-attempts" 2>/dev/null || echo "0")
+    local phase3_cost
+    phase3_cost=$(cost_estimate_phase "3" "$phase3_fix_attempts" "generic")
+    cost_record "$feat_id" "phase3" "$phase3_cost"
+    [ "$phase3_exit" -ne 0 ] && exit_code="$phase3_exit"
+  fi
+
+  # ADR-008 PR-A: Phase 4 cost record
+  cost_record "$feat_id" "phase4" "$COST_PHASE_4_COMMIT_PR"
 
   local feat_end
   feat_end=$(date +%s)
@@ -266,7 +375,7 @@ EOPRD
         title: $(printf '%s' "$title" | node -p "JSON.stringify(require('fs').readFileSync('/dev/stdin','utf-8').trim())"),
         pipeline: { prd: { status: 'completed' }, techspec: { status: 'pending' }, tasks: { status: 'pending' }, implementation: { status: 'pending' }, tests: { status: 'pending' }, review: { status: 'pending' } },
         context_generated: { files_created: [], files_modified: [], schema_changes: [], new_dependencies: [], breaking_changes: [] },
-        pr_url: null, duration_seconds: $duration, errors: []
+        pr_url: null, duration_seconds: $duration, errors: [], tasks: []
       }, null, 2));
     "
   fi
@@ -319,12 +428,260 @@ EOPRD
     fi
   fi
 
+  # ADR-008 PR-A: print cost summary
+  cost_summary "$feat_id"
+
   # Feedback: context + env refresh
   mem_record_context "$feat_id" "$title" "$priority" "$labels" "$wt_path" "$results_file"
   mem_refresh_env
 
   info "Feature time: ${duration}s"
   echo ""
+}
+
+# ── run_phase3_tests ──────────────────────────────────────────────────
+# ADR-008 PR-A: Scripted test runner for Phase 3.
+# Detects stack, runs the appropriate test command.
+# On failure, invokes Claude for a fix (max 2 attempts).
+# Captures successful fixes to the learning store.
+# Writes fix attempt count to $STATE_DIR/$feat_id/phase3-fix-attempts.
+# Returns 0 on success (tests pass), 1 on persistent failure.
+
+run_phase3_tests() {
+  local feat_id="$1"
+  local wt_path="$2"
+
+  local fix_attempts=0
+  echo "$fix_attempts" > "$STATE_DIR/$feat_id/phase3-fix-attempts"
+
+  # Detect stack from worktree
+  local wt_file_paths
+  wt_file_paths=$(find "$wt_path" -type f \( -name "*.swift" -o -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.py" -o -name "*.rs" -o -name "*.go" \) 2>/dev/null | head -20 | tr '\n' ':')
+  local stack="unknown"
+  [ -n "$wt_file_paths" ] && stack=$(router_detect_stack_from_paths "$wt_file_paths")
+
+  # Map stack to test command
+  local test_cmd=""
+  case "$stack" in
+    ios)    test_cmd="swift test" ;;
+    node)   test_cmd="jest" ;;
+    rust)   test_cmd="cargo test" ;;
+    python) test_cmd="pytest" ;;
+    go)     test_cmd="go test ./..." ;;
+    *)
+      info "Phase 3: unknown stack — skipping scripted tests"
+      return 0
+      ;;
+  esac
+
+  info "Phase 3: running tests ($stack): $test_cmd"
+
+  local test_output
+  local test_exit=0
+
+  (cd "$wt_path" && eval "$test_cmd" >/tmp/phase3-test-output-$$.txt 2>&1) || test_exit=$?
+
+  if [ "$test_exit" -eq 0 ]; then
+    info "Phase 3: tests passed"
+    return 0
+  fi
+
+  test_output=$(cat /tmp/phase3-test-output-$$.txt 2>/dev/null || echo "test output unavailable")
+  rm -f /tmp/phase3-test-output-$$.txt
+
+  # Fix loop — max 2 attempts
+  local max_fix_attempts=2
+
+  while [ "$fix_attempts" -lt "$max_fix_attempts" ]; do
+    fix_attempts=$((fix_attempts + 1))
+    echo "$fix_attempts" > "$STATE_DIR/$feat_id/phase3-fix-attempts"
+
+    info "Phase 3: fix attempt $fix_attempts/$max_fix_attempts"
+
+    # ADR-008 PR-C: check learning store for a known fix
+    local error_sig
+    error_sig=$(echo "$test_output" | head -5 | tr '\n' ' ' | sed 's/  */ /g')
+    local learned_fix
+    learned_fix=$(learning_read "$feat_id" "$error_sig")
+
+    local fix_prompt="Fix the failing tests. Test output:\n$test_output"
+    if [ -n "$learned_fix" ] && [ "$learned_fix" != "null" ]; then
+      local hint
+      hint=$(echo "$learned_fix" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).fix" 2>/dev/null || echo "")
+      if [ -n "$hint" ]; then
+        info "Phase 3: applying learned fix hint"
+        fix_prompt="$fix_prompt\n\nKnown fix hint: $hint"
+      fi
+    fi
+
+    local model_flag=""
+    [ -n "${MODEL_DEFAULT:-}" ] && model_flag="--model $MODEL_DEFAULT"
+
+    local fix_exit=0
+    if command -v claude &>/dev/null; then
+      (cd "$wt_path" && printf '%b' "$fix_prompt" | claude $model_flag --print) 2>/dev/null || fix_exit=$?
+    else
+      info "Phase 3: Claude CLI not found — cannot attempt fix"
+      return 1
+    fi
+
+    # Re-run tests
+    test_exit=0
+    (cd "$wt_path" && eval "$test_cmd" >/tmp/phase3-test-output-$$.txt 2>&1) || test_exit=$?
+
+    if [ "$test_exit" -eq 0 ]; then
+      info "Phase 3: tests passed after fix attempt $fix_attempts"
+
+      # ADR-008 PR-C: capture successful fix to learning store
+      local fix_description
+      fix_description=$(printf '%b' "$fix_prompt" | head -3 | tr '\n' ' ')
+      learning_write "$feat_id" "$error_sig" "$fix_description"
+
+      # Verify the learning entry
+      local project_path
+      project_path="$ROOT_DIR/.claude/feature-state/learned.json"
+      if [ -f "$project_path" ]; then
+        local learn_id
+        learn_id=$(node -p "
+          try {
+            const entries = JSON.parse(require('fs').readFileSync('$project_path','utf-8'));
+            const match = entries.find(e => !e.archived && e.pattern === $(node -p "JSON.stringify('$error_sig')" 2>/dev/null || echo "''"));
+            match ? match.id : '';
+          } catch(e) { ''; }
+        " 2>/dev/null || echo "")
+        [ -n "$learn_id" ] && learning_verify "$learn_id" "true" "$project_path"
+      fi
+
+      rm -f /tmp/phase3-test-output-$$.txt
+      return 0
+    fi
+
+    test_output=$(cat /tmp/phase3-test-output-$$.txt 2>/dev/null || echo "test output unavailable")
+    rm -f /tmp/phase3-test-output-$$.txt
+    mem_record_error "$feat_id" "phase3" "fix attempt $fix_attempts failed: $test_cmd"
+  done
+
+  err "Phase 3: tests still failing after $max_fix_attempts fix attempts"
+  return 1
+}
+
+# ── dep_check_merge_state ─────────────────────────────────────────────
+# ADR-008 PR-C: Hard-block dependency check.
+# For each dependency ID, looks up the parent PR number from its results.json,
+# then queries the git platform CLI to confirm the PR is merged.
+# Returns 0 if all deps are merged (or have no PR data); 1 if any dep is unmerged.
+
+dep_check_merge_state() {
+  local feat_id="$1"
+  local deps_csv="$2"  # comma-separated list of dependency feature IDs
+
+  [ -z "$deps_csv" ] && return 0
+
+  # Determine platform (uses ADAPTER already loaded by config.sh)
+  local platform="github"
+  case "${ADAPTER:-markdown}" in
+    github)   platform="github" ;;
+    linear)   platform="github" ;;  # assume GitHub for PR checks
+    *)        platform="github" ;;
+  esac
+
+  # Check if az or glab CLI present to override platform detection
+  if command -v glab &>/dev/null; then
+    platform="gitlab"
+  elif command -v az &>/dev/null; then
+    platform="azure"
+  fi
+
+  local all_merged=0
+  local IFS_ORIG="$IFS"
+  IFS=","
+  for dep_id in $deps_csv; do
+    IFS="$IFS_ORIG"
+    dep_id=$(echo "$dep_id" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+    [ -z "$dep_id" ] && continue
+
+    local dep_results="$STATE_DIR/$dep_id/results.json"
+    if [ ! -f "$dep_results" ]; then
+      info "Dep $dep_id: no results.json — assuming not yet run (allowing)"
+      IFS=","
+      continue
+    fi
+
+    local pr_url
+    pr_url=$(node -p "
+      try {
+        const r = JSON.parse(require('fs').readFileSync('$dep_results','utf-8'));
+        r.pr_url || '';
+      } catch(e) { ''; }
+    " 2>/dev/null || echo "")
+
+    if [ -z "$pr_url" ]; then
+      info "Dep $dep_id: no PR URL recorded — assuming not complete (blocking)"
+      all_merged=1
+      IFS=","
+      continue
+    fi
+
+    # Extract PR number from URL
+    local pr_num
+    pr_num=$(echo "$pr_url" | sed 's|.*/||')
+
+    local is_merged=false
+    case "$platform" in
+      github)
+        if command -v gh &>/dev/null; then
+          local gh_state
+          gh_state=$(gh pr view "$pr_num" --json state,mergedAt 2>/dev/null || echo '{}')
+          is_merged=$(echo "$gh_state" | node -p "
+            try {
+              const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));
+              (d.state === 'MERGED' || (d.mergedAt && d.mergedAt.length > 0)) ? 'true' : 'false';
+            } catch(e) { 'false'; }
+          " 2>/dev/null || echo "false")
+        else
+          info "Dep $dep_id: gh CLI not available — assuming merged (allowing)"
+          is_merged="true"
+        fi
+        ;;
+      azure)
+        if command -v az &>/dev/null; then
+          local az_state
+          az_state=$(az repos pr show --id "$pr_num" 2>/dev/null || echo '{}')
+          is_merged=$(echo "$az_state" | node -p "
+            try {
+              const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));
+              d.status === 'completed' ? 'true' : 'false';
+            } catch(e) { 'false'; }
+          " 2>/dev/null || echo "false")
+        else
+          info "Dep $dep_id: az CLI not available — assuming merged (allowing)"
+          is_merged="true"
+        fi
+        ;;
+      gitlab)
+        if command -v glab &>/dev/null; then
+          local glab_out
+          glab_out=$(glab mr view "$pr_num" 2>/dev/null || echo "state: open")
+          echo "$glab_out" | grep -qi "merged" && is_merged="true" || is_merged="false"
+        else
+          info "Dep $dep_id: glab CLI not available — assuming merged (allowing)"
+          is_merged="true"
+        fi
+        ;;
+    esac
+
+    if [ "$is_merged" != "true" ]; then
+      info "Dep $dep_id: PR #$pr_num not yet merged (state: unmerged)"
+      all_merged=1
+    else
+      info "Dep $dep_id: PR #$pr_num merged — OK"
+    fi
+
+    IFS=","
+  done
+  IFS="$IFS_ORIG"
+
+  return $all_merged
 }
 
 run_pr_creation() {
