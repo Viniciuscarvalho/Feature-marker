@@ -80,6 +80,16 @@ Phase 4: Commit & PR     → Commit, push, open pull request
 
 Each phase writes a checkpoint. Re-run with the same feature name to resume from where you left off.
 
+### Phase reference
+
+| #   | Phase                   | What you provide                                                                       | If something is missing                                                                                                                                          | Autonomy pause point                                                                                  |
+| --- | ----------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 0   | **Inputs Gate**         | `tasks/prd-{slug}/prd.md`, `techspec.md`, `tasks.md` — or just a one-line description  | Missing artifacts are generated interactively via `/create-prd`, `/generate-spec`, `/generate-tasks`. Plan-mode output from `~/.claude/plans/` is auto-ingested. | `supervised`: pauses for approval of each artifact before continuing                                  |
+| 1   | **Analysis & Planning** | Nothing — fully automatic                                                              | `product-manager` skill auto-installed if absent                                                                                                                 | `supervised`: pauses before implementation begins                                                     |
+| 2   | **Implementation**      | Nothing normally                                                                       | On breaking changes or when file-change count exceeds `safety.max_file_changes` (default 50), execution pauses even in `full_auto`                               | `supervised`: pauses after every task                                                                 |
+| 3   | **Tests & Validation**  | Nothing — platform auto-detected                                                       | Stack detected from project files (`swift test`, `jest`, `cargo test`, `pytest`, `go test`). On test failure you are prompted to retry or continue.              | —                                                                                                     |
+| 4   | **Commit & PR**         | Git remote configured; platform CLI authenticated (`gh`, `az`, `glab`) for PR creation | `/commit` command auto-installed; PR opened as draft by default                                                                                                  | `checkpoint`: stops here for human review and merge. `full_auto`: enables auto-merge after CI passes. |
+
 ---
 
 ## What It Automates
@@ -156,56 +166,123 @@ cd Feature-marker && ./feature-marker-dist/feature-marker/install.sh
 
 ---
 
-## Usage
+## Two Ways to Run
 
-**Single feature** — in Claude Code:
+feature-marker has two distinct entry points with different scopes and behaviors.
 
-```bash
+### Mode A — In Claude Code (single feature)
+
+Run directly inside a Claude Code session:
+
+```
 /feature-marker my-feature-name
 ```
 
-Re-run with the same name to resume from the last checkpoint.
+- Runs one feature at a time in the current session
+- Uses whichever model the Claude Code session already has active
+- Prompts you interactively for any missing artifacts
+- Re-run with the same slug to resume from the last checkpoint (state in `.claude/feature-state/{slug}/checkpoint.json`)
 
-**Multiple features** — from your terminal:
+### Mode B — Terminal CLI (one or many features)
 
-```bash
-# Scaffold config in your project
-feature-marker-orchestrate init
-
-# Preview the plan
-feature-marker-orchestrate --dry-run
-
-# Run the orchestrator
-feature-marker-orchestrate
-```
-
-Or run directly from the repo:
+Run from your terminal using the `feature-marker-orchestrate` CLI:
 
 ```bash
-./scripts/orchestrate.sh init
-./scripts/orchestrate.sh run
+feature-marker-orchestrate init     # scaffold config and backlog file
+feature-marker-orchestrate          # process the full backlog
+feature-marker-orchestrate --feature feat-001   # run a single feature by ID
 ```
+
+- Reads features from a backlog (Markdown file, GitHub Issues, Linear, Jira, or Notion)
+- Creates an isolated git worktree per feature under `.worktrees/`
+- Shells out to `claude --skill feature-marker` per feature — each run is a fresh Claude process
+- Model, autonomy level, and safety limits are controlled via `orchestrator/config.yml`
+
+### Comparison
+
+| Dimension      | In-Claude `/feature-marker` | CLI `feature-marker-orchestrate`                |
+| -------------- | --------------------------- | ----------------------------------------------- |
+| Scope          | One feature per session     | Batch from backlog, or single via `--feature`   |
+| Session        | Current Claude Code session | New `claude` process per feature                |
+| Model          | Current session model       | Config → `--model` flag → `ANTHROPIC_MODEL` env |
+| Working tree   | Current repo                | Isolated git worktree per feature               |
+| Autonomy       | You approve inline          | `supervised` / `checkpoint` / `full_auto`       |
+| Resume         | Same slug re-run            | `--resume` skips completed features             |
+| Backlog source | You type the slug           | Markdown / GitHub / Linear / Jira / Notion      |
 
 ---
 
 ## Orchestrator
 
-The orchestrator reads a backlog, creates isolated worktrees, runs the full pipeline per feature, and propagates context between runs.
+The orchestrator reads a backlog, creates an isolated git worktree per feature, runs the full feature-marker pipeline in each one, and propagates context (decisions, patterns, error history) across runs.
+
+### First run walkthrough
 
 ```bash
-feature-marker-orchestrate init       # scaffold config, .env, features.md
-feature-marker-orchestrate            # process the backlog
-feature-marker-orchestrate status     # check feature states
-feature-marker-orchestrate clean      # reset everything
+# 1. In your project root, scaffold the config
+feature-marker-orchestrate init
 ```
 
-### Backlog Sources
+`init` creates:
 
-| Adapter           | Source                                     |
-| ----------------- | ------------------------------------------ |
-| **Markdown**      | Local `features.md` file                   |
-| **GitHub Issues** | Open issues filtered by label via `gh` CLI |
-| **Linear**        | Team issues via GraphQL API                |
+| Path                      | Purpose                                                        |
+| ------------------------- | -------------------------------------------------------------- |
+| `orchestrator/config.yml` | Backlog adapter, autonomy level, model, safety settings        |
+| `.env`                    | API keys for Linear / Jira / Notion (gitignored automatically) |
+| `features.md`             | Default backlog file when using the Markdown adapter           |
+| `.orchestrator/`          | Runtime state directory (gitignored)                           |
+
+```bash
+# 2. Edit features.md or point config.yml at your backlog source
+
+# 3. Preview what will run without executing
+feature-marker-orchestrate --dry-run
+
+# 4. Run
+feature-marker-orchestrate
+```
+
+### CLI reference
+
+| Subcommand      | What it does                                                                    |
+| --------------- | ------------------------------------------------------------------------------- |
+| `init`          | Scaffold `orchestrator/config.yml`, `.env`, `features.md`, `.gitignore` entries |
+| `run` (default) | Execute the orchestration loop against the backlog                              |
+| `status`        | Show current state of every feature (pending / running / done / blocked)        |
+| `clean`         | Remove all worktrees and reset `.orchestrator/` state                           |
+
+| Flag                   | Values                                                   | Description                                                   |
+| ---------------------- | -------------------------------------------------------- | ------------------------------------------------------------- |
+| `--autonomy <level>`   | `supervised` \| `checkpoint` \| `full_auto`              | Override autonomy for this run                                |
+| `--adapter <type>`     | `markdown` \| `github` \| `linear` \| `jira` \| `notion` | Override backlog source                                       |
+| `--model <name>`       | `opus` \| `sonnet` \| `haiku` \| `opusplan`              | Override model for this run                                   |
+| `--feature <id>`       | e.g. `feat-001`                                          | Run only one specific feature                                 |
+| `--plan` / `--dry-run` | —                                                        | Show the execution plan without running                       |
+| `--resume`             | —                                                        | Skip features already marked done, run pending ones           |
+| `--config <path>`      | file path                                                | Use a custom config file (default: `orchestrator/config.yml`) |
+
+Examples:
+
+```bash
+feature-marker-orchestrate --dry-run
+feature-marker-orchestrate --autonomy supervised
+feature-marker-orchestrate --feature feat-003
+feature-marker-orchestrate --model opus --resume
+feature-marker-orchestrate status
+feature-marker-orchestrate clean
+```
+
+### Backlog sources
+
+Configure the active adapter in `orchestrator/config.yml` under `source.adapter`.
+
+| Adapter           | Source                                     | Auth                                             |
+| ----------------- | ------------------------------------------ | ------------------------------------------------ |
+| **Markdown**      | Local `features.md`                        | None                                             |
+| **GitHub Issues** | Open issues filtered by label via `gh` CLI | `gh auth login`                                  |
+| **Linear**        | Team issues via GraphQL API                | `LINEAR_API_KEY` in `.env`                       |
+| **Jira**          | Project issues via REST API                | `JIRA_URL`, `JIRA_EMAIL`, `JIRA_TOKEN` in `.env` |
+| **Notion**        | Database rows filtered by status           | `NOTION_TOKEN` in `.env`                         |
 
 Markdown format:
 
@@ -220,15 +297,125 @@ Markdown format:
 Depends on: feat-001
 ```
 
-### Autonomy Levels
+Inline priority override in any adapter: `[p:high]` in the feature title.
 
-| Level          | Behavior                                             | Best For                        |
-| -------------- | ---------------------------------------------------- | ------------------------------- |
-| **supervised** | Pauses after each phase for explicit approval        | New projects, critical features |
-| **checkpoint** | Full pipeline, opens PR, human reviews and merges    | Most projects                   |
-| **full_auto**  | Full pipeline, opens PR, enables auto-merge after CI | Low-risk batch work             |
+### Autonomy levels
 
-Configure via `orchestrator/config.yml`. Inline priority is also supported in feature titles: `[p:high]`.
+| Level          | Behavior                                      | Phase pause points                                              | Best for                        |
+| -------------- | --------------------------------------------- | --------------------------------------------------------------- | ------------------------------- |
+| **supervised** | Pauses after each phase for explicit approval | After Phase 0, 1, and every task in Phase 2                     | New projects, critical features |
+| **checkpoint** | Full pipeline, opens PR, you review and merge | Phase 4 — PR opened as draft, human merges                      | Most projects                   |
+| **full_auto**  | Full pipeline, opens PR, auto-merge after CI  | Only on safety violations (breaking changes, file-change limit) | Low-risk batch work             |
+
+### Safety and state
+
+Safety limits in `orchestrator/config.yml`:
+
+```yaml
+safety:
+  breaking_change_pause: true # pause on any breaking API/schema change
+  schema_migration_review: true # pause when a DB migration is detected
+  max_file_changes: 50 # pause if a single task touches more than 50 files
+```
+
+These limits apply in all autonomy levels including `full_auto`.
+
+Checkpoint state lives in two places:
+
+- `.orchestrator/state/` — orchestrator-level feature status (pending / running / done)
+- `.claude/feature-state/{slug}/checkpoint.json` — per-phase resume data for each feature
+
+Running `feature-marker-orchestrate clean` removes worktrees and resets `.orchestrator/state/` but does not delete `.claude/feature-state/` checkpoints. Re-running the same feature slug after a `clean` will resume from its last checkpoint.
+
+---
+
+## Model Selection
+
+Introduced in v7.4.0. Controls which Claude model the CLI orchestrator uses when it shells out to `claude --skill feature-marker`.
+
+**Accepted values:** `opus`, `sonnet`, `haiku`, `opusplan`, or a full model ID (e.g. `claude-opus-4-7`).
+
+**Default:** `opusplan` — automatically uses Opus for planning phases and Sonnet for execution, giving the best quality/cost balance without any extra config.
+
+**Precedence (highest to lowest):**
+
+1. CLI flag: `--model <name>`
+2. Environment variable: `ANTHROPIC_MODEL=<name>`
+3. `orchestrator/config.yml` → `model.default`
+
+Examples:
+
+```bash
+# One-off override via flag
+feature-marker-orchestrate run --model sonnet
+
+# Override via env (useful in CI)
+ANTHROPIC_MODEL=opus feature-marker-orchestrate run
+```
+
+Config file (per-phase override, uncomment to activate):
+
+```yaml
+model:
+  default: opusplan # used when per-phase model is not set
+  # plan: opus               # PRD, TechSpec, Tasks generation
+  # execute: sonnet          # Implementation, testing, review
+```
+
+> **Scope:** model selection only applies to the CLI orchestrator. The in-Claude `/feature-marker` skill always uses the model of the current Claude Code session.
+
+---
+
+## Updating feature-marker
+
+### Check your installed version
+
+```bash
+# Homebrew
+brew list --versions feature-marker
+
+# NPX / npm
+npx @viniciuscarvalho/feature-marker --version
+```
+
+### Check for a newer version
+
+```bash
+# Homebrew — refresh tap index then list outdated
+brew update && brew outdated feature-marker
+
+# npm — compare published version against installed
+npm view @viniciuscarvalho/feature-marker version
+```
+
+You can also watch releases on GitHub: `https://github.com/Viniciuscarvalho/Feature-marker/releases`
+
+### Upgrade
+
+```bash
+# Homebrew
+brew update && brew upgrade feature-marker
+
+# NPX / npm — re-run the installer to copy updated skill files
+npx @viniciuscarvalho/feature-marker install
+
+# Manual / git clone
+git -C <repo-path> pull --ff-only
+./feature-marker-dist/feature-marker/install.sh
+```
+
+### Verify after upgrade
+
+```bash
+feature-marker-orchestrate --help | head -5
+brew list --versions feature-marker
+```
+
+**Notes:**
+
+- The in-Claude skill lives at `~/.claude/skills/feature-marker/`. Homebrew and NPX both update this path automatically. A manual `git pull` does not — you must re-run `install.sh` afterward.
+- Orchestrator state under `.orchestrator/` and `.claude/feature-state/` is not touched by upgrades; existing checkpoints continue to work.
+- If a release changes the `orchestrator/config.yml` schema, run `feature-marker-orchestrate init` in a scratch directory to see the new defaults, then merge any new keys into your project config manually.
 
 ---
 
@@ -256,6 +443,8 @@ Add your own in `.claude/spec-workflow/personas/my-persona.md` — custom person
 
 ## Requirements
 
+### For the in-Claude skill
+
 The following Claude Code commands and templates must be present. Get them from [mindkit](https://github.com/Viniciuscarvalho/mindkit) or create your own.
 
 **Commands** (`~/.claude/commands/`)
@@ -269,6 +458,19 @@ The following Claude Code commands and templates must be present. Get them from 
 - `prd-template.md`
 - `techspec-template.md`
 - `tasks-template.md`
+
+### For the CLI orchestrator
+
+- **Claude Code CLI** installed and authenticated — verify with `claude --version`
+- **Git** configured with a remote; target branch pushed and accessible
+- **Platform CLI authenticated** based on your backlog adapter:
+  - GitHub: `gh auth login`
+  - Linear: `LINEAR_API_KEY` in `.env`
+  - Jira: `JIRA_URL`, `JIRA_EMAIL`, `JIRA_TOKEN` in `.env`
+  - Notion: `NOTION_TOKEN` in `.env`
+- **PR creation CLI** matching your git platform: `gh` (GitHub), `az` (Azure DevOps), or `glab` (GitLab)
+
+Run `feature-marker-orchestrate init` in your project root to scaffold `orchestrator/config.yml`, `.env`, `features.md`, and the required `.gitignore` entries in one step.
 
 ---
 
