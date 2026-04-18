@@ -17,40 +17,46 @@ source:
   # All others are ignored at runtime.
 
   markdown:
-    file: features.md          # Relative to project root
+    file: features.md # Relative to project root
     # That's all — no auth needed
 
   github:
-    label: feature-marker      # Filter issues by label (optional)
-    state: open                # open | closed | all
+    label: feature-marker # Filter issues by label (optional)
+    state: open # open | closed | all
     # Auth: uses gh CLI auth, no env vars needed
     # Run: gh auth login
 
   linear:
-    team: ENG                  # Filter issues by team
+    team: ENG # Filter issues by team
     # Auth: LINEAR_API_KEY from .env
 
   jira:
-    project: PRJ               # Jira project key
-    jql: status = "To Do"      # JQL filter (optional)
+    project: PRJ # Jira project key
+    jql: status = "To Do" # JQL filter (optional)
     # Auth: JIRA_URL, JIRA_EMAIL, JIRA_TOKEN from .env
 
   notion:
-    database_id: abc123        # Notion database ID
+    database_id: abc123 # Notion database ID
     filter_property: Status
     filter_value: To Do
     # Auth: NOTION_TOKEN from .env
 
-autonomy: checkpoint           # supervised | checkpoint | full_auto
+autonomy: checkpoint # supervised | checkpoint | full_auto
 
 # Model selection — which Claude model to use.
 # Supported: opus | sonnet | haiku | opusplan | full model IDs (claude-opus-4-7)
 # "opusplan" uses Opus for planning, Sonnet for execution automatically.
 # Override via CLI: --model opus | Override via env: ANTHROPIC_MODEL=opus
 model:
-  default: opusplan            # Used when per-phase model is not set
+  default: opusplan # Used when per-phase model is not set
   # plan: opus                 # PRD, TechSpec, Tasks generation
   # execute: sonnet            # Implementation, testing, review
+  cost_baselines:
+    phase_1_planning: 25000
+    phase_2_per_task_specialist: 8000
+    phase_2_per_task_generic: 12000
+    phase_4_commit_pr: 5000
+    fix_attempt_overhead: 3000
 
 # Future — not implemented in this plan (ADR-003)
 preprocessing:
@@ -59,7 +65,7 @@ preprocessing:
   limits: {}
 
 execution:
-  max_concurrent: 1            # parallel worktrees (v1)
+  max_concurrent: 1 # parallel worktrees (v1)
   skip_done: true
   skip_blocked: true
   base_branch: main
@@ -79,9 +85,13 @@ safety:
   breaking_change_pause: true
   schema_migration_review: true
   max_file_changes: 50
+  feature_size:
+    max_acceptance_criteria: 15
+    max_tasks: 20
+    max_file_changes_estimate: 80
 
 pr_creation:
-  strategy: draft              # draft | ready | none
+  strategy: draft # draft | ready | none
   auto_assign: true
 
 notifications:
@@ -94,10 +104,17 @@ metrics:
 
 # Agent Discovery and Task Routing (ADR-006)
 discovery:
-  enabled: true              # Run agent discovery before each orchestration
-  scan_only_threshold: 0     # Min agents required to run split mode (0 = always if any)
+  enabled: true # Run agent discovery before each orchestration
+  scan_only_threshold: 0 # Min agents required to run split mode (0 = always if any)
 
 routing:
-  prefer_agents: true        # Prefer discovered agents over feature-marker
-  fallback: feature-marker   # "fallback" tagged tasks to feature-marker regardless of agents
-  force_review: false        # Force all "review" tagged tasks to a specific agent
+  prefer_agents: true # Prefer discovered agents over feature-marker
+  fallback: feature-marker # "fallback" tagged tasks to feature-marker regardless of agents
+  force_review: false # Force all "review" tagged tasks to a specific agent
+
+# Layered learning (ADR-008 PR-C)
+learning:
+  ttl_days: 90
+  similarity:
+    backend: exact # exact | embedding
+    threshold: 0.85

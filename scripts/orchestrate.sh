@@ -77,10 +77,15 @@ OPT_CONFIG="orchestrator/config.yml"
 OPT_DRY_RUN=false
 OPT_FEATURE=""
 OPT_RESUME=false
+OPT_SKIP_CYCLE_CHECK=false
+OPT_SAMPLE=10
+OPT_LEARNING_ACTION=""
+OPT_LEARNING_ID=""
+OPT_LEARNING_CANDIDATES=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    init|run|status|clean)
+    init|run|status|clean|calibrate|learning|promote-learning)
       SUBCOMMAND="$1"
       ;;
     --autonomy)
@@ -104,34 +109,66 @@ while [ $# -gt 0 ]; do
     --resume)
       OPT_RESUME=true
       ;;
+    --skip-cycle-check)
+      OPT_SKIP_CYCLE_CHECK=true
+      ;;
+    --sample)
+      shift; OPT_SAMPLE="$1"
+      ;;
+    --candidates)
+      OPT_LEARNING_CANDIDATES=true
+      ;;
+    list|archive|promote)
+      # Sub-subcommands for the learning subcommand
+      [ "$SUBCOMMAND" = "learning" ] && OPT_LEARNING_ACTION="$1"
+      ;;
     --help|-h)
       echo "Usage: orchestrate.sh <command> [flags]"
       echo ""
       echo "Commands:"
-      echo "  init                 Scaffold config, .env, features.md, .gitignore"
-      echo "  run                  Execute the orchestration loop"
-      echo "  status               Show current orchestrator state"
-      echo "  clean                Remove all worktrees and reset state"
+      echo "  init                       Scaffold config, .env, features.md, .gitignore"
+      echo "  run                        Execute the orchestration loop"
+      echo "  status                     Show current orchestrator state"
+      echo "  clean                      Remove all worktrees and reset state"
+      echo "  calibrate                  Show token-cost calibration guidance"
+      echo "  learning list              List all learning entries"
+      echo "  learning list --candidates List only promotion candidates"
+      echo "  learning archive <id>      Archive a learning entry by ID"
+      echo "  learning promote <id>      Promote a project entry to global tier"
+      echo "  promote-learning <id>      Alias for: learning promote <id>"
       echo ""
       echo "Flags:"
-      echo "  --autonomy <level>   supervised | checkpoint | full_auto"
-      echo "  --adapter <type>     markdown | github | linear"
-      echo "  --model <name>       opus | sonnet | haiku | opusplan"
-      echo "  --config <path>      Config file (default: orchestrator/config.yml)"
-      echo "  --feature <id>       Run only the specified feature"
-      echo "  --plan, --dry-run    Show plan without executing"
-      echo "  --resume             Skip completed, run pending"
-      echo "  --help               Show this help"
+      echo "  --autonomy <level>         supervised | checkpoint | full_auto"
+      echo "  --adapter <type>           markdown | github | linear"
+      echo "  --model <name>             opus | sonnet | haiku | opusplan"
+      echo "  --config <path>            Config file (default: orchestrator/config.yml)"
+      echo "  --feature <id>             Run only the specified feature"
+      echo "  --plan, --dry-run          Show plan without executing"
+      echo "  --resume                   Skip completed, run pending"
+      echo "  --skip-cycle-check         Skip the cycle-completion gate"
+      echo "  --sample <n>               Sample size for calibrate (default: 10)"
+      echo "  --help                     Show this help"
       exit 0
       ;;
     *)
-      err "Unknown argument: $1"
-      err "Run: ./scripts/orchestrate.sh --help"
-      exit 1
+      # Capture positional arguments for subcommands that need them (e.g. learning archive <id>)
+      if [ "$SUBCOMMAND" = "learning" ] && [ -z "$OPT_LEARNING_ACTION" ]; then
+        OPT_LEARNING_ACTION="$1"
+      elif [ "$SUBCOMMAND" = "learning" ] && [ -z "$OPT_LEARNING_ID" ]; then
+        OPT_LEARNING_ID="$1"
+      elif [ "$SUBCOMMAND" = "promote-learning" ] && [ -z "$OPT_LEARNING_ID" ]; then
+        OPT_LEARNING_ID="$1"
+      else
+        err "Unknown argument: $1"
+        err "Run: ./scripts/orchestrate.sh --help"
+        exit 1
+      fi
       ;;
   esac
   shift
 done
+
+export OPT_SKIP_CYCLE_CHECK
 
 [ -z "$SUBCOMMAND" ] && { err "No command given. Run: ./scripts/orchestrate.sh --help"; exit 1; }
 
@@ -264,6 +301,12 @@ sub_run() {
   source "$LIB_DIR/worktree.sh"
   source "$LIB_DIR/memory.sh"
   source "$LIB_DIR/display.sh"
+  # ADR-008 modules
+  source "$LIB_DIR/cost.sh"
+  source "$LIB_DIR/router.sh"
+  source "$LIB_DIR/learning.sh"
+  source "$LIB_DIR/size_gate.sh"
+  source "$LIB_DIR/cycle_gate.sh"
   source "$LIB_DIR/runner.sh"
 
   # Resolve config file — check multiple locations
@@ -397,12 +440,98 @@ sub_clean() {
 }
 
 # ══════════════════════════════════════════════════════════════════
+# Subcommand: calibrate (ADR-008 PR-A)
+# ══════════════════════════════════════════════════════════════════
+
+sub_calibrate() {
+  source "$LIB_DIR/config.sh"
+  source "$LIB_DIR/cost.sh"
+
+  local config_file="$OPT_CONFIG"
+  if [ ! -f "$config_file" ]; then
+    [ -f ".orchestrator/config.yaml" ] && config_file=".orchestrator/config.yaml"
+    [ -f ".orchestrator/config.yml"  ] && config_file=".orchestrator/config.yml"
+    [ -f "orchestrator/config.yml"   ] && config_file="orchestrator/config.yml"
+  fi
+
+  load_config "$config_file" 2>/dev/null || true
+  cost_load_config
+
+  banner "Token Cost Calibration"
+  cost_calibrate "$OPT_SAMPLE"
+}
+
+# ══════════════════════════════════════════════════════════════════
+# Subcommand: learning (ADR-008 PR-C)
+# ══════════════════════════════════════════════════════════════════
+
+sub_learning() {
+  source "$LIB_DIR/config.sh"
+  source "$LIB_DIR/learning.sh"
+
+  local config_file="$OPT_CONFIG"
+  if [ ! -f "$config_file" ]; then
+    [ -f ".orchestrator/config.yaml" ] && config_file=".orchestrator/config.yaml"
+    [ -f ".orchestrator/config.yml"  ] && config_file=".orchestrator/config.yml"
+    [ -f "orchestrator/config.yml"   ] && config_file="orchestrator/config.yml"
+  fi
+  load_config "$config_file" 2>/dev/null || true
+
+  local project_path="$ROOT_DIR/.claude/feature-state/learned.json"
+  local global_path="$HOME/.claude/feature-marker/learned/learned.json"
+
+  case "${OPT_LEARNING_ACTION:-list}" in
+    list)
+      banner "Learning Entries (project tier)"
+      learning_list "$project_path" "$OPT_LEARNING_CANDIDATES"
+      ;;
+    archive)
+      if [ -z "$OPT_LEARNING_ID" ]; then
+        err "Usage: learning archive <id>"
+        exit 1
+      fi
+      banner "Archive Learning Entry"
+      learning_archive "$OPT_LEARNING_ID" "$project_path"
+      ;;
+    promote)
+      if [ -z "$OPT_LEARNING_ID" ]; then
+        err "Usage: learning promote <id>"
+        exit 1
+      fi
+      banner "Promote Learning Entry to Global"
+      learning_promote "$OPT_LEARNING_ID" "$project_path" "$global_path"
+      ;;
+    *)
+      err "Unknown learning action: $OPT_LEARNING_ACTION"
+      err "Available: list, archive <id>, promote <id>"
+      exit 1
+      ;;
+  esac
+}
+
+# ══════════════════════════════════════════════════════════════════
+# Subcommand: promote-learning (alias for learning promote)
+# ══════════════════════════════════════════════════════════════════
+
+sub_promote_learning() {
+  if [ -z "$OPT_LEARNING_ID" ]; then
+    err "Usage: promote-learning <id>"
+    exit 1
+  fi
+  OPT_LEARNING_ACTION="promote"
+  sub_learning
+}
+
+# ══════════════════════════════════════════════════════════════════
 # Dispatch
 # ══════════════════════════════════════════════════════════════════
 
 case "$SUBCOMMAND" in
-  init)   sub_init ;;
-  run)    sub_run ;;
-  status) sub_status ;;
-  clean)  sub_clean ;;
+  init)            sub_init ;;
+  run)             sub_run ;;
+  status)          sub_status ;;
+  clean)           sub_clean ;;
+  calibrate)       sub_calibrate ;;
+  learning)        sub_learning ;;
+  promote-learning) sub_promote_learning ;;
 esac
