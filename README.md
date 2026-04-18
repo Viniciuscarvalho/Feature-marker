@@ -205,6 +205,21 @@ safety:
 pr_creation:
   strategy: draft            # draft | ready | none
   auto_assign: true
+
+monitoring:
+  enabled: true              # poll checkpoint.json for phase transitions
+  poll_interval_seconds: 1
+
+posthoc:
+  qa_review: conditional     # always | conditional | never
+  qa_trigger: test_failure   # test_failure | breaking_change
+  review_trigger: full_auto  # full_auto | always | never
+  max_posthoc_per_feature: 2
+
+review:
+  enabled: true              # code review before PR creation
+  max_cycles: 2              # review-fix iterations
+  checklist_source: knowledge-base
 ```
 
 Inline priority is also supported in feature titles: `## [FEAT] feat-001: My Feature [p:high]`
@@ -213,19 +228,48 @@ Inline priority is also supported in feature titles: `## [FEAT] feat-001: My Fea
 
 ```
 features.md → adapter → backlog.json → orchestrator loop:
-  ┌─────────────────────────────────────────────────┐
-  │  for each feature (sorted by priority):         │
-  │    1. Create isolated git worktree              │
-  │    2. Inject cross-feature context              │
-  │    3. Seed PRD from backlog description         │
-  │    4. Invoke feature-marker pipeline            │
-  │    5. Collect results + error patterns          │
-  │    6. Propagate context to next feature         │
-  │    7. Create PR (if autonomy allows)            │
-  │    8. Cleanup worktree                          │
-  └─────────────────────────────────────────────────┘
+  ┌──────────────────────────────────────────────────────┐
+  │  for each feature (sorted by priority):              │
+  │    1. Create isolated git worktree                   │
+  │    2. Build context (cross-feature + behavioral      │
+  │       rules from knowledge base + routing hints)     │
+  │    3. Seed PRD from backlog description               │
+  │    4. Start checkpoint monitor (background)          │
+  │    5. Invoke feature-marker pipeline (monolithic)    │
+  │    6. Stop monitor, sync phase state                 │
+  │    7. Post-hoc QA (conditional, ~2,500 tokens)       │
+  │    8. Safety check (breaking changes, schema, files) │
+  │    9. Collect results from git state                 │
+  │   10. Post-hoc review (full_auto only)               │
+  │   11. Intelligent retry (QA analyzes before retry)   │
+  │   12. Update knowledge base (patterns → rules)       │
+  │   13. Create PR (if autonomy allows)                 │
+  │   14. Cleanup worktree                               │
+  └──────────────────────────────────────────────────────┘
   → status.json (Kanban) + terminal progress + benchmark
 ```
+
+### Orchestrator Skills
+
+The orchestrator's responsibilities are exposed as Claude Code skills for interactive
+use within a Claude session. These skills read the same `.orchestrator/` state files
+that the shell scripts use.
+
+| Skill | Purpose | Example |
+| ----- | ------- | ------- |
+| `/kb-query` | Search learned error patterns and behavioral rules | `/kb-query "Cannot find module"` |
+| `/kb-learn` | Teach new patterns from QA reports or manual input | `/kb-learn --from-qa feat-001` |
+| `/kb-rules` | List, toggle, edit, prune behavioral rules | `/kb-rules list` |
+| `/orch-status` | Dashboard: per-feature progress, metrics, history | `/orch-status --feature feat-005` |
+| `/safety-check` | Analyze results.json for breaking changes, security issues | `/safety-check feat-001` |
+| `/context-builder` | Build feature context with rules and routing hints | `/context-builder feat-001` |
+| `/collect-results` | Collect pipeline results from git state and logs | `/collect-results feat-001` |
+
+**How invocation works**: Skills are Claude Code SKILL.md files invoked within a Claude
+session via slash commands. When the orchestrator runs as a shell script (`./scripts/orchestrator.sh`),
+it uses equivalent shell fallback functions — the skills are for interactive use, not
+automated pipeline runs. Set `ORCHESTRATOR_USE_SKILLS=true` to attempt skill delegation
+via `claude -p` (requires Claude CLI and incurs additional token cost per call).
 
 ### Benchmark
 
@@ -267,7 +311,11 @@ iOS/Xcode projects get additional simulator validation via XcodeBuildMCP (option
 - **Multi-Feature Orchestrator** — Reads a backlog (Markdown, GitHub Issues, or Linear), creates isolated worktrees, and processes features autonomously with priority sorting and dependency resolution
 - **Cross-Feature Context** — Each feature benefits from decisions made in previous features via automatic context propagation
 - **Autonomy Levels** — Supervised (pause per phase), Checkpoint (human reviews PR), or Full Auto (end-to-end)
-- **Safety Guardrails** — Breaking change detection pauses execution; schema change warnings; configurable retry limits
+- **Safety Guardrails** — Breaking change detection pauses execution; schema change warnings; configurable retry limits; security anti-pattern scanning
+- **Knowledge Base** — Structured error pattern learning with auto-derived behavioral rules; patterns that recur become rules injected into future features
+- **Post-hoc QA & Review** — Lightweight agents verify implementation quality and analyze failures before retry; independent of the implementing agent
+- **Intelligent Retry** — QA agent classifies root cause before retry; low-confidence failures escalate to human instead of blind retry
+- **Orchestrator Skills** — Interactive Claude Code skills (`/kb-query`, `/kb-learn`, `/kb-rules`, `/orch-status`, `/safety-check`, `/context-builder`, `/collect-results`) for inspecting and managing orchestrator state within a Claude session
 - **Status & Observability** — Real-time `status.json` for Kanban integration, terminal progress display, per-feature timing
 - **TUI Application** — Rich terminal interface for visual workflow management
 - **Menu Bar App** — Native Swift/SwiftUI macOS app (839 KB binary)
@@ -385,12 +433,20 @@ orchestrator/
 └── config.yml                    # Declarative configuration
 
 scripts/
-├── orchestrator.sh               # Main loop controller
+├── orchestrator.sh               # Main loop controller (delegates to skills or fallbacks)
 ├── worktree-manager.sh           # Worktree lifecycle (create/remove/cleanup)
 ├── parse-config.js               # YAML config → shell vars
 ├── feedback-collector.sh         # Cross-feature context + error patterns
 ├── environment-discovery.sh      # Runtime environment manifest
 ├── status-writer.js              # status.json + terminal progress
+├── route-tasks.sh                # Task routing to agents by capability
+├── agent-discovery.sh            # Agent manifest discovery
+├── lib/
+│   ├── checkpoint-monitor.sh     # Background phase transition polling
+│   ├── knowledge.sh              # Structured knowledge base (patterns + rules)
+│   ├── qa.sh                     # Post-hoc QA agent invocation
+│   ├── review.sh                 # Post-hoc code review agent
+│   └── orchestrator-fallbacks.sh # Shell fallbacks for skill-delegated operations
 └── adapters/
     ├── markdown.js               # Markdown backlog parser
     ├── github.js                 # GitHub Issues adapter (via gh CLI)
@@ -403,14 +459,42 @@ schemas/
 .orchestrator/                    # Generated at runtime
 ├── status.json                   # Real-time Kanban data
 ├── global-context.md             # Cross-feature context accumulator
-├── error-patterns.json           # Structured error tracking
+├── knowledge-base.json           # Structured error patterns + learned rules
+├── behavioral-rules.json         # Auto-derived rules from recurring patterns
+├── error-patterns.json           # Legacy error tracking (migrated to knowledge base)
 ├── environment.manifest.json     # Runtime environment snapshot
 ├── state/{feature-id}/           # Per-feature state
 │   ├── status.json
 │   ├── context.md
 │   ├── results.json
+│   ├── qa-report.json            # QA analysis (if triggered)
+│   ├── review-report.json        # Code review (if triggered)
 │   └── logs/
+│       ├── run-*.log
+│       └── phases.log            # Phase transition log
 └── results/                      # Collected run logs
+```
+
+**Agents** (lightweight post-hoc verification):
+
+```
+feature-marker-dist/agents/
+├── feature-marker.md             # Main pipeline agent
+├── qa-reviewer.md                # Post-hoc QA verification (~2,500 tokens)
+└── review-agent.md               # Post-hoc code review (~2,500 tokens)
+```
+
+**Orchestrator Skills** (interactive Claude Code skills):
+
+```
+feature-marker-dist/.../skills/
+├── kb-query/SKILL.md             # Search knowledge base
+├── kb-learn/SKILL.md             # Teach new patterns
+├── kb-rules/SKILL.md             # Manage behavioral rules
+├── context-builder/SKILL.md      # Build feature context
+├── safety-check/SKILL.md         # Analyze safety concerns
+├── collect-results/SKILL.md      # Collect pipeline results
+└── orch-status/SKILL.md          # Orchestration status dashboard
 ```
 
 ---
