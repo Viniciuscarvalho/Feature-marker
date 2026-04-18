@@ -82,3 +82,32 @@ notifications:
 metrics:
   enabled: true
   collect_timing: true
+
+# Agent Discovery and Task Routing (ADR-006)
+discovery:
+  enabled: true              # Run agent discovery before each orchestration
+  scan_only_threshold: 0     # Min agents required to run split mode (0 = always if any)
+
+routing:
+  prefer_agents: true        # Prefer discovered agents over feature-marker
+  fallback: feature-marker   # "fallback" tagged tasks to feature-marker regardless of agents
+  force_review: false        # Force all "review" tagged tasks to a specific agent
+
+# Checkpoint monitoring — shell visibility into the monolithic invocation
+monitoring:
+  enabled: true              # Poll checkpoint.json for phase transitions
+  poll_interval_seconds: 1   # Polling frequency (checkpoint writes are infrequent)
+  phase_log: true            # Log phase transitions to phases.log
+
+# Post-hoc agents — conditional lightweight verification after implementation
+posthoc:
+  qa_review: conditional     # always | conditional | never
+  qa_trigger: test_failure   # test_failure | always | breaking_change
+  review_trigger: full_auto  # full_auto | always | never
+  max_posthoc_per_feature: 2 # Budget cap for post-hoc invocations per feature
+
+# Post-hoc review — independent code review before PR creation
+review:
+  enabled: true
+  max_cycles: 2              # Max review-fix cycles before accepting
+  checklist_source: knowledge-base  # knowledge-base | static | custom

@@ -65,9 +65,23 @@ WORKTREE_ROOT="$ROOT_DIR/$WORKTREE_BASE"
 export ROOT_DIR CONFIG_DIR STATE_DIR WORKTREE_ROOT
 export BASE_BRANCH ADAPTER AUTONOMY WORKTREE_BASE BRANCH_PREFIX
 
-# ── source worktree manager ─────────────────────────────────────
+# ── Monitoring & Post-hoc config ────────────────────────────────
+
+MONITOR_ENABLED="${CFG_MONITORING_ENABLED:-true}"
+MONITOR_POLL="${CFG_MONITORING_POLL_INTERVAL_SECONDS:-1}"
+POSTHOC_QA="${CFG_POSTHOC_QA_REVIEW:-conditional}"
+POSTHOC_QA_TRIGGER="${CFG_POSTHOC_QA_TRIGGER:-test_failure}"
+POSTHOC_REVIEW="${CFG_POSTHOC_REVIEW_TRIGGER:-full_auto}"
+POSTHOC_MAX="${CFG_POSTHOC_MAX_POSTHOC_PER_FEATURE:-2}"
+REVIEW_MAX_CYCLES="${CFG_REVIEW_MAX_CYCLES:-2}"
+
+# ── source modules ──────────────────────────────────────────────
 
 source "$SCRIPT_DIR/worktree-manager.sh"
+source "$SCRIPT_DIR/lib/checkpoint-monitor.sh"
+source "$SCRIPT_DIR/lib/knowledge.sh"
+source "$SCRIPT_DIR/lib/qa.sh"
+source "$SCRIPT_DIR/lib/review.sh"
 
 # ── helpers ──────────────────────────────────────────────────────
 
@@ -292,8 +306,10 @@ EOPRD
     echo "## Cross-Feature Context"
     cat "$CONFIG_DIR/global-context.md" 2>/dev/null || echo "No prior context."
     echo ""
-    # Inject error patterns for avoidance
-    if [ -f "$CONFIG_DIR/error-patterns.json" ] && [ "$COLLECT_PATTERNS" = "true" ]; then
+    # Inject behavioral rules from knowledge base (replaces raw error patterns)
+    if [ -f "$CONFIG_DIR/knowledge-base.json" ]; then
+      kb_apply_rules "$CONTEXT_FILE" 2>/dev/null || true
+    elif [ -f "$CONFIG_DIR/error-patterns.json" ] && [ "$COLLECT_PATTERNS" = "true" ]; then
       echo "## Known Error Patterns (avoid these)"
       node -e "
         const p = JSON.parse(require('fs').readFileSync('$CONFIG_DIR/error-patterns.json','utf-8'));
@@ -301,8 +317,19 @@ EOPRD
       " 2>/dev/null || true
     fi
   } > "$CONTEXT_FILE"
+
+  # Inject routing hints as context (zero extra invocations)
+  ROUTING_FILE="$STATE_DIR/$FEATURE_ID/routing.json"
+  if [ -f "$SCRIPT_DIR/route-tasks.sh" ]; then
+    TASKS_FILE="$TASK_DIR/tasks.md"
+    MANIFEST_FILE="$CONFIG_DIR/agent-manifest.json"
+    if [ -f "$TASKS_FILE" ] && [ -f "$MANIFEST_FILE" ]; then
+      bash "$SCRIPT_DIR/route-tasks.sh" --context-mode "$WT_PATH" "$MANIFEST_FILE" "$TASKS_FILE" >> "$CONTEXT_FILE" 2>/dev/null || true
+    fi
+  fi
+
   cp "$CONTEXT_FILE" "$WT_PATH/.orchestrator-context.md"
-  info "Context injected (cross-feature + error patterns)"
+  info "Context injected (cross-feature + behavioral rules + routing hints)"
 
   # ── 3e: Pipeline invocation ──
   update_status "$FEATURE_ID" "in-progress" "implementation"
@@ -312,6 +339,11 @@ EOPRD
   EXIT_CODE=0
 
   export ORCHESTRATOR_MODE=true FEATURE_ID CONTEXT_FILE RESULTS_FILE AUTONOMY
+
+  # Start checkpoint monitor (background, reads checkpoint.json for phase transitions)
+  if [ "$MONITOR_ENABLED" = "true" ]; then
+    ckpt_start_monitor "$FEATURE_ID" "$WT_PATH"
+  fi
 
   START_TIME=$(date +%s)
 
@@ -334,14 +366,40 @@ EOPRD
   elif [ "$AUTONOMY" = "supervised" ]; then
     info "Autonomy=supervised — paused for review after each phase"
     echo "supervised: paused for review — $FEATURE_ID" > "$LOG_FILE"
-    # In supervised mode, feature-marker exits with code 10 = "paused for review"
-    # The orchestrator would detect this and prompt the user.
-    # EXIT_CODE=10 would mean "paused", not "failed"
     PROMPTS_NEEDED=$((PROMPTS_NEEDED + 1))
   fi
 
   END_TIME=$(date +%s)
   DURATION=$((END_TIME - START_TIME))
+
+  # Stop checkpoint monitor
+  if [ "$MONITOR_ENABLED" = "true" ]; then
+    ckpt_stop_monitor "$FEATURE_ID"
+    ckpt_sync_phase "$FEATURE_ID" "$WT_PATH"
+  fi
+
+  # ── 3e.1: Post-hoc QA (conditional, lightweight ~2,500 tokens) ──
+  POSTHOC_COUNT=0
+  if [ "$EXIT_CODE" -eq 0 ] && [ "$POSTHOC_COUNT" -lt "$POSTHOC_MAX" ]; then
+    RUN_QA=false
+    case "$POSTHOC_QA" in
+      always)      RUN_QA=true ;;
+      conditional)
+        if [ "$POSTHOC_QA_TRIGGER" = "test_failure" ] && ckpt_should_trigger_qa "$FEATURE_ID" "$WT_PATH" 2>/dev/null; then
+          RUN_QA=true
+        elif [ "$POSTHOC_QA_TRIGGER" = "breaking_change" ] && [ "$HAS_BREAKING" = "true" ] 2>/dev/null; then
+          RUN_QA=true
+        fi
+        ;;
+      never) ;;
+    esac
+
+    if [ "$RUN_QA" = "true" ]; then
+      info "Running post-hoc QA verification..."
+      qa_verify "$FEATURE_ID" "$WT_PATH" 2>/dev/null || true
+      POSTHOC_COUNT=$((POSTHOC_COUNT + 1))
+    fi
+  fi
 
   # ── 3f: Collect results ──
   cp "$LOG_FILE" "$RESULTS_DIR/${FEATURE_ID}_run.log" 2>/dev/null || true
@@ -420,6 +478,30 @@ EOPRD
 
   if [ "$EXIT_CODE" -eq 0 ]; then
     if [ "$AUTONOMY" = "full_auto" ]; then
+      # Post-hoc review gate (lightweight, before PR creation)
+      REVIEW_PASS=true
+      if [ "$POSTHOC_REVIEW" = "always" ] || [ "$POSTHOC_REVIEW" = "full_auto" ]; then
+        if [ "$POSTHOC_COUNT" -lt "$POSTHOC_MAX" ]; then
+          info "Running post-hoc review..."
+          REVIEW_CYCLE=0
+          while [ "$REVIEW_CYCLE" -lt "$REVIEW_MAX_CYCLES" ]; do
+            if review_diff "$FEATURE_ID" "$WT_PATH" 2>/dev/null; then
+              info "Review passed"
+              break
+            else
+              REVIEW_CYCLE=$((REVIEW_CYCLE + 1))
+              if [ "$REVIEW_CYCLE" -lt "$REVIEW_MAX_CYCLES" ]; then
+                info "Review requested changes (cycle $REVIEW_CYCLE/$REVIEW_MAX_CYCLES)"
+                review_apply_fixes "$FEATURE_ID" "$WT_PATH" 2>/dev/null || true
+              else
+                info "Review: max cycles reached, proceeding"
+              fi
+            fi
+          done
+          POSTHOC_COUNT=$((POSTHOC_COUNT + 1))
+        fi
+      fi
+
       # PR creation
       if [ "$PR_STRATEGY" != "none" ] && command -v gh &>/dev/null; then
         info "Creating PR for $FEATURE_ID..."
@@ -452,21 +534,38 @@ EOPRD
       info "⏸ $FEATURE_ID ready"
     fi
   elif [ "$EXIT_CODE" -eq 10 ]; then
-    # Supervised mode: paused for review
     update_status "$FEATURE_ID" "paused" "awaiting-review"
     info "⏸ $FEATURE_ID paused for review (supervised mode)"
   else
-    # Retry logic
+    # Intelligent retry: QA agent analyzes failure before retrying
     RETRY_COUNT=0
     [ -f "$STATE_DIR/$FEATURE_ID/retry-count" ] && RETRY_COUNT=$(cat "$STATE_DIR/$FEATURE_ID/retry-count")
 
     if [ "$RETRY_COUNT" -lt "$MAX_RETRIES" ]; then
-      RETRY_COUNT=$((RETRY_COUNT + 1))
-      echo "$RETRY_COUNT" > "$STATE_DIR/$FEATURE_ID/retry-count"
-      update_status "$FEATURE_ID" "retrying" "retry-$RETRY_COUNT"
-      RETRIED=$((RETRIED + 1))
-      info "⟳ Retrying $FEATURE_ID ($RETRY_COUNT/$MAX_RETRIES)"
-      echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) | $FEATURE_ID | retry=$RETRY_COUNT/$MAX_RETRIES" >> "$CONFIG_DIR/error-log.txt"
+      # Analyze failure with QA agent (adds ~2,500 tokens, but dramatically improves retry)
+      SHOULD_RETRY=true
+      if [ "$POSTHOC_QA" != "never" ]; then
+        info "Analyzing failure with QA agent..."
+        qa_analyze_failure "$FEATURE_ID" "$WT_PATH" "$LOG_FILE" 2>/dev/null || true
+        if ! qa_should_retry "$FEATURE_ID" "$WT_PATH" 2>/dev/null; then
+          SHOULD_RETRY=false
+          info "QA agent: low confidence in retry — escalating"
+        fi
+      fi
+
+      if [ "$SHOULD_RETRY" = "true" ]; then
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "$RETRY_COUNT" > "$STATE_DIR/$FEATURE_ID/retry-count"
+        update_status "$FEATURE_ID" "retrying" "retry-$RETRY_COUNT"
+        RETRIED=$((RETRIED + 1))
+        info "⟳ Retrying $FEATURE_ID ($RETRY_COUNT/$MAX_RETRIES) with enriched context"
+        echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) | $FEATURE_ID | retry=$RETRY_COUNT/$MAX_RETRIES" >> "$CONFIG_DIR/error-log.txt"
+      else
+        update_status "$FEATURE_ID" "failed" "qa-escalated"
+        FAILED=$((FAILED + 1))
+        err "$FEATURE_ID — QA agent escalated (not retrying)"
+        echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) | $FEATURE_ID | QA_ESCALATED" >> "$CONFIG_DIR/error-log.txt"
+      fi
     else
       update_status "$FEATURE_ID" "failed" "pipeline-error"
       FAILED=$((FAILED + 1))
@@ -481,10 +580,25 @@ EOPRD
     bash "$SCRIPT_DIR/feedback-collector.sh" "$FEATURE_ID" "$WT_PATH" "$RESULTS_FILE" context 2>/dev/null || true
   fi
 
-  # Error pattern collection + window trimming
+  # Error pattern collection + knowledge base update
   if [ "$COLLECT_PATTERNS" = "true" ] && [ -f "$SCRIPT_DIR/feedback-collector.sh" ]; then
     bash "$SCRIPT_DIR/feedback-collector.sh" "$FEATURE_ID" "$WT_PATH" "$RESULTS_FILE" errors 2>/dev/null || true
-    # Trim to keep only last N error patterns (ADR-002 Layer 2)
+
+    # Update knowledge base from error patterns (shell-side, zero invocations)
+    kb_init 2>/dev/null || true
+    if [ -f "$STATE_DIR/$FEATURE_ID/qa-report.json" ]; then
+      node -e "
+        const r = JSON.parse(require('fs').readFileSync('$STATE_DIR/$FEATURE_ID/qa-report.json','utf-8'));
+        if (r.root_cause) {
+          console.log(r.root_cause.category + '|' + r.root_cause.signature + '|' + (r.remediation || '') + '|' + (r.prevention || ''));
+        }
+      " 2>/dev/null | IFS='|' read -r cat sig res prev && {
+        kb_record_pattern "$FEATURE_ID" "$cat" "$sig" "$res" "$prev" 2>/dev/null || true
+      }
+    fi
+    kb_derive_rules 2>/dev/null || true
+
+    # Trim legacy error patterns (ADR-002 Layer 2)
     if [ -f "$CONFIG_DIR/error-patterns.json" ]; then
       node -e "
         const fs = require('fs');
