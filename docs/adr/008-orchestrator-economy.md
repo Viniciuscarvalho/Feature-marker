@@ -104,6 +104,17 @@ Learning is not just capture; it must verify fixes and prune failures.
 
 This closes the loop: errors become learned fixes, fixes get verified, bad ones are pruned, good ones graduate.
 
+#### 6d. Embedding-based similarity (optional backend)
+
+Exact-string matching on `pattern` misses fuzzy duplicates — the same underlying error expressed with different stack addresses or slightly different messages. An optional embedding backend addresses this.
+
+- **Config key**: `learning.similarity.backend: exact | embedding` (default: `exact`, preserving current behavior).
+- **Storage**: When `embedding` is active, each entry's `pattern` is embedded once at write-time. The vector is stored in a sibling file `learned.embeddings.jsonl` alongside the tier's `learned.json` — one line per entry: `{"id": "learn-a1b2", "vector": [...]}`. No external vector DB; the store stays git-friendly and auditable.
+- **Retrieval**: On a new error, embed the error signature and compare against the tier's embedding file using cosine similarity. Default match threshold: `0.85`, configurable via `learning.similarity.threshold`. Both project and global tiers participate in embedding-based retrieval; the feature tier retains exact-match only (it resets per feature, so embedding cost is unwarranted).
+- **Model source**: The embedding model is supplied by `local_model.embedding_model` (see ADR-009). If ADR-009's `local_model.enabled` is `false`, this backend is inactive regardless of the `learning.similarity.backend` setting.
+- **Fallback**: If the embedding backend is configured but the endpoint is unreachable at runtime, retrieval silently falls back to exact match and logs a one-time warning to `.orchestrator/state/{feat-id}.log`. Orchestration is never blocked.
+- **Ships in**: PR-C (same PR that delivers the learning store), gated behind config. Default `exact` means zero behavioral change for users who do not opt in.
+
 ### 7. Dependencies — hard block until parent PR merged to `main`
 
 When a feature declares `Depends on: feat-001`, the orchestrator sets its state to `blocked` and refuses to run it until `feat-001`'s PR is merged to the base branch. Dependents stay in the backlog but are skipped on each run. They become `pending` automatically on the next run after the merge is detected.
@@ -265,6 +276,7 @@ This ADR captures the design only. Implementation lands in **four** follow-up PR
    - Verify step runs after every Phase 3 fix attempt: increments `success_count` or `failure_count`, recomputes `confidence`, auto-archives when `confidence < 0.5 AND hits ≥ 3`.
    - New subcommands: `learning list [--candidates]`, `learning archive <id>`, `promote-learning <id>`.
    - Extend `scripts/lib/runner.sh` pre-feature hook to query platform CLI for parent PR merge state; parent PR number persisted to `.orchestrator/state/{feat-id}.json` at end of Phase 4.
+   - Optional embedding backend (Decision #6d): when `learning.similarity.backend: embedding`, write-path embeds each entry's pattern and appends to `learned.embeddings.jsonl`; retrieval path computes cosine similarity against that file. Gated behind config; `exact` default preserves current behavior.
 
 4. **PR-D — Feature-sizing gate + cycle-completion gate**
    - New `scripts/lib/size_gate.sh` module: reads PRD/techspec/tasks metrics, compares to `safety.feature_size` thresholds, emits `feature_too_large` when exceeded.
@@ -311,10 +323,11 @@ Each follow-up PR is independently revertable and ships its own CHANGELOG entry.
 
 The three open questions originally raised have been answered and are now part of the design:
 
-| #   | Original question                                | Resolution                                                                                                                                                                                                                            | Where it lands      |
-| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| 1   | `token_cost_estimate` computed or measured?      | **Computed (estimated)** from per-phase baselines in `model.cost_baselines`; manual `calibrate` subcommand for drift correction.                                                                                                      | Decision #9         |
-| 2   | TTL on learning entries?                         | **Yes** — 90-day default, refreshed on `last_seen`. Archive (not delete) on expiry. Pairs with a complete learning loop: capture → apply → verify → prune → promote, using `success_count` / `failure_count` / `confidence`.          | Decision #6b, #6c   |
-| 3   | How to handle multi-stack or oversized features? | Feature-sizing gate before Phase 2 splits oversized features into sub-features along PRD/techspec boundaries; cycle-completion gate prevents advancing to the next backlog feature before the current one's full cycle has completed. | Decision #10a, #10b |
+| #   | Original question                                | Resolution                                                                                                                                                                                                                                  | Where it lands      |
+| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| 1   | `token_cost_estimate` computed or measured?      | **Computed (estimated)** from per-phase baselines in `model.cost_baselines`; manual `calibrate` subcommand for drift correction.                                                                                                            | Decision #9         |
+| 2   | TTL on learning entries?                         | **Yes** — 90-day default, refreshed on `last_seen`. Archive (not delete) on expiry. Pairs with a complete learning loop: capture → apply → verify → prune → promote, using `success_count` / `failure_count` / `confidence`.                | Decision #6b, #6c   |
+| 3   | How to handle multi-stack or oversized features? | Feature-sizing gate before Phase 2 splits oversized features into sub-features along PRD/techspec boundaries; cycle-completion gate prevents advancing to the next backlog feature before the current one's full cycle has completed.       | Decision #10a, #10b |
+| 4   | Scope expansion: fuzzy learning-store lookup?    | **Added** — optional embedding-similarity backend (Decision #6d). Default `exact` backend unchanged; opt-in via `learning.similarity.backend: embedding`. Model source delegated to ADR-009's `local_model.embedding_model`. Ships in PR-C. | Decision #6d        |
 
 No remaining blockers to landing the design.
