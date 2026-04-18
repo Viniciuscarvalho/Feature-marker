@@ -100,6 +100,19 @@ monitoring:
   phase_log: true            # Log phase transitions to phases.log
 
 # Post-hoc agents — conditional lightweight verification after implementation
+#
+# Token cost per invocation:
+#   Main pipeline (feature-marker): ~7,500 tokens context overhead
+#   QA agent (qa-reviewer):         ~2,500 tokens (lightweight)
+#   Review agent (review-agent):    ~2,500 tokens (lightweight)
+#
+# Cost profiles for 5 features:
+#   All succeed, no QA/review:          5 invocations  = ~37,500 tokens  (1.0x)
+#   All succeed + conditional QA:       5 + 5 QA       = ~50,000 tokens  (1.3x)
+#   All succeed + QA + review:          5 + 5 + 5      = ~62,500 tokens  (1.7x)
+#   2 failures with smart retry:        5 + 2 QA + 2   = ~57,500 tokens  (1.5x)
+#   Worst case (all fail + QA + retry): 5 + 5 + 5 + 5  = ~100,000 tokens (2.7x)
+#
 posthoc:
   qa_review: conditional     # always | conditional | never
   qa_trigger: test_failure   # test_failure | always | breaking_change
@@ -111,3 +124,21 @@ review:
   enabled: true
   max_cycles: 2              # Max review-fix cycles before accepting
   checklist_source: knowledge-base  # knowledge-base | static | custom
+
+# Skill delegation — use Claude skills for orchestrator operations instead of
+# shell fallbacks. Each skill invocation starts a new Claude session (~7,500
+# tokens overhead), so this is disabled by default. Shell fallbacks produce
+# identical results at zero token cost.
+#
+# When enabled, these operations use skills:
+#   /context-builder  → builds feature context (replaces shell section 3d)
+#   /collect-results  → collects results from git state (replaces section 3f)
+#   /safety-check     → classifies breaking changes intelligently (replaces 3g)
+#   /kb-learn         → records patterns with richer analysis (replaces 3i)
+#   /orch-status      → renders interactive dashboard (replaces Steps 5-6)
+#
+# Cost: up to 5 extra invocations per feature × ~7,500 = ~37,500 tokens.
+# For 5 features: ~187,500 additional tokens. NOT recommended for batch runs.
+#
+# Set ORCHESTRATOR_USE_SKILLS=true environment variable to enable.
+# Skills are always available for interactive use via /skill-name in Claude Code.

@@ -31,13 +31,13 @@ review_diff() {
     " 2>/dev/null || echo "")
   fi
 
-  if command -v claude &>/dev/null && [ -f "$ROOT_DIR/$REVIEW_AGENT_PATH" ]; then
+  if command -v claude &>/dev/null; then
     local prompt="Review implementation diff for $feat_id before PR creation."
     prompt="$prompt Diff stats: $(cat "$diff_file.stat" 2>/dev/null || echo 'none')"
     [ -n "$checklist" ] && prompt="$prompt Additional checklist from knowledge base: $checklist"
     prompt="$prompt Write review to: $review_report"
 
-    (cd "$wt_path" && claude --agent "$ROOT_DIR/$REVIEW_AGENT_PATH" "$prompt") 2>/dev/null || true
+    (cd "$wt_path" && claude -p --agent review-agent "$prompt") 2>/dev/null || true
   fi
 
   # Fallback report
@@ -104,8 +104,8 @@ review_apply_fixes() {
     if command -v claude &>/dev/null; then
       local model_flag=""
       [ -n "${MODEL_DEFAULT:-}" ] && model_flag="--model $MODEL_DEFAULT"
-      (cd "$wt_path" && claude $model_flag --skill feature-marker \
-        "Fix review issues for prd-$feat_id: $issues") 2>/dev/null || true
+      (cd "$wt_path" && claude -p $model_flag \
+        "/feature-marker Fix review issues for prd-$feat_id: $issues") 2>/dev/null || true
     fi
 
     # Re-run review

@@ -266,10 +266,38 @@ that the shell scripts use.
 | `/collect-results` | Collect pipeline results from git state and logs | `/collect-results feat-001` |
 
 **How invocation works**: Skills are Claude Code SKILL.md files invoked within a Claude
-session via slash commands. When the orchestrator runs as a shell script (`./scripts/orchestrator.sh`),
-it uses equivalent shell fallback functions — the skills are for interactive use, not
-automated pipeline runs. Set `ORCHESTRATOR_USE_SKILLS=true` to attempt skill delegation
-via `claude -p` (requires Claude CLI and incurs additional token cost per call).
+session via slash commands (`/kb-query "module"`). When the orchestrator runs as a shell
+script (`./scripts/orchestrator.sh`), it uses shell fallback functions that produce
+identical results at zero token cost. Set `ORCHESTRATOR_USE_SKILLS=true` to delegate to
+skills via `claude -p` (spawns a Claude session per call, ~7,500 tokens overhead each).
+
+The main pipeline invocation (`/feature-marker prd-<id>`) always uses `claude -p` — that's
+the core work. Post-hoc agents (`qa-reviewer`, `review-agent`) also use `claude -p` but are
+lightweight (~2,500 tokens each) and conditional.
+
+### Token Cost Model
+
+The orchestrator uses a **monolithic invocation** — one `claude -p` session per feature
+runs the entire PRD → TechSpec → Tasks → Implementation → Tests pipeline. This avoids
+the 5-11x cost multiplier of per-phase splitting.
+
+| Scenario (5 features) | Invocations | Token Overhead | vs Baseline |
+| ---------------------- | ----------- | -------------- | ----------- |
+| All succeed, no QA | 5 | ~37,500 | **1.0x** |
+| + conditional QA | 5 + 5 lightweight | ~50,000 | **1.3x** |
+| + QA + review (full_auto) | 5 + 10 lightweight | ~62,500 | **1.7x** |
+| 2 failures + smart retry | 7 + 2 QA | ~57,500 | **1.5x** |
+| Worst case (all fail) | 10 + 10 lightweight | ~100,000 | **2.7x** |
+| Per-phase split (NOT used) | 25+ | ~187,500 | **5.0x** |
+
+Token counts are context overhead (system prompt + agent definition + feature context
+loading). Actual generation tokens depend on feature complexity.
+
+**Cost controls in `config.yml`:**
+- `posthoc.qa_review: never` — disables QA agent entirely
+- `posthoc.review_trigger: never` — disables review agent
+- `posthoc.max_posthoc_per_feature: 1` — caps lightweight invocations
+- `ORCHESTRATOR_USE_SKILLS=false` (default) — skill operations run as shell, zero extra tokens
 
 ### Benchmark
 

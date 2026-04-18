@@ -302,7 +302,7 @@ EOPRD
   CONTEXT_FILE="$STATE_DIR/$FEATURE_ID/context.md"
 
   if [ "$CLAUDE_AVAILABLE" = "true" ]; then
-    claude -p "/context-builder $FEATURE_ID --worktree-path $WT_PATH --include-rules --include-routing" --no-input 2>/dev/null \
+    claude -p "/context-builder $FEATURE_ID --worktree-path $WT_PATH --include-rules --include-routing" 2>/dev/null \
       || build_context_fallback "$FEATURE_ID" "$WT_PATH" "$FEATURE_TITLE" "$FEATURE_PRIORITY" "$FEATURE_LABELS" "$FEATURE_DEPS" "$FEATURE_BODY"
   else
     build_context_fallback "$FEATURE_ID" "$WT_PATH" "$FEATURE_TITLE" "$FEATURE_PRIORITY" "$FEATURE_LABELS" "$FEATURE_DEPS" "$FEATURE_BODY"
@@ -328,19 +328,25 @@ EOPRD
 
   if [ "$AUTONOMY" = "full_auto" ]; then
     info "Autonomy=full_auto — invoking pipeline..."
-    # (cd "$WT_PATH" && claude --skill feature-marker "prd-$FEATURE_ID") 2>&1 | tee "$LOG_FILE" || EXIT_CODE=$?
-    {
-      echo "▶ feature-marker pipeline: $FEATURE_ID"
-      echo "  ORCHESTRATOR_MODE=$ORCHESTRATOR_MODE"
-      echo "  AUTONOMY=$AUTONOMY"
-      echo "  CONTEXT_FILE=$CONTEXT_FILE"
-      echo "  RESULTS_FILE=$RESULTS_FILE"
-      echo "  [simulated] full pipeline execution"
-    } | tee "$LOG_FILE"
+    if command -v claude &>/dev/null; then
+      (cd "$WT_PATH" && claude -p "/feature-marker prd-$FEATURE_ID") 2>&1 | tee "$LOG_FILE" || EXIT_CODE=$?
+    else
+      info "Claude CLI not available — pipeline skipped (dry run)"
+      {
+        echo "▶ feature-marker pipeline: $FEATURE_ID"
+        echo "  ORCHESTRATOR_MODE=$ORCHESTRATOR_MODE"
+        echo "  CONTEXT_FILE=$CONTEXT_FILE"
+        echo "  [dry-run] Claude CLI not found"
+      } | tee "$LOG_FILE"
+    fi
 
   elif [ "$AUTONOMY" = "checkpoint" ]; then
     info "Autonomy=checkpoint — full pipeline, PR on completion, human reviews"
-    echo "checkpoint: pipeline complete for $FEATURE_ID" > "$LOG_FILE"
+    if command -v claude &>/dev/null; then
+      (cd "$WT_PATH" && claude -p "/feature-marker prd-$FEATURE_ID") 2>&1 | tee "$LOG_FILE" || EXIT_CODE=$?
+    else
+      echo "checkpoint: Claude CLI not available — $FEATURE_ID" > "$LOG_FILE"
+    fi
 
   elif [ "$AUTONOMY" = "supervised" ]; then
     info "Autonomy=supervised — paused for review after each phase"
@@ -385,7 +391,7 @@ EOPRD
 
   if [ ! -f "$RESULTS_FILE" ]; then
     if [ "$CLAUDE_AVAILABLE" = "true" ]; then
-      claude -p "/collect-results $FEATURE_ID --worktree-path $WT_PATH --exit-code $EXIT_CODE" --no-input 2>/dev/null \
+      claude -p "/collect-results $FEATURE_ID --worktree-path $WT_PATH --exit-code $EXIT_CODE" 2>/dev/null \
         || collect_results_fallback "$FEATURE_ID" "$EXIT_CODE" "$DURATION" "$FEATURE_TITLE"
     else
       collect_results_fallback "$FEATURE_ID" "$EXIT_CODE" "$DURATION" "$FEATURE_TITLE"
@@ -397,7 +403,7 @@ EOPRD
     SAFETY_PAUSED=false
 
     if [ "$CLAUDE_AVAILABLE" = "true" ]; then
-      SAFETY_VERDICT=$(claude -p "/safety-check $FEATURE_ID" --no-input 2>/dev/null || echo '{"should_pause":false}')
+      SAFETY_VERDICT=$(claude -p "/safety-check $FEATURE_ID" 2>/dev/null || echo '{"should_pause":false}')
       if echo "$SAFETY_VERDICT" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).should_pause" 2>/dev/null | grep -q true; then
         info "⚠ Safety check flagged $FEATURE_ID — pausing for review"
         update_status "$FEATURE_ID" "paused" "safety-review"
@@ -512,7 +518,7 @@ EOPRD
 
   # ── 3i: Feedback loop ──
   if [ "$CLAUDE_AVAILABLE" = "true" ]; then
-    claude -p "/kb-learn --from-qa $FEATURE_ID" --no-input 2>/dev/null \
+    claude -p "/kb-learn --from-qa $FEATURE_ID" 2>/dev/null \
       || kb_record_fallback "$FEATURE_ID" "$WT_PATH"
   else
     kb_record_fallback "$FEATURE_ID" "$WT_PATH"
@@ -556,7 +562,7 @@ ORCHESTRATOR_END=$(date +%s)
 TOTAL_DURATION=$((ORCHESTRATOR_END - ORCHESTRATOR_START))
 
 if [ "$CLAUDE_AVAILABLE" = "true" ]; then
-  claude -p "/orch-status" --no-input 2>/dev/null \
+  claude -p "/orch-status" 2>/dev/null \
     || display_summary_fallback "$TOTAL_DURATION"
 else
   display_summary_fallback "$TOTAL_DURATION"

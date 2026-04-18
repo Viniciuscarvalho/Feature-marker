@@ -35,14 +35,14 @@ qa_verify() {
   local tasks_file
   tasks_file=$(find "$wt_path" -name "tasks.md" -path "*/prd-*" 2>/dev/null | head -1)
 
-  if command -v claude &>/dev/null && [ -f "$ROOT_DIR/$QA_AGENT_PATH" ]; then
+  if command -v claude &>/dev/null; then
     local prompt="Verify implementation for $feat_id. Mode: verification."
     prompt="$prompt Diff stats: $(cat "$diff_file.stat" 2>/dev/null || echo 'none')"
     [ -f "$test_output" ] && prompt="$prompt Test output (last 50 lines): $(cat "$test_output")"
     [ -f "$tasks_file" ] && prompt="$prompt Tasks file: $tasks_file"
     prompt="$prompt Write QA report to: $qa_report"
 
-    (cd "$wt_path" && claude --agent "$ROOT_DIR/$QA_AGENT_PATH" "$prompt") 2>/dev/null || true
+    (cd "$wt_path" && claude -p --agent qa-reviewer "$prompt") 2>/dev/null || true
   fi
 
   # If Claude didn't produce a report, create a basic one from available data
@@ -86,14 +86,14 @@ qa_analyze_failure() {
   local checkpoint_data="{}"
   [ -f "$checkpoint_path" ] && checkpoint_data=$(cat "$checkpoint_path")
 
-  if command -v claude &>/dev/null && [ -f "$ROOT_DIR/$QA_AGENT_PATH" ]; then
+  if command -v claude &>/dev/null; then
     local prompt="Analyze failure for $feat_id. Mode: failure_analysis."
     prompt="$prompt Checkpoint state: $checkpoint_data"
     [ -n "$error_tail" ] && prompt="$prompt Error log (last 30 lines): $error_tail"
     prompt="$prompt Classify the root cause, assign a confidence score (0-1), and produce remediation steps."
     prompt="$prompt Write analysis to: $qa_report"
 
-    (cd "$wt_path" && claude --agent "$ROOT_DIR/$QA_AGENT_PATH" "$prompt") 2>/dev/null || true
+    (cd "$wt_path" && claude -p --agent qa-reviewer "$prompt") 2>/dev/null || true
   fi
 
   # Fallback report if agent not available
