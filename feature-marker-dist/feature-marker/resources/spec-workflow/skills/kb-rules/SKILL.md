@@ -1,0 +1,212 @@
+---
+name: kb-rules
+description: List, toggle, edit, or prune behavioral rules in the knowledge base. Rules are auto-derived from recurring error patterns and injected into feature context to prevent repeat failures. Use to curate which rules are active.
+argument-hint: [list|toggle|edit|prune|export] [rule-id] [--format=<md|json>]
+---
+
+# Knowledge Base Rules Manager
+
+Manage the behavioral rules that the orchestrator injects into feature contexts.
+Rules are auto-derived from error patterns with frequency ≥ 2, but can be
+toggled, edited, or pruned manually.
+
+## When to use
+
+- Before a batch run: review and curate which rules apply
+- After kb-learn: check if new rules were generated
+- Maintenance: prune stale rules, edit instructions, disable irrelevant rules
+- Documentation: export rules as markdown for project docs or CLAUDE.md
+
+---
+
+## Subcommand: `list` (default)
+
+**Invocation**: `/kb-rules` or `/kb-rules list`
+
+### Steps
+
+1. Read `.orchestrator/behavioral-rules.json`
+2. Read `.orchestrator/knowledge-base.json` for pattern details
+3. Display all rules with status:
+
+```
+## Behavioral Rules (3 total)
+
+| ID | Category | Total Freq | Instruction | Status |
+|----|----------|------------|-------------|--------|
+| rule-001 | missing-dependency | 5 | Scan imports and install missing packages before implementing | ✅ active |
+| rule-002 | test-failure | 3 | Run tests before committing; check test output for regressions | ✅ active |
+| rule-003 | config-error | 2 | Validate env vars exist before starting the dev server | ⏸ disabled |
+
+**Active**: 2 | **Disabled**: 1
+Active rules are injected into feature context before each pipeline run.
+
+💡 `/kb-rules toggle rule-003` — re-enable disabled rule
+💡 `/kb-rules edit rule-001` — change rule instruction
+💡 `/kb-rules prune` — remove stale rules
+💡 `/kb-rules export --format=md` — export for documentation
+```
+
+If no rules exist: "No behavioral rules yet. Rules are auto-derived when error patterns reach frequency ≥ 2. Use `/kb-learn` to record patterns."
+
+---
+
+## Subcommand: `toggle`
+
+**Invocation**: `/kb-rules toggle rule-003`
+
+### Steps
+
+1. Read `behavioral-rules.json`
+2. Find the rule by ID
+3. Toggle the `disabled` field:
+   - If `disabled: true` → remove the field (enable)
+   - If not disabled → set `disabled: true`
+4. Write back to file using `kb_toggle_rule` shell function
+5. Confirm:
+
+```
+✅ rule-003 (config-error) is now active
+   Instruction: "Validate env vars exist before starting the dev server"
+   This rule will be injected into future feature contexts.
+```
+
+Or:
+
+```
+⏸ rule-003 (config-error) is now disabled
+   This rule will NOT be injected into future feature contexts.
+```
+
+### Error handling
+
+- Rule ID not found: list available rule IDs and suggest the closest match.
+
+---
+
+## Subcommand: `edit`
+
+**Invocation**: `/kb-rules edit rule-001`
+
+### Steps
+
+1. Read the current rule
+2. Show current instruction:
+   ```
+   ## Editing rule-001 (missing-dependency)
+   
+   Current instruction:
+   > Scan imports and install missing packages before implementing
+   
+   What should the new instruction be?
+   ```
+3. Accept new instruction from user
+4. Update via `kb_edit_rule` shell function
+5. Show diff:
+   ```
+   ✅ rule-001 updated
+   
+   Old: Scan imports and install missing packages before implementing
+   New: Check package.json for missing deps listed in techspec; run npm install before implementation phase
+   ```
+
+---
+
+## Subcommand: `prune`
+
+**Invocation**: `/kb-rules prune`
+
+### Steps
+
+1. Read all rules
+2. Identify candidates for pruning:
+   - Rules with `total_frequency < 2` (shouldn't exist, but defensive)
+   - Rules where ALL source patterns have `last_seen` older than 30 days
+   - Rules that are disabled AND haven't been toggled back in 30+ days
+3. Show candidates:
+   ```
+   ## Prune Candidates (2 rules)
+   
+   | ID | Category | Reason | Last Seen |
+   |----|----------|--------|-----------|
+   | rule-003 | config-error | disabled + stale (45 days) | 2026-03-04 |
+   | rule-005 | build-error | all patterns stale (60 days) | 2026-02-17 |
+   
+   Remove these rules? [yes / no / select specific]
+   ```
+4. On confirmation, remove via `kb_prune_rules` shell function
+5. Confirm: "Pruned 2 rules, 3 remaining"
+
+If no candidates: "All rules are current — nothing to prune."
+
+---
+
+## Subcommand: `export`
+
+**Invocation**: `/kb-rules export [--format=md|json]`
+
+### Markdown format (default)
+
+Suitable for pasting into CLAUDE.md or project documentation:
+
+```markdown
+## Behavioral Rules (auto-derived from orchestrator error patterns)
+
+1. **missing-dependency** (seen 5x): Scan imports and install missing packages before implementing
+2. **test-failure** (seen 3x): Run tests before committing; check test output for regressions
+3. **config-error** (seen 2x, disabled): Validate env vars exist before starting the dev server
+
+_Generated by feature-marker knowledge base. Last derived: 2026-04-18T14:30:00Z_
+```
+
+### JSON format
+
+Raw JSON export for CI integration or backup:
+
+```json
+{
+  "exported_at": "2026-04-18T14:30:00Z",
+  "rules": [
+    {
+      "id": "rule-001",
+      "category": "missing-dependency",
+      "instruction": "Scan imports and install missing packages before implementing",
+      "total_frequency": 5,
+      "disabled": false,
+      "source_patterns": ["err-001", "err-002", "err-005"]
+    }
+  ]
+}
+```
+
+---
+
+## Implementation
+
+### Shell functions (in `scripts/lib/knowledge.sh`)
+
+This skill delegates to shell functions for all mutations:
+
+| Skill action | Shell function |
+|-------------|----------------|
+| list | `kb_get_rules` (read-only) |
+| toggle | `kb_toggle_rule "$rule_id"` |
+| edit | `kb_edit_rule "$rule_id" "$new_instruction"` |
+| prune | `kb_prune_rules "$min_frequency" "$max_age_days"` |
+| export | `kb_export_rules "$format"` |
+
+For read operations, reading the JSON files directly is also acceptable.
+
+### Interaction with `kb_apply_rules`
+
+When `kb_apply_rules` injects rules into a feature context file, it skips rules
+where `disabled: true`. This is the enforcement mechanism for the `toggle` subcommand.
+
+---
+
+## Integration points
+
+- **User**: curates rules before batch runs
+- **feature-marker Phase 1**: reads active rules during analysis/planning
+- **orchestrator section 3d**: calls `kb_apply_rules` which respects disabled flags
+- **CI pipelines**: `/kb-rules export --format=json` for rule-based checks

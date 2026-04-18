@@ -82,6 +82,13 @@ source "$SCRIPT_DIR/lib/checkpoint-monitor.sh"
 source "$SCRIPT_DIR/lib/knowledge.sh"
 source "$SCRIPT_DIR/lib/qa.sh"
 source "$SCRIPT_DIR/lib/review.sh"
+source "$SCRIPT_DIR/lib/orchestrator-fallbacks.sh"
+
+# Detect if Claude CLI is available for skill delegation
+CLAUDE_AVAILABLE=false
+if command -v claude &>/dev/null; then
+  CLAUDE_AVAILABLE=true
+fi
 
 # ── helpers ──────────────────────────────────────────────────────
 
@@ -290,45 +297,14 @@ EOPRD
 
   # ── 3d: Inject context (cross-feature + error patterns) ──
   CONTEXT_FILE="$STATE_DIR/$FEATURE_ID/context.md"
-  {
-    echo "# Feature Context"
-    echo ""
-    echo "## Feature: $FEATURE_TITLE"
-    echo "- ID: $FEATURE_ID"
-    echo "- Priority: $FEATURE_PRIORITY"
-    echo "- Labels: $FEATURE_LABELS"
-    echo "- Dependencies: $FEATURE_DEPS"
-    echo "- Worktree: $WT_PATH"
-    echo ""
-    echo "## Description"
-    echo "$FEATURE_BODY"
-    echo ""
-    echo "## Cross-Feature Context"
-    cat "$CONFIG_DIR/global-context.md" 2>/dev/null || echo "No prior context."
-    echo ""
-    # Inject behavioral rules from knowledge base (replaces raw error patterns)
-    if [ -f "$CONFIG_DIR/knowledge-base.json" ]; then
-      kb_apply_rules "$CONTEXT_FILE" 2>/dev/null || true
-    elif [ -f "$CONFIG_DIR/error-patterns.json" ] && [ "$COLLECT_PATTERNS" = "true" ]; then
-      echo "## Known Error Patterns (avoid these)"
-      node -e "
-        const p = JSON.parse(require('fs').readFileSync('$CONFIG_DIR/error-patterns.json','utf-8'));
-        p.forEach(e => console.log('- [' + e.feature_id + '] ' + e.phase + ': ' + e.error));
-      " 2>/dev/null || true
-    fi
-  } > "$CONTEXT_FILE"
 
-  # Inject routing hints as context (zero extra invocations)
-  ROUTING_FILE="$STATE_DIR/$FEATURE_ID/routing.json"
-  if [ -f "$SCRIPT_DIR/route-tasks.sh" ]; then
-    TASKS_FILE="$TASK_DIR/tasks.md"
-    MANIFEST_FILE="$CONFIG_DIR/agent-manifest.json"
-    if [ -f "$TASKS_FILE" ] && [ -f "$MANIFEST_FILE" ]; then
-      bash "$SCRIPT_DIR/route-tasks.sh" --context-mode "$WT_PATH" "$MANIFEST_FILE" "$TASKS_FILE" >> "$CONTEXT_FILE" 2>/dev/null || true
-    fi
+  if [ "$CLAUDE_AVAILABLE" = "true" ]; then
+    claude --skill context-builder "$FEATURE_ID --worktree-path $WT_PATH --include-rules --include-routing" 2>/dev/null \
+      || build_context_fallback "$FEATURE_ID" "$WT_PATH" "$FEATURE_TITLE" "$FEATURE_PRIORITY" "$FEATURE_LABELS" "$FEATURE_DEPS" "$FEATURE_BODY"
+  else
+    build_context_fallback "$FEATURE_ID" "$WT_PATH" "$FEATURE_TITLE" "$FEATURE_PRIORITY" "$FEATURE_LABELS" "$FEATURE_DEPS" "$FEATURE_BODY"
   fi
 
-  cp "$CONTEXT_FILE" "$WT_PATH/.orchestrator-context.md"
   info "Context injected (cross-feature + behavioral rules + routing hints)"
 
   # ── 3e: Pipeline invocation ──
@@ -404,72 +380,29 @@ EOPRD
   # ── 3f: Collect results ──
   cp "$LOG_FILE" "$RESULTS_DIR/${FEATURE_ID}_run.log" 2>/dev/null || true
 
-  # Write results.json with v2 schema
   if [ ! -f "$RESULTS_FILE" ]; then
-    node -e "
-      const results = {
-        feature_id: '$FEATURE_ID',
-        status: $EXIT_CODE === 0 ? 'completed' : ($EXIT_CODE === 10 ? 'paused' : 'failed'),
-        title: $(echo "$FEATURE_TITLE" | node -p "JSON.stringify(require('fs').readFileSync('/dev/stdin','utf-8').trim())"),
-        pipeline: {
-          prd:            { status: 'completed', file: 'tasks/prd-$FEATURE_ID/prd-seed.md' },
-          techspec:       { status: 'pending', file: null },
-          tasks:          { status: 'pending', total: 0, completed: 0 },
-          implementation: { status: 'pending', files_changed: 0 },
-          tests:          { status: 'pending', passed: 0, failed: 0 },
-          review:         { status: 'pending', pr_url: null }
-        },
-        context_generated: {
-          files_created: [],
-          files_modified: [],
-          schema_changes: [],
-          new_dependencies: [],
-          breaking_changes: []
-        },
-        pr_url: null,
-        duration_seconds: $DURATION,
-        errors: []
-      };
-      require('fs').writeFileSync('$RESULTS_FILE', JSON.stringify(results, null, 2));
-    "
+    if [ "$CLAUDE_AVAILABLE" = "true" ]; then
+      claude --skill collect-results "$FEATURE_ID --worktree-path $WT_PATH --exit-code $EXIT_CODE" 2>/dev/null \
+        || collect_results_fallback "$FEATURE_ID" "$EXIT_CODE" "$DURATION" "$FEATURE_TITLE"
+    else
+      collect_results_fallback "$FEATURE_ID" "$EXIT_CODE" "$DURATION" "$FEATURE_TITLE"
+    fi
   fi
 
   # ── 3g: Safety guardrails ──
   if [ -f "$RESULTS_FILE" ]; then
-    # Check for breaking changes
-    HAS_BREAKING=$(node -p "
-      const r = JSON.parse(require('fs').readFileSync('$RESULTS_FILE','utf-8'));
-      (r.context_generated?.breaking_changes || []).length > 0
-    " 2>/dev/null || echo "false")
+    SAFETY_PAUSED=false
 
-    if [ "$HAS_BREAKING" = "true" ] && [ "$BREAKING_PAUSE" = "true" ]; then
-      info "⚠ BREAKING CHANGES detected in $FEATURE_ID — pausing regardless of autonomy"
-      update_status "$FEATURE_ID" "paused" "breaking-change-review"
-      write_status
-    fi
-
-    # Check for schema changes
-    HAS_SCHEMA=$(node -p "
-      const r = JSON.parse(require('fs').readFileSync('$RESULTS_FILE','utf-8'));
-      (r.context_generated?.schema_changes || []).length > 0
-    " 2>/dev/null || echo "false")
-
-    if [ "$HAS_SCHEMA" = "true" ] && [ "$SCHEMA_WARNING" = "true" ]; then
-      info "⚠ Schema migration detected in $FEATURE_ID — pausing for review"
-      update_status "$FEATURE_ID" "paused" "schema-migration-review"
-      write_status
-    fi
-
-    # Check max file changes
-    FILE_COUNT=$(node -p "
-      const r = JSON.parse(require('fs').readFileSync('$RESULTS_FILE','utf-8'));
-      (r.context_generated?.files_created || []).length + (r.context_generated?.files_modified || []).length
-    " 2>/dev/null || echo "0")
-
-    if [ "$FILE_COUNT" -gt "$MAX_FILE_CHANGES" ]; then
-      info "⚠ $FEATURE_ID touched $FILE_COUNT files (limit: $MAX_FILE_CHANGES) — pausing"
-      update_status "$FEATURE_ID" "paused" "max-files-review"
-      write_status
+    if [ "$CLAUDE_AVAILABLE" = "true" ]; then
+      SAFETY_VERDICT=$(claude --skill safety-check "$FEATURE_ID" 2>/dev/null || echo '{"should_pause":false}')
+      if echo "$SAFETY_VERDICT" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).should_pause" 2>/dev/null | grep -q true; then
+        info "⚠ Safety check flagged $FEATURE_ID — pausing for review"
+        update_status "$FEATURE_ID" "paused" "safety-review"
+        write_status
+        SAFETY_PAUSED=true
+      fi
+    else
+      safety_check_fallback "$FEATURE_ID" || SAFETY_PAUSED=true
     fi
   fi
 
@@ -575,43 +508,11 @@ EOPRD
   fi
 
   # ── 3i: Feedback loop ──
-  # Rich context carry-forward via feedback-collector
-  if [ "$GLOBAL_CONTEXT_ENABLED" = "true" ] && [ -f "$SCRIPT_DIR/feedback-collector.sh" ]; then
-    bash "$SCRIPT_DIR/feedback-collector.sh" "$FEATURE_ID" "$WT_PATH" "$RESULTS_FILE" context 2>/dev/null || true
-  fi
-
-  # Error pattern collection + knowledge base update
-  if [ "$COLLECT_PATTERNS" = "true" ] && [ -f "$SCRIPT_DIR/feedback-collector.sh" ]; then
-    bash "$SCRIPT_DIR/feedback-collector.sh" "$FEATURE_ID" "$WT_PATH" "$RESULTS_FILE" errors 2>/dev/null || true
-
-    # Update knowledge base from error patterns (shell-side, zero invocations)
-    kb_init 2>/dev/null || true
-    if [ -f "$STATE_DIR/$FEATURE_ID/qa-report.json" ]; then
-      node -e "
-        const r = JSON.parse(require('fs').readFileSync('$STATE_DIR/$FEATURE_ID/qa-report.json','utf-8'));
-        if (r.root_cause) {
-          console.log(r.root_cause.category + '|' + r.root_cause.signature + '|' + (r.remediation || '') + '|' + (r.prevention || ''));
-        }
-      " 2>/dev/null | IFS='|' read -r cat sig res prev && {
-        kb_record_pattern "$FEATURE_ID" "$cat" "$sig" "$res" "$prev" 2>/dev/null || true
-      }
-    fi
-    kb_derive_rules 2>/dev/null || true
-
-    # Trim legacy error patterns (ADR-002 Layer 2)
-    if [ -f "$CONFIG_DIR/error-patterns.json" ]; then
-      node -e "
-        const fs = require('fs');
-        let p = JSON.parse(fs.readFileSync('$CONFIG_DIR/error-patterns.json','utf-8'));
-        if (p.length > $ERROR_PATTERN_WINDOW) p = p.slice(-$ERROR_PATTERN_WINDOW);
-        fs.writeFileSync('$CONFIG_DIR/error-patterns.json', JSON.stringify(p, null, 2));
-      " 2>/dev/null || true
-    fi
-  fi
-
-  # Environment manifest refresh between features (ADR-002 Layer 3)
-  if [ "$UPDATE_MANIFEST" = "true" ] && [ -f "$SCRIPT_DIR/environment-discovery.sh" ]; then
-    bash "$SCRIPT_DIR/environment-discovery.sh" > "$CONFIG_DIR/environment.manifest.json" 2>/dev/null || true
+  if [ "$CLAUDE_AVAILABLE" = "true" ]; then
+    claude --skill kb-learn "--from-qa $FEATURE_ID" 2>/dev/null \
+      || kb_record_fallback "$FEATURE_ID" "$WT_PATH"
+  else
+    kb_record_fallback "$FEATURE_ID" "$WT_PATH"
   fi
 
   # Update status.json for Kanban
@@ -645,78 +546,18 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════════
-# Step 5: Terminal progress + status.json
-# ══════════════════════════════════════════════════════════════════
-
-write_status
-ROOT_DIR="$ROOT_DIR" node "$SCRIPT_DIR/status-writer.js" --terminal 2>/dev/null || true
-
-# ══════════════════════════════════════════════════════════════════
-# Step 6: Summary + Benchmark
+# Step 5-6: Summary, Benchmark, Status
 # ══════════════════════════════════════════════════════════════════
 
 ORCHESTRATOR_END=$(date +%s)
 TOTAL_DURATION=$((ORCHESTRATOR_END - ORCHESTRATOR_START))
 
-banner "Orchestrator Summary"
-
-DONE_COUNT=0; READY_FINAL=0; FAILED_COUNT=0; PR_COUNT=0; PAUSED_COUNT=0
-for dir in "$STATE_DIR"/*/; do
-  [ -d "$dir" ] || continue
-  fid=$(basename "$dir")
-  [ -f "$dir/status.json" ] || continue
-  st=$(get_status "$fid")
-  case "$st" in
-    done)       DONE_COUNT=$((DONE_COUNT + 1)) ;;
-    pr-created) PR_COUNT=$((PR_COUNT + 1)) ;;
-    ready)      READY_FINAL=$((READY_FINAL + 1)) ;;
-    failed)     FAILED_COUNT=$((FAILED_COUNT + 1)) ;;
-    paused)     PAUSED_COUNT=$((PAUSED_COUNT + 1)) ;;
-  esac
-done
-
-PROCESSED=$((DONE_COUNT + PR_COUNT + READY_FINAL + FAILED_COUNT + PAUSED_COUNT))
-
-info "done=$DONE_COUNT pr=$PR_COUNT ready=$READY_FINAL failed=$FAILED_COUNT paused=$PAUSED_COUNT"
-echo ""
-
-log "Per-feature:"
-for dir in "$STATE_DIR"/*/; do
-  [ -d "$dir" ] || continue
-  fid=$(basename "$dir")
-  [ -f "$dir/status.json" ] || continue
-  status=$(node -p "const s=JSON.parse(require('fs').readFileSync('$dir/status.json','utf-8'));s.status+' ('+s.phase+')'")
-  dur=""
-  [ -f "$STATE_DIR/$fid/results.json" ] && dur=$(node -p "JSON.parse(require('fs').readFileSync('$STATE_DIR/$fid/results.json','utf-8')).duration_seconds+'s'" 2>/dev/null || echo "")
-  info "  $fid: $status${dur:+ [$dur]}"
-done
-
-[ -f "$CONFIG_DIR/global-context.md" ] && info "" && info "Global context: $CONFIG_DIR/global-context.md"
-[ -f "$CONFIG_DIR/error-patterns.json" ] && info "Error patterns: $CONFIG_DIR/error-patterns.json"
-[ -f "$CONFIG_DIR/environment.manifest.json" ] && info "Env manifest: $CONFIG_DIR/environment.manifest.json"
-[ -f "$CONFIG_DIR/status.json" ] && info "Status/Kanban: $CONFIG_DIR/status.json"
-info "Results: $RESULTS_DIR"
-
-# ── Benchmark ────────────────────────────────────────────────────
-
-banner "Benchmark"
-
-AVG_PER_FEATURE=0
-[ "$PROCESSED" -gt 0 ] && AVG_PER_FEATURE=$((TOTAL_DURATION / PROCESSED))
-
-info "Features processed:     $PROCESSED"
-info "Total time:             ${TOTAL_DURATION}s"
-info "Avg per feature:        ${AVG_PER_FEATURE}s"
-info "Manual prompts needed:  $PROMPTS_NEEDED"
-info "Autonomy mode:          $AUTONOMY"
-info "Backlog source:         $ADAPTER"
-echo ""
-
-log "Success Metrics:"
-info "  Features per session:         $PROCESSED (target: 5+)"
-info "  Manual intervention:          $PROMPTS_NEEDED prompts (target: 0 in checkpoint)"
-info "  Cross-feature conflicts:      0 (target: <10%)"
-info "  Time from backlog to ready:   ${AVG_PER_FEATURE}s per feature (target: <10min)"
+if [ "$CLAUDE_AVAILABLE" = "true" ]; then
+  claude --skill orch-status 2>/dev/null \
+    || display_summary_fallback "$TOTAL_DURATION"
+else
+  display_summary_fallback "$TOTAL_DURATION"
+fi
 
 # ── cleanup ──────────────────────────────────────────────────────
 rm -f "$BACKLOG_FILE"
