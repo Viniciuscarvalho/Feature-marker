@@ -12,6 +12,13 @@
 #   - learning_read() / learning_write() for Phase 3 fix hints (learning.sh)
 #   - router_route_task() for stack-aware agent selection (router.sh)
 #   - cycle_gate_check() before advancing to next feature (cycle_gate.sh)
+#
+# ADR-009 additions (PR-H):
+#   - When LOCAL_MODEL_GENERATOR_MODEL is set, Phase 2 implementation and
+#     Phase 3 fix attempts route through local_model::generate instead of Claude.
+#   - Quality-warning banner printed at start when generator replacement is active.
+#   - Checkpoint engine field set to "local" for generator-replaced phases.
+#   - ingest_trigger_if_merged() called after PR creation (Phase 4.5).
 
 run_backlog() {
   local backlog_file="$1"
@@ -43,6 +50,15 @@ run_backlog() {
   total_count=$(echo "$items" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).total")
 
   banner "Orchestrator — $ready_count ready, $blocked_count blocked, $total_count total"
+
+  # ADR-009 PR-H: quality-warning banner when local generator replacement is active
+  if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ] && [ -n "${LOCAL_MODEL_GENERATOR_MODEL:-}" ]; then
+    echo ""
+    echo "  ! LOCAL GENERATOR ACTIVE (experimental)"
+    echo "    Phase 2/3 code generation via local model: ${LOCAL_MODEL_GENERATOR_MODEL}"
+    echo "    Quality tradeoffs apply — see ADR-009 Decision #8."
+    echo ""
+  fi
 
   if [ "$ready_count" -eq 0 ]; then
     info "No actionable features. All done or blocked."
@@ -329,14 +345,42 @@ EOPRD
   [ -n "${MODEL_DEFAULT:-}" ] && model_flag="--model $MODEL_DEFAULT"
 
   if [ "$AUTONOMY" = "full_auto" ]; then
-    info "Autonomy=full_auto — invoking pipeline (model: ${MODEL_DEFAULT:-default}, agent: $routed_agent)..."
-    if command -v claude &>/dev/null; then
-      local skill_arg="feature-marker"
-      [ "$routed_agent" != "feature-marker" ] && skill_arg="$routed_agent"
-      (cd "$wt_path" && claude $model_flag --skill "$skill_arg" "prd-$feat_id") 2>&1 | tee "$log_file" || exit_code=$?
-    else
-      info "Claude CLI not found — simulating pipeline"
-      echo "full_auto: simulated pipeline for $feat_id (model: ${MODEL_DEFAULT:-default})" > "$log_file"
+    # ADR-009 PR-H: route Phase 2 through local generator when configured
+    local phase2_engine="${CFG_LOCAL_MODEL_ENGINE_PHASE2:-claude}"
+    if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ] && \
+       [ -n "${LOCAL_MODEL_GENERATOR_MODEL:-}" ] && \
+       [ "$phase2_engine" = "local" ]; then
+      info "Phase 2: local generator ($LOCAL_MODEL_GENERATOR_MODEL) for $feat_id"
+      local gen_prompt
+      gen_prompt=$(cat "$wt_path/.orchestrator-context.md" 2>/dev/null || echo "Implement $feat_id")
+      local gen_output
+      gen_output=$(local_model::generate "$gen_prompt")
+      if [ -n "$gen_output" ]; then
+        echo "$gen_output" >> "$log_file"
+        # Record engine=local in checkpoint
+        node -e "
+          const fs = require('fs');
+          const cp = '${STATE_DIR}/${feat_id}/checkpoint.json';
+          let d; try { d = JSON.parse(fs.readFileSync(cp,'utf-8')); } catch(e) { d = {}; }
+          d.phase2 = { engine: 'local', local_model: '${LOCAL_MODEL_GENERATOR_MODEL}', completed_at: new Date().toISOString() };
+          fs.writeFileSync(cp, JSON.stringify(d, null, 2));
+        " 2>/dev/null || true
+      else
+        info "Phase 2: local generator returned empty — falling back to Claude"
+        phase2_engine="claude"
+      fi
+    fi
+
+    if [ "$phase2_engine" != "local" ]; then
+      info "Autonomy=full_auto — invoking pipeline (model: ${MODEL_DEFAULT:-default}, agent: $routed_agent)..."
+      if command -v claude &>/dev/null; then
+        local skill_arg="feature-marker"
+        [ "$routed_agent" != "feature-marker" ] && skill_arg="$routed_agent"
+        (cd "$wt_path" && claude $model_flag --skill "$skill_arg" "prd-$feat_id") 2>&1 | tee "$log_file" || exit_code=$?
+      else
+        info "Claude CLI not found — simulating pipeline"
+        echo "full_auto: simulated pipeline for $feat_id (model: ${MODEL_DEFAULT:-default})" > "$log_file"
+      fi
     fi
   elif [ "$AUTONOMY" = "checkpoint" ]; then
     info "Autonomy=checkpoint — pipeline ready, human reviews PR"
@@ -518,7 +562,22 @@ run_phase3_tests() {
     [ -n "${MODEL_DEFAULT:-}" ] && model_flag="--model $MODEL_DEFAULT"
 
     local fix_exit=0
-    if command -v claude &>/dev/null; then
+    # ADR-009 PR-H: route Phase 3 fix through local generator when configured
+    if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ] && [ -n "${LOCAL_MODEL_GENERATOR_MODEL:-}" ]; then
+      info "Phase 3: local generator fix attempt via $LOCAL_MODEL_GENERATOR_MODEL"
+      local local_fix
+      local_fix=$(local_model::generate "$fix_prompt")
+      [ -z "$local_fix" ] && fix_exit=1
+      # Record engine=local in checkpoint
+      node -e "
+        const fs = require('fs');
+        const cp = '${STATE_DIR}/${feat_id}/checkpoint.json';
+        let d; try { d = JSON.parse(fs.readFileSync(cp,'utf-8')); } catch(e) { d = {}; }
+        if (!d.phase3_fixes) d.phase3_fixes = [];
+        d.phase3_fixes.push({ engine: 'local', attempt: ${fix_attempts}, local_model: '${LOCAL_MODEL_GENERATOR_MODEL}', at: new Date().toISOString() });
+        fs.writeFileSync(cp, JSON.stringify(d, null, 2));
+      " 2>/dev/null || true
+    elif command -v claude &>/dev/null; then
       (cd "$wt_path" && printf '%b' "$fix_prompt" | claude $model_flag --print) 2>/dev/null || fix_exit=$?
     else
       info "Phase 3: Claude CLI not found — cannot attempt fix"
@@ -720,6 +779,10 @@ run_pr_creation() {
     wt_update_status "$feat_id" "pr-created" "complete"
     node -e "const fs=require('fs');const r=JSON.parse(fs.readFileSync('$results_file','utf-8'));r.pr_url='$pr_url';r.pipeline.review={status:'completed',pr_url:'$pr_url'};fs.writeFileSync('$results_file',JSON.stringify(r,null,2));" 2>/dev/null || true
     info "PR: $pr_url"
+    # ADR-009 PR-G: Phase 4.5 — trigger background review-ingest
+    if declare -f ingest_trigger_if_merged &>/dev/null; then
+      ingest_trigger_if_merged "$feat_id"
+    fi
   else
     wt_update_status "$feat_id" "done" "complete"
     info "Done: $feat_id (PR creation failed — skipping)"

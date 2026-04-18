@@ -1,5 +1,5 @@
 #!/bin/bash
-# lib/learning.sh — Layered error learning store (ADR-008 PR-C)
+# lib/learning.sh — Layered error learning store (ADR-008 PR-C, ADR-009 PR-F)
 #
 # 3-tier store:
 #   feature : $STATE_DIR/{feat_id}/learned.json
@@ -10,6 +10,12 @@
 #   id, pattern, fix, tier, created_at, last_seen, hits,
 #   success_count, failure_count, confidence, ttl_days,
 #   archived, promotion_candidate
+#
+# ADR-009 PR-F additions:
+#   - learning_write appends embedding vector to learned.embeddings.jsonl
+#     when local_model.enabled=true and backend=embedding
+#   - learning_read falls back to cosine-similarity retrieval when
+#     backend=embedding and a local model is reachable
 #
 # JSON manipulation uses node -e (Node.js is a declared runtime dependency).
 
@@ -34,6 +40,68 @@ _learning_ensure_file() {
   dir=$(dirname "$path")
   mkdir -p "$dir"
   [ ! -f "$path" ] && echo '[]' > "$path"
+}
+
+# Path to the embedding sidecar file alongside a learned.json store.
+_learning_embeddings_path() {
+  local store_path="$1"
+  echo "${store_path%.json}.embeddings.jsonl"
+}
+
+# Append an embedding vector to the sidecar JSONL file.
+# Usage: _learning_write_embedding <store_path> <learn_id> <embedding_json_array>
+_learning_write_embedding() {
+  local store_path="$1"
+  local learn_id="$2"
+  local embedding="$3"
+
+  [ -z "$embedding" ] || [ "$embedding" = "[]" ] && return
+
+  local emb_path
+  emb_path=$(_learning_embeddings_path "$store_path")
+
+  node -e "
+    const fs = require('fs');
+    const line = JSON.stringify({ id: '${learn_id}', embedding: ${embedding} });
+    fs.appendFileSync('${emb_path}', line + '\n');
+  " 2>/dev/null || true
+}
+
+# Cosine similarity search against the embeddings sidecar.
+# Usage: _learning_cosine_search <store_path> <query_embedding_json> <threshold>
+# Prints the learn_id of the best match, or empty string if none exceeds threshold.
+_learning_cosine_search() {
+  local store_path="$1"
+  local query_embedding="$2"
+  local threshold="${3:-0.85}"
+
+  local emb_path
+  emb_path=$(_learning_embeddings_path "$store_path")
+  [ ! -f "$emb_path" ] && echo "" && return
+
+  node -e "
+    const fs = require('fs');
+    const lines = fs.readFileSync('${emb_path}', 'utf-8').trim().split('\n').filter(Boolean);
+    const query = ${query_embedding};
+    if (!Array.isArray(query) || query.length === 0) { process.stdout.write(''); process.exit(0); }
+
+    function cosine(a, b) {
+      let dot = 0, na = 0, nb = 0;
+      const len = Math.min(a.length, b.length);
+      for (let i = 0; i < len; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+      return na === 0 || nb === 0 ? 0 : dot / (Math.sqrt(na) * Math.sqrt(nb));
+    }
+
+    let bestId = '', bestSim = ${threshold};
+    for (const line of lines) {
+      try {
+        const e = JSON.parse(line);
+        const sim = cosine(query, e.embedding || []);
+        if (sim > bestSim) { bestSim = sim; bestId = e.id; }
+      } catch(_) {}
+    }
+    process.stdout.write(bestId);
+  " 2>/dev/null || echo ""
 }
 
 # ── learning_ttl_sweep ───────────────────────────────────────────────
@@ -98,7 +166,9 @@ learning_read() {
   project_path=$(_learning_project_path)
   global_path=$(_learning_global_path)
 
-  node -e "
+  # Exact-match pass (always attempted first regardless of backend)
+  local exact_result
+  exact_result=$(node -e "
     const fs = require('fs');
     const sig = $(node -p "JSON.stringify('$error_sig')" 2>/dev/null || echo "\"\"");
 
@@ -116,7 +186,41 @@ learning_read() {
       }
     }
     console.log('');
-  " 2>/dev/null || echo ""
+  " 2>/dev/null || echo "")
+
+  if [ -n "$exact_result" ]; then
+    echo "$exact_result"
+    return 0
+  fi
+
+  # ADR-009 PR-F: cosine-similarity fallback when backend=embedding
+  local similarity_backend="${CFG_LEARNING_SIMILARITY_BACKEND:-exact}"
+  if [ "$similarity_backend" = "embedding" ] && [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ]; then
+    local query_embedding
+    query_embedding=$(local_model::embed "$error_sig")
+
+    if [ -n "$query_embedding" ] && [ "$query_embedding" != "[]" ]; then
+      local sim_threshold="${CFG_LEARNING_SIMILARITY_THRESHOLD:-0.85}"
+
+      for tier_path in "$project_path" "$global_path" "$feat_path"; do
+        [ ! -f "$tier_path" ] && continue
+        local matched_id
+        matched_id=$(_learning_cosine_search "$tier_path" "$query_embedding" "$sim_threshold")
+        if [ -n "$matched_id" ]; then
+          node -p "
+            try {
+              const entries = JSON.parse(require('fs').readFileSync('$tier_path','utf-8'));
+              const m = entries.find(e => e.id === '$matched_id' && !e.archived);
+              m ? JSON.stringify(m) : '';
+            } catch(e) { ''; }
+          " 2>/dev/null || echo ""
+          return 0
+        fi
+      done
+    fi
+  fi
+
+  echo ""
 }
 
 # ── learning_write ────────────────────────────────────────────────────
@@ -172,6 +276,25 @@ learning_write() {
 
     fs.writeFileSync(path, JSON.stringify(entries, null, 2));
   " 2>/dev/null || true
+
+  # ADR-009 PR-F: append embedding vector to sidecar when local model enabled
+  if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ] && \
+     [ "${CFG_LEARNING_SIMILARITY_BACKEND:-exact}" = "embedding" ]; then
+    local new_id
+    new_id=$(node -p "
+      try {
+        const entries = JSON.parse(require('fs').readFileSync('$project_path','utf-8'));
+        const sig = $(node -p "JSON.stringify('$error_sig')" 2>/dev/null || echo "\"\"");
+        const m = entries.find(e => !e.archived && e.pattern === sig);
+        m ? m.id : '';
+      } catch(e) { ''; }
+    " 2>/dev/null || echo "")
+    if [ -n "$new_id" ]; then
+      local embedding
+      embedding=$(local_model::embed "$error_sig")
+      _learning_write_embedding "$project_path" "$new_id" "$embedding"
+    fi
+  fi
 }
 
 # ── learning_verify ───────────────────────────────────────────────────

@@ -82,10 +82,11 @@ OPT_SAMPLE=10
 OPT_LEARNING_ACTION=""
 OPT_LEARNING_ID=""
 OPT_LEARNING_CANDIDATES=false
+OPT_INGEST_FEAT=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    init|run|status|clean|calibrate|learning|promote-learning)
+    init|run|status|clean|calibrate|learning|promote-learning|ingest-reviews)
       SUBCOMMAND="$1"
       ;;
     --autonomy)
@@ -136,6 +137,7 @@ while [ $# -gt 0 ]; do
       echo "  learning archive <id>      Archive a learning entry by ID"
       echo "  learning promote <id>      Promote a project entry to global tier"
       echo "  promote-learning <id>      Alias for: learning promote <id>"
+      echo "  ingest-reviews <feat-id>   Run Phase 4.5 review-ingest on demand (ADR-009)"
       echo ""
       echo "Flags:"
       echo "  --autonomy <level>         supervised | checkpoint | full_auto"
@@ -151,13 +153,15 @@ while [ $# -gt 0 ]; do
       exit 0
       ;;
     *)
-      # Capture positional arguments for subcommands that need them (e.g. learning archive <id>)
+      # Capture positional arguments for subcommands that need them
       if [ "$SUBCOMMAND" = "learning" ] && [ -z "$OPT_LEARNING_ACTION" ]; then
         OPT_LEARNING_ACTION="$1"
       elif [ "$SUBCOMMAND" = "learning" ] && [ -z "$OPT_LEARNING_ID" ]; then
         OPT_LEARNING_ID="$1"
       elif [ "$SUBCOMMAND" = "promote-learning" ] && [ -z "$OPT_LEARNING_ID" ]; then
         OPT_LEARNING_ID="$1"
+      elif [ "$SUBCOMMAND" = "ingest-reviews" ] && [ -z "$OPT_INGEST_FEAT" ]; then
+        OPT_INGEST_FEAT="$1"
       else
         err "Unknown argument: $1"
         err "Run: ./scripts/orchestrate.sh --help"
@@ -307,6 +311,9 @@ sub_run() {
   source "$LIB_DIR/learning.sh"
   source "$LIB_DIR/size_gate.sh"
   source "$LIB_DIR/cycle_gate.sh"
+  # ADR-009 modules
+  source "$LIB_DIR/local_model.sh"
+  source "$LIB_DIR/ingest.sh"
   source "$LIB_DIR/runner.sh"
 
   # Resolve config file — check multiple locations
@@ -332,6 +339,9 @@ sub_run() {
   mkdir -p "$STATE_DIR" "$RESULTS_DIR"
 
   banner "Orchestrate — $ADAPTER / $AUTONOMY / $BASE_BRANCH / model:$MODEL_DEFAULT"
+
+  # ADR-009 PR-E: startup health check (result cached to local_model_health.json)
+  local_model_health_check || true
 
   # Agent discovery (ADR-006)
   local manifest_file="$CONFIG_DIR/agents-manifest.json"
@@ -523,6 +533,41 @@ sub_promote_learning() {
 }
 
 # ══════════════════════════════════════════════════════════════════
+# Subcommand: ingest-reviews (ADR-009 PR-G)
+# ══════════════════════════════════════════════════════════════════
+
+sub_ingest_reviews() {
+  if [ -z "$OPT_INGEST_FEAT" ]; then
+    err "Usage: ingest-reviews <feat-id>"
+    exit 1
+  fi
+
+  source "$LIB_DIR/config.sh"
+  source "$LIB_DIR/learning.sh"
+  source "$LIB_DIR/local_model.sh"
+  source "$LIB_DIR/ingest.sh"
+
+  local config_file="$OPT_CONFIG"
+  if [ ! -f "$config_file" ]; then
+    [ -f ".orchestrator/config.yaml" ] && config_file=".orchestrator/config.yaml"
+    [ -f ".orchestrator/config.yml"  ] && config_file=".orchestrator/config.yml"
+    [ -f "orchestrator/config.yml"   ] && config_file="orchestrator/config.yml"
+  fi
+  load_config "$config_file" 2>/dev/null || true
+
+  if [ "${LOCAL_MODEL_ENABLED:-false}" != "true" ]; then
+    err "ingest-reviews requires local_model.enabled: true in config"
+    exit 1
+  fi
+
+  # Run health check before ingesting
+  local_model_health_check || exit 1
+
+  banner "Review Ingest — $OPT_INGEST_FEAT"
+  ingest_reviews "$OPT_INGEST_FEAT"
+}
+
+# ══════════════════════════════════════════════════════════════════
 # Dispatch
 # ══════════════════════════════════════════════════════════════════
 
@@ -534,4 +579,5 @@ case "$SUBCOMMAND" in
   calibrate)       sub_calibrate ;;
   learning)        sub_learning ;;
   promote-learning) sub_promote_learning ;;
+  ingest-reviews)  sub_ingest_reviews ;;
 esac

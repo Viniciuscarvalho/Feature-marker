@@ -1,9 +1,13 @@
 #!/bin/bash
-# lib/router.sh — Block-based stack routing with specialist fallback (ADR-008 PR-B)
+# lib/router.sh — Block-based stack routing with specialist fallback (ADR-008 PR-B, ADR-009 PR-G)
 #
 # Detects the tech stack from file paths associated with a task, maps that stack
 # to the most appropriate specialist agent, checks if the agent is installed, and
 # falls back to the generic feature-marker if not.
+#
+# ADR-009 PR-G: when local_model.enabled=true, local_model::classify refines
+# routing beyond file-path heuristics. The classification_label is stored in
+# stack-map.json alongside the resolved_agent.
 #
 # Stack-map cache: .orchestrator/stack-map.json
 # Agent install check: .claude/agents/<name>.md (or .yaml)
@@ -139,6 +143,19 @@ router_route_task() {
     fi
   fi
 
+  # ADR-009 PR-G: optional classifier refinement via local model
+  local classification_label="unknown"
+  if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ]; then
+    local classify_input
+    classify_input="Stack: $stack. Files: $(echo "$file_paths" | tr ':' ' ')"
+    local classified
+    classified=$(local_model::classify "$classify_input" "ui api db infra test unknown" 2>/dev/null || echo "unknown")
+    if [ "$classified" != "unknown" ]; then
+      classification_label="$classified"
+      info "Router: classifier label=$classification_label (task: $task_id)"
+    fi
+  fi
+
   # Cache the result
   node -e "
     const fs = require('fs');
@@ -153,6 +170,7 @@ router_route_task() {
       feat_id: '$feat_id',
       task_id: '$task_id',
       stack: '$stack',
+      classification_label: '$classification_label',
       preferred_agent: '$preferred_agent',
       resolved_agent: '$resolved_agent',
       file_paths: '$file_paths',
