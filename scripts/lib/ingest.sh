@@ -37,9 +37,9 @@ ingest_reviews() {
   local pr_url
   pr_url=$(node -p "
     try {
-      JSON.parse(require('fs').readFileSync('$results_file','utf-8')).pr_url || '';
+      JSON.parse(require('fs').readFileSync(process.argv[1],'utf-8')).pr_url || '';
     } catch(e) { ''; }
-  " 2>/dev/null || echo "")
+  " "$results_file" 2>/dev/null || echo "")
 
   if [ -z "$pr_url" ]; then
     info "Ingest: no PR URL recorded for $feat_id — skipping"
@@ -86,17 +86,18 @@ ingest_reviews() {
   local ingest_record="$STATE_DIR/$feat_id/ingest.json"
   node -e "
     const fs = require('fs');
+    const [,, path, featId, prUrl, fixCount] = process.argv;
     let records;
-    try { records = JSON.parse(fs.readFileSync('${ingest_record}','utf-8')); } catch(e) { records = []; }
+    try { records = JSON.parse(fs.readFileSync(path,'utf-8')); } catch(e) { records = []; }
     records.push({
       type: 'review_ingest',
-      feat_id: '${feat_id}',
-      pr_url: '${pr_url}',
+      feat_id: featId,
+      pr_url: prUrl,
       ran_at: new Date().toISOString(),
-      fixes_written: ${total_written}
+      fixes_written: Number(fixCount)
     });
-    fs.writeFileSync('${ingest_record}', JSON.stringify(records, null, 2));
-  " 2>/dev/null || true
+    fs.writeFileSync(path, JSON.stringify(records, null, 2));
+  " "$ingest_record" "$feat_id" "$pr_url" "$total_written" 2>/dev/null || true
 
   info "Ingest: wrote $total_written fix(es) to project learning store (feat: $feat_id)"
 }
@@ -128,10 +129,8 @@ ingest_write_fixes() {
 
       const fixes = data.fixes || [];
       const globalConf = data.confidence || 0;
-      const threshold = ${INGEST_CONFIDENCE_THRESHOLD};
-      const projectPath = '${project_path}';
-      const logPath = '${log_file}';
-      const source = '${source_label}';
+      const [,, projectPath, logPath, source] = process.argv;
+      const threshold = Number(process.argv[5]);
 
       let store;
       try { store = JSON.parse(fs.readFileSync(projectPath, 'utf-8')); } catch(e) { store = []; }
@@ -184,13 +183,13 @@ ingest_write_fixes() {
         require('fs').mkdirSync(logDir, { recursive: true });
         fs.writeFileSync(logPath, JSON.stringify({
           source, skipped_reason: 'confidence below threshold',
-          threshold: ${INGEST_CONFIDENCE_THRESHOLD}, skipped
+          threshold: Number(process.argv[5]), skipped
         }, null, 2));
       }
 
       process.stdout.write(String(written));
     });
-  " 2>/dev/null || echo "0")
+  " "$project_path" "$log_file" "$source_label" "$INGEST_CONFIDENCE_THRESHOLD" 2>/dev/null || echo "0")
 
   echo "${written:-0}"
 }
@@ -210,9 +209,9 @@ ingest_trigger_if_merged() {
 
   local pr_url
   pr_url=$(node -p "
-    try { JSON.parse(require('fs').readFileSync('$results_file','utf-8')).pr_url || ''; }
+    try { JSON.parse(require('fs').readFileSync(process.argv[1],'utf-8')).pr_url || ''; }
     catch(e) { ''; }
-  " 2>/dev/null || echo "")
+  " "$results_file" 2>/dev/null || echo "")
 
   [ -z "$pr_url" ] && return 0
 
@@ -224,12 +223,14 @@ ingest_trigger_if_merged() {
     (ingest_reviews "$feat_id" >> "$log_file" 2>&1; echo "exit:$?" >> "$log_file") &
     local bg_pid=$!
     node -e "
-      require('fs').writeFileSync('$pid_file', JSON.stringify({
-        pid: $bg_pid,
-        feat_id: '$feat_id',
+      const fs = require('fs');
+      const [,, pidFile, bgPid, featId] = process.argv;
+      fs.writeFileSync(pidFile, JSON.stringify({
+        pid: Number(bgPid),
+        feat_id: featId,
         started_at: new Date().toISOString()
       }, null, 2));
-    " 2>/dev/null || true
+    " "$pid_file" "$bg_pid" "$feat_id" 2>/dev/null || true
     info "Ingest: background review-ingest triggered for $feat_id (PID $bg_pid)"
   else
     info "Ingest: ingest_reviews not available — skipping (merge ADR-009 to enable)"
@@ -248,10 +249,14 @@ ingest_reap_stale() {
   for pid_file in "$STATE_DIR"/*/ingest.pid; do
     [ -f "$pid_file" ] || continue
 
-    local pid feat_id started_at
-    pid=$(node -p "try{JSON.parse(require('fs').readFileSync('$pid_file','utf-8')).pid||0}catch(e){0}" 2>/dev/null || echo "0")
-    feat_id=$(node -p "try{JSON.parse(require('fs').readFileSync('$pid_file','utf-8')).feat_id||''}catch(e){''}" 2>/dev/null || echo "")
-    started_at=$(node -p "try{JSON.parse(require('fs').readFileSync('$pid_file','utf-8')).started_at||''}catch(e){''}" 2>/dev/null || echo "")
+    local pid feat_id started_at fields
+    fields=$(node -p "
+      try {
+        const d = JSON.parse(require('fs').readFileSync(process.argv[1],'utf-8'));
+        [d.pid||0, d.feat_id||'', d.started_at||''].join('\t');
+      } catch(e) { '0\t\t'; }
+    " "$pid_file" 2>/dev/null || printf '0\t\t')
+    IFS=$'\t' read -r pid feat_id started_at <<< "$fields"
 
     [ "$pid" -eq 0 ] && { rm -f "$pid_file"; continue; }
 
@@ -284,10 +289,14 @@ ingest_status() {
     [ -f "$pid_file" ] || continue
     found=1
 
-    local pid feat_id started_at
-    pid=$(node -p "try{JSON.parse(require('fs').readFileSync('$pid_file','utf-8')).pid||0}catch(e){0}" 2>/dev/null || echo "0")
-    feat_id=$(node -p "try{JSON.parse(require('fs').readFileSync('$pid_file','utf-8')).feat_id||''}catch(e){''}" 2>/dev/null || echo "")
-    started_at=$(node -p "try{JSON.parse(require('fs').readFileSync('$pid_file','utf-8')).started_at||''}catch(e){''}" 2>/dev/null || echo "")
+    local pid feat_id started_at fields
+    fields=$(node -p "
+      try {
+        const d = JSON.parse(require('fs').readFileSync(process.argv[1],'utf-8'));
+        [d.pid||0, d.feat_id||'', d.started_at||''].join('\t');
+      } catch(e) { '0\t\t'; }
+    " "$pid_file" 2>/dev/null || printf '0\t\t')
+    IFS=$'\t' read -r pid feat_id started_at <<< "$fields"
 
     local status="running"
     kill -0 "$pid" 2>/dev/null || status="zombie (not yet reaped)"
