@@ -1,5 +1,6 @@
 #!/bin/bash
 # lib/learning.sh — Layered error learning store (ADR-008 PR-C, ADR-009 PR-F)
+#                   + global-context.md summary entries (ADR-010)
 #
 # 3-tier store:
 #   feature : $STATE_DIR/{feat_id}/learned.json
@@ -507,4 +508,75 @@ learning_promote() {
     fs.writeFileSync('$global_path', JSON.stringify(global, null, 2));
     console.log('  Promoted to global: $learn_id');
   " 2>/dev/null || true
+}
+
+# ── gc_append_feature_summary ─────────────────────────────────────────
+# Usage: gc_append_feature_summary <feat_id> <branch> <status> <pr_url>
+#
+# Appends a compact summary entry to .orchestrator/global-context.md
+# after a feature reaches "done" or "pr-created".
+#
+# The entry includes: feature ID, branch, timestamp, status, cost stats,
+# and PR URL (if available).
+#
+# Idempotent: if a heading for <feat_id> already exists, the entry is
+# skipped so re-runs don't duplicate content.
+
+gc_append_feature_summary() {
+  local feat_id="$1"
+  local branch="$2"
+  local status="$3"
+  local pr_url="${4:-}"
+
+  local gc_file="${CONTEXT_DIR:-$ROOT_DIR/.orchestrator}/global-context.md"
+
+  # Ensure the file exists with a header
+  if [ ! -f "$gc_file" ]; then
+    mkdir -p "$(dirname "$gc_file")"
+    cat > "$gc_file" <<'EOHDR'
+# Global Orchestration Context
+
+Accumulated feature summaries written after each successful run.
+Each entry is appended once (idempotent). Use this file to carry
+learnings across orchestration sessions.
+
+EOHDR
+  fi
+
+  # Idempotency: skip if a heading for this feature already exists
+  if grep -qF "## $feat_id " "$gc_file" 2>/dev/null; then
+    return 0
+  fi
+
+  # Collect cost stats from cost.json (if available)
+  local cost_file="$STATE_DIR/$feat_id/cost.json"
+  local cost_line=""
+  if [ -f "$cost_file" ]; then
+    local tokens
+    tokens=$(node -p "
+      try {
+        const d = JSON.parse(require('fs').readFileSync('$cost_file','utf-8'));
+        d.cumulative_tokens || 0;
+      } catch(e) { 0; }
+    " 2>/dev/null || echo "0")
+    if [ "$tokens" -gt 0 ] 2>/dev/null; then
+      cost_line="- Cost: ~${tokens} tokens"
+    fi
+  fi
+
+  local ts
+  ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+  {
+    echo ""
+    echo "## $feat_id — $ts"
+    echo "- Branch: $branch"
+    echo "- Status: $status"
+    [ -n "$cost_line" ] && echo "$cost_line"
+    if [ -n "$pr_url" ]; then
+      echo "- PR: $pr_url"
+    else
+      echo "- Outcome: completed successfully"
+    fi
+  } >> "$gc_file"
 }

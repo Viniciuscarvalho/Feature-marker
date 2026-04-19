@@ -479,6 +479,19 @@ EOPRD
   mem_record_context "$feat_id" "$title" "$priority" "$labels" "$wt_path" "$results_file"
   mem_refresh_env
 
+  # Auto-update global-context.md with a compact summary entry
+  local final_status
+  final_status=$(wt_get_status "$feat_id")
+  if [ "$final_status" = "done" ] || [ "$final_status" = "pr-created" ]; then
+    local final_pr_url=""
+    [ -f "$results_file" ] && final_pr_url=$(node -p "
+      try { JSON.parse(require('fs').readFileSync('$results_file','utf-8')).pr_url || ''; }
+      catch(e) { ''; }
+    " 2>/dev/null || echo "")
+    local final_branch="${BRANCH_PREFIX:-feat}/$feat_id"
+    gc_append_feature_summary "$feat_id" "$final_branch" "$final_status" "$final_pr_url"
+  fi
+
   info "Feature time: ${duration}s"
   echo ""
 }
