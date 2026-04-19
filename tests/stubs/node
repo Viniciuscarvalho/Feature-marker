@@ -1,0 +1,38 @@
+#!/bin/bash
+# Stub for node used in local_model_health_check tests.
+#
+# Supports only the subset of node calls made by local_model_health_check:
+#   node -e "...fs.writeFileSync(path, ...)"  — writes a minimal JSON file
+#   node -p "..."                              — used by _local_model_is_reachable;
+#                                               returns "false" by default,
+#                                               controlled by NODE_HEALTH_REACHABLE.
+#
+# All other node invocations are passed to the real node binary if available.
+
+REAL_NODE="$(PATH=/usr/bin:/usr/local/bin:/opt/homebrew/bin which node 2>/dev/null || true)"
+
+# node -e "...writeFileSync(...)..." — health file write
+if [[ "${1:-}" == "-e" && "${2:-}" == *"writeFileSync"* ]]; then
+  # Extract the file path from the script: writeFileSync('<path>', ...)
+  # The path is embedded as a shell-expanded variable in the -e string.
+  # We just need the side-effect to succeed; parse out the first string arg.
+  # Rather than fully parsing JS, delegate to real node if available, else no-op.
+  if [ -n "$REAL_NODE" ]; then
+    exec "$REAL_NODE" "$@"
+  fi
+  exit 0
+fi
+
+# node -p "...readFileSync(LOCAL_MODEL_HEALTH_FILE...)..." — reachability probe
+if [[ "${1:-}" == "-p" && "${2:-}" == *"readFileSync"* ]]; then
+  echo "${NODE_HEALTH_REACHABLE:-false}"
+  exit 0
+fi
+
+# Pass everything else to real node
+if [ -n "$REAL_NODE" ]; then
+  exec "$REAL_NODE" "$@"
+fi
+
+# No real node available — return empty
+exit 0

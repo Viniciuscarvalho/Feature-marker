@@ -1,0 +1,33 @@
+#!/bin/bash
+# Stub for curl used in local_model_health_check tests.
+#
+# Mimics: curl -s -o <file> -w "%{http_code}" --max-time <n> <url>
+#
+# Behavior is controlled by CURL_STUB_MODE:
+#   reachable   — writes minimal JSON to the -o file, prints "200" (the http_code)
+#   unreachable — prints "000" (the http_code); -o file gets empty content
+#   (default)   — unreachable
+
+OUTPUT_FILE=""
+
+# Walk all args to find -o <file>
+args=("$@")
+i=0
+while [ $i -lt ${#args[@]} ]; do
+  if [[ "${args[$i]}" == "-o" ]]; then
+    i=$((i + 1))
+    OUTPUT_FILE="${args[$i]}"
+  fi
+  i=$((i + 1))
+done
+
+case "${CURL_STUB_MODE:-unreachable}" in
+  reachable)
+    [ -n "$OUTPUT_FILE" ] && echo '{"models":[]}' > "$OUTPUT_FILE"
+    printf "200"
+    ;;
+  *)
+    [ -n "$OUTPUT_FILE" ] && printf '' > "$OUTPUT_FILE"
+    printf "000"
+    ;;
+esac
