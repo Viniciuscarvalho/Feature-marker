@@ -119,6 +119,9 @@ learning:
     backend: exact # exact | embedding (embedding requires local_model.enabled: true)
     threshold: 0.85
 
+execution_timeouts:
+  skill_timeout_seconds: 1800 # Wall-clock limit for claude --skill invocations (op_timeout)
+
 # Local-model integration (ADR-009)
 local_model:
   enabled: false # opt-in; false = pure-Claude behaviour (zero change for existing users)

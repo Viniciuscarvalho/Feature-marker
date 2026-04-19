@@ -216,7 +216,84 @@ ingest_trigger_if_merged() {
 
   [ -z "$pr_url" ] && return 0
 
-  # Background: do not block Phase 4
-  (ingest_reviews "$feat_id" >> "$STATE_DIR/$feat_id/ingest-bg.log" 2>&1) &
-  info "Ingest: background review-ingest triggered for $feat_id (PID $!)"
+  local pid_file="$STATE_DIR/$feat_id/ingest.pid"
+  local log_file="$STATE_DIR/$feat_id/ingest-bg.log"
+  mkdir -p "$STATE_DIR/$feat_id"
+
+  if declare -f ingest_reviews &>/dev/null; then
+    (ingest_reviews "$feat_id" >> "$log_file" 2>&1; echo "exit:$?" >> "$log_file") &
+    local bg_pid=$!
+    node -e "
+      require('fs').writeFileSync('$pid_file', JSON.stringify({
+        pid: $bg_pid,
+        feat_id: '$feat_id',
+        started_at: new Date().toISOString()
+      }, null, 2));
+    " 2>/dev/null || true
+    info "Ingest: background review-ingest triggered for $feat_id (PID $bg_pid)"
+  else
+    info "Ingest: ingest_reviews not available — skipping (merge ADR-009 to enable)"
+  fi
+}
+
+# ── ingest_reap_stale ─────────────────────────────────────────────────
+# Called at orchestrate.sh startup.
+# For each .pid file, checks if the process is still alive.
+# If dead, cleans up the pid file and logs the completion status.
+
+ingest_reap_stale() {
+  [ ! -d "$STATE_DIR" ] && return 0
+
+  local reaped=0
+  for pid_file in "$STATE_DIR"/*/ingest.pid; do
+    [ -f "$pid_file" ] || continue
+
+    local pid feat_id started_at
+    pid=$(node -p "try{JSON.parse(require('fs').readFileSync('$pid_file','utf-8')).pid||0}catch(e){0}" 2>/dev/null || echo "0")
+    feat_id=$(node -p "try{JSON.parse(require('fs').readFileSync('$pid_file','utf-8')).feat_id||''}catch(e){''}" 2>/dev/null || echo "")
+    started_at=$(node -p "try{JSON.parse(require('fs').readFileSync('$pid_file','utf-8')).started_at||''}catch(e){''}" 2>/dev/null || echo "")
+
+    [ "$pid" -eq 0 ] && { rm -f "$pid_file"; continue; }
+
+    if kill -0 "$pid" 2>/dev/null; then
+      continue
+    fi
+
+    rm -f "$pid_file"
+    reaped=$((reaped + 1))
+
+    local log_file="$STATE_DIR/$feat_id/ingest-bg.log"
+    local exit_line=""
+    [ -f "$log_file" ] && exit_line=$(grep "^exit:" "$log_file" | tail -1 || echo "")
+
+    info "Ingest: reaped finished background job (feat: $feat_id, PID: $pid, started: $started_at, ${exit_line:-exit: unknown})"
+  done
+
+  [ "$reaped" -gt 0 ] && info "Ingest: reaped $reaped stale background job(s)"
+  return 0
+}
+
+# ── ingest_status ─────────────────────────────────────────────────────
+# Lists active background ingest jobs.
+
+ingest_status() {
+  [ ! -d "$STATE_DIR" ] && { info "No state directory found."; return 0; }
+
+  local found=0
+  for pid_file in "$STATE_DIR"/*/ingest.pid; do
+    [ -f "$pid_file" ] || continue
+    found=1
+
+    local pid feat_id started_at
+    pid=$(node -p "try{JSON.parse(require('fs').readFileSync('$pid_file','utf-8')).pid||0}catch(e){0}" 2>/dev/null || echo "0")
+    feat_id=$(node -p "try{JSON.parse(require('fs').readFileSync('$pid_file','utf-8')).feat_id||''}catch(e){''}" 2>/dev/null || echo "")
+    started_at=$(node -p "try{JSON.parse(require('fs').readFileSync('$pid_file','utf-8')).started_at||''}catch(e){''}" 2>/dev/null || echo "")
+
+    local status="running"
+    kill -0 "$pid" 2>/dev/null || status="zombie (not yet reaped)"
+
+    echo "  feat: $feat_id | PID: $pid | started: $started_at | status: $status"
+  done
+
+  [ "$found" -eq 0 ] && info "No active background ingest jobs."
 }

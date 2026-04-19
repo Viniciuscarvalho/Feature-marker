@@ -162,10 +162,11 @@ size_gate_signal() {
       info "! Feature $feat_id exceeds size thresholds: $exceeded_metrics"
       info "  Consider splitting into smaller features before proceeding."
       echo ""
-      # Read from /dev/tty to avoid consuming stdin from the calling pipeline
+      # Read from /dev/tty to avoid consuming stdin from the calling pipeline.
+      # 120-second timeout (ADR-010): unattended runs auto-decline rather than hang.
       local answer="n"
       if [ -t 0 ]; then
-        read -r -p "  Proceed anyway? [y/N] " answer </dev/tty || answer="n"
+        read -t 120 -r -p "  Proceed anyway? [y/N] " answer </dev/tty || answer="n"
       else
         info "  (non-interactive mode — defaulting to skip)"
       fi
@@ -175,13 +176,16 @@ size_gate_signal() {
           return 0
           ;;
         *)
+          local action="user_skipped"
+          [ -z "${answer:-}" ] && action="timeout_skipped"
+          [ "$action" = "timeout_skipped" ] && info "Size-gate prompt timed out (120s) — skipping $feat_id"
           info "Skipping $feat_id due to size gate. Split the feature and re-run."
           node -e "
             require('fs').writeFileSync('$signal_file', JSON.stringify({
               feature_id: '$feat_id',
               recorded_at: new Date().toISOString(),
               exceeded: '$exceeded_metrics',
-              action: 'user_skipped'
+              action: '$action'
             }, null, 2));
           " 2>/dev/null || true
           return 1
