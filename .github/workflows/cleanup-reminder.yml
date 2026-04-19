@@ -1,0 +1,44 @@
+name: Worktree Cleanup Reminder
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup-reminder:
+    runs-on: ubuntu-latest
+    # Only run when a feat/* PR is actually merged (not just closed)
+    if: |
+      github.event.pull_request.merged == true &&
+      startsWith(github.head_ref, 'feat/')
+    steps:
+      - name: Extract feature ID from branch name
+        id: extract
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          FEAT_ID="${BRANCH#feat/}"
+          echo "feat_id=$FEAT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Post cleanup reminder comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const featId = '${{ steps.extract.outputs.feat_id }}';
+            const baseRef = '${{ github.base_ref }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                `🧹 **Worktree cleanup reminder**`,
+                ``,
+                `This PR was created by the feature-marker orchestrator from branch \`feat/${featId}\`.`,
+                `If you have a local worktree for this feature, clean it up with:`,
+                ``,
+                `\`\`\`bash`,
+                `./scripts/orchestrate.sh clean-merged`,
+                `\`\`\``,
+                ``,
+                `This removes all local \`feat/*\` worktrees whose branches have been merged into \`${baseRef}\`.`,
+              ].join('\n')
+            });

@@ -2,7 +2,7 @@
 # lib/worktree.sh — Worktree lifecycle with cleanup safety
 #
 # Functions: wt_create, wt_remove, wt_rebase_pending,
-#            wt_cleanup_all, wt_list
+#            wt_cleanup, wt_cleanup_merged, wt_cleanup_all, wt_list
 
 WORKTREE_ROOT="${WORKTREE_ROOT:-$ROOT_DIR/${WORKTREE_BASE:-.worktrees}}"
 STATE_DIR="${STATE_DIR:-$ROOT_DIR/.orchestrator/state}"
@@ -120,6 +120,62 @@ wt_cleanup() {
 
   git worktree prune 2>/dev/null || true
   echo "$cleaned"
+}
+
+wt_cleanup_merged() {
+  local base="${1:-${BASE_BRANCH:-main}}"
+  local prefix="${BRANCH_PREFIX:-feat}"
+  local cleaned=""
+
+  if ! command -v gh &>/dev/null; then
+    echo "  ⚠ gh CLI not found — install GitHub CLI to enable merged-branch cleanup"
+    echo "  Tip: brew install gh && gh auth login"
+    return 0
+  fi
+
+  if ! gh auth status &>/dev/null 2>&1; then
+    echo "  ⚠ Not authenticated with GitHub — run: gh auth login"
+    return 0
+  fi
+
+  echo "  Querying GitHub for merged ${prefix}/* branches..."
+
+  local merged_branches
+  merged_branches=$(gh pr list \
+    --state merged \
+    --base "$base" \
+    --json headRefName \
+    --jq ".[].headRefName | select(startswith(\"${prefix}/\"))" 2>/dev/null) || {
+    echo "  ⚠ Could not query GitHub — check network and authentication"
+    return 0
+  }
+
+  if [ -z "$merged_branches" ]; then
+    echo "  No merged ${prefix}/* branches found on GitHub."
+    git worktree prune 2>/dev/null || true
+    return 0
+  fi
+
+  while IFS= read -r branch; do
+    local feat_id="${branch#${prefix}/}"
+    local wt_path="$WORKTREE_ROOT/$feat_id"
+
+    if git worktree list 2>/dev/null | grep -qF "$wt_path"; then
+      echo "  Removing worktree for merged branch: $branch"
+      cp "$STATE_DIR/$feat_id/logs/"* "$RESULTS_DIR/" 2>/dev/null || true
+      wt_remove "$feat_id"
+      wt_update_status "$feat_id" "cleaned" 2>/dev/null || true
+      cleaned="$cleaned $feat_id"
+    fi
+  done <<< "$merged_branches"
+
+  git worktree prune 2>/dev/null || true
+
+  if [ -n "$cleaned" ]; then
+    echo "✓ Cleaned:$cleaned"
+  else
+    echo "  No local worktrees found for merged branches."
+  fi
 }
 
 wt_cleanup_all() {
