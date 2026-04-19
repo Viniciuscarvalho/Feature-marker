@@ -1,0 +1,56 @@
+#!/bin/bash
+# Stub for git — intercepts worktree subcommands used by wt_cleanup_merged.
+# All other git commands are passed through to the real git binary.
+#
+# GIT_WORKTREE_STUB controls worktree list output:
+#   (empty / unset) — worktree list prints nothing (no matching worktree)
+#   has:<path>      — worktree list prints <path> (simulates a live worktree)
+
+REAL_GIT="/usr/bin/git"
+
+# Intercept: git worktree list
+if [[ "${1:-}" == "worktree" && "${2:-}" == "list" ]]; then
+  case "${GIT_WORKTREE_STUB:-}" in
+    has:*)
+      echo "${GIT_WORKTREE_STUB#has:}"
+      ;;
+    *)
+      : # empty output — no worktrees
+      ;;
+  esac
+  exit 0
+fi
+
+# Intercept: git worktree remove [--force] <path>
+# The path argument may appear before or after --force, so find it by
+# looking for the first argument that starts with / or .
+if [[ "${1:-}" == "worktree" && "${2:-}" == "remove" ]]; then
+  for arg in "${@:3}"; do
+    if [[ "$arg" == /* || "$arg" == ./* ]]; then
+      rm -rf "$arg" 2>/dev/null || true
+      break
+    fi
+  done
+  exit 0
+fi
+
+# Intercept: git worktree prune
+if [[ "${1:-}" == "worktree" && "${2:-}" == "prune" ]]; then
+  exit 0
+fi
+
+# Intercept: git -C <path> rev-parse --abbrev-ref HEAD  (used by wt_remove)
+if [[ "${1:-}" == "-C" && "${4:-}" == "--abbrev-ref" ]]; then
+  # Derive branch name from directory name: .worktrees/feat-001 -> feat/feat-001
+  local_dir="$(basename "${2:-unknown}")"
+  echo "feat/$local_dir"
+  exit 0
+fi
+
+# Intercept: git branch -D <branch>  (used by wt_remove)
+if [[ "${1:-}" == "branch" && "${2:-}" == "-D" ]]; then
+  exit 0
+fi
+
+# Pass everything else to the real git
+exec "$REAL_GIT" "$@"

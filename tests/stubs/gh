@@ -1,0 +1,40 @@
+#!/bin/bash
+# Stub for the gh CLI used in tests.
+#
+# Behavior is controlled by GH_STUB_MODE:
+#   auth_fail   — gh auth status exits 1 (not authenticated)
+#   no_prs      — pr list returns empty (no merged branches)
+#   has_merged  — pr list returns GH_MERGED_BRANCHES (newline-separated)
+#   fail_query  — auth passes but pr list exits 1 (network/API error)
+#   (default)   — auth passes, pr list returns empty
+
+ARGS="$*"
+
+case "${GH_STUB_MODE:-}" in
+  auth_fail)
+    if [[ "$ARGS" == *"auth status"* ]]; then exit 1; fi
+    exit 0
+    ;;
+  no_prs)
+    if [[ "$ARGS" == *"auth status"* ]]; then exit 0; fi
+    if [[ "$ARGS" == *"pr list"* ]];    then printf ''; exit 0; fi
+    exit 0
+    ;;
+  has_merged)
+    if [[ "$ARGS" == *"auth status"* ]]; then exit 0; fi
+    if [[ "$ARGS" == *"pr list"* ]]; then
+      printf '%s\n' "${GH_MERGED_BRANCHES:-}"
+      exit 0
+    fi
+    exit 0
+    ;;
+  fail_query)
+    if [[ "$ARGS" == *"auth status"* ]]; then exit 0; fi
+    if [[ "$ARGS" == *"pr list"* ]];    then exit 1; fi
+    exit 0
+    ;;
+  *)
+    if [[ "$ARGS" == *"auth status"* ]]; then exit 0; fi
+    exit 0
+    ;;
+esac

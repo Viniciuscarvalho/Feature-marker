@@ -86,7 +86,7 @@ OPT_INGEST_FEAT=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    init|run|status|clean|calibrate|learning|promote-learning|ingest-reviews)
+    init|run|status|clean|clean-merged|calibrate|learning|promote-learning|ingest-reviews)
       SUBCOMMAND="$1"
       ;;
     --autonomy)
@@ -131,6 +131,7 @@ while [ $# -gt 0 ]; do
       echo "  run                        Execute the orchestration loop"
       echo "  status                     Show current orchestrator state"
       echo "  clean                      Remove all worktrees and reset state"
+      echo "  clean-merged               Remove worktrees for branches already merged on GitHub"
       echo "  calibrate                  Show token-cost calibration guidance"
       echo "  learning list              List all learning entries"
       echo "  learning list --candidates List only promotion candidates"
@@ -340,6 +341,11 @@ sub_run() {
 
   banner "Orchestrate — $ADAPTER / $AUTONOMY / $BASE_BRANCH / model:$MODEL_DEFAULT"
 
+  # Pre-run: clean worktrees for branches already merged on GitHub
+  if [ "$AUTO_CLEANUP" = "true" ]; then
+    wt_cleanup_merged "$BASE_BRANCH" 2>/dev/null || true
+  fi
+
   # ADR-009 PR-E: startup health check (result cached to local_model_health.json)
   local_model_health_check || true
 
@@ -447,6 +453,17 @@ sub_clean() {
   mkdir -p "$STATE_DIR" "$RESULTS_DIR"
 
   info "All state cleared. Ready for a fresh run."
+}
+
+# ══════════════════════════════════════════════════════════════════
+# Subcommand: clean-merged
+# ══════════════════════════════════════════════════════════════════
+
+sub_clean_merged() {
+  source "$LIB_DIR/worktree.sh"
+
+  banner "Cleaning worktrees for merged branches"
+  wt_cleanup_merged "${BASE_BRANCH:-main}"
 }
 
 # ══════════════════════════════════════════════════════════════════
@@ -572,12 +589,13 @@ sub_ingest_reviews() {
 # ══════════════════════════════════════════════════════════════════
 
 case "$SUBCOMMAND" in
-  init)            sub_init ;;
-  run)             sub_run ;;
-  status)          sub_status ;;
-  clean)           sub_clean ;;
-  calibrate)       sub_calibrate ;;
-  learning)        sub_learning ;;
+  init)             sub_init ;;
+  run)              sub_run ;;
+  status)           sub_status ;;
+  clean)            sub_clean ;;
+  clean-merged)     sub_clean_merged ;;
+  calibrate)        sub_calibrate ;;
+  learning)         sub_learning ;;
   promote-learning) sub_promote_learning ;;
-  ingest-reviews)  sub_ingest_reviews ;;
+  ingest-reviews)   sub_ingest_reviews ;;
 esac
