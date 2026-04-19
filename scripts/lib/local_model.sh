@@ -89,7 +89,7 @@ local_model_health_check() {
   " 2>/dev/null || true
 
   if [ "$reachable" = "true" ]; then
-    info "Local model: ${LOCAL_MODEL_PROVIDER} reachable at ${LOCAL_MODEL_ENDPOINT} [DEBUG]"
+    [ "${VERBOSE:-}" = "true" ] && info "Local model: ${LOCAL_MODEL_PROVIDER} reachable at ${LOCAL_MODEL_ENDPOINT}"
     return 0
   fi
 

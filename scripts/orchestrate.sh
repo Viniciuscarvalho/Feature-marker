@@ -19,6 +19,7 @@
 #   --config <path>      Config file (default: orchestrator/config.yml)
 #   --plan               Show the plan, don't execute
 #   --dry-run             Alias for --plan
+#   -v, --verbose        Enable verbose output
 #   --help               Show this help
 
 set -euo pipefail
@@ -83,6 +84,7 @@ OPT_LEARNING_ACTION=""
 OPT_LEARNING_ID=""
 OPT_LEARNING_CANDIDATES=false
 OPT_INGEST_FEAT=""
+VERBOSE=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -106,6 +108,9 @@ while [ $# -gt 0 ]; do
       ;;
     --plan|--dry-run)
       OPT_DRY_RUN=true
+      ;;
+    -v|--verbose)
+      VERBOSE=true
       ;;
     --resume)
       OPT_RESUME=true
@@ -150,6 +155,7 @@ while [ $# -gt 0 ]; do
       echo "  --resume                   Skip completed, run pending"
       echo "  --skip-cycle-check         Skip the cycle-completion gate"
       echo "  --sample <n>               Sample size for calibrate (default: 10)"
+      echo "  -v, --verbose              Enable verbose output"
       echo "  --help                     Show this help"
       exit 0
       ;;
@@ -174,6 +180,7 @@ while [ $# -gt 0 ]; do
 done
 
 export OPT_SKIP_CYCLE_CHECK
+export VERBOSE
 
 [ -z "$SUBCOMMAND" ] && { err "No command given. Run: ./scripts/orchestrate.sh --help"; exit 1; }
 
