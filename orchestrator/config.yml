@@ -116,5 +116,23 @@ routing:
 learning:
   ttl_days: 90
   similarity:
-    backend: exact # exact | embedding
+    backend: exact # exact | embedding (embedding requires local_model.enabled: true)
     threshold: 0.85
+
+# Local-model integration (ADR-009)
+local_model:
+  enabled: false # opt-in; false = pure-Claude behaviour (zero change for existing users)
+  provider: ollama # ollama | lm-studio | llama-cpp
+  endpoint: http://localhost:11434
+  embedding_model: nomic-embed-text
+  classifier_model: llama3.2:3b
+  summarizer_model: llama3.2:3b
+  generator_model: null # set to a coder model (e.g. qwen2.5-coder:32b) to enable D8 (experimental)
+  timeout_seconds: 10
+  fail_open: true # true = degrade to Claude/exact-match on endpoint error
+  engine_per_phase:
+    phase_0: script # always script — no model needed
+    phase_1: claude # planning requires Opus-grade reasoning
+    phase_2: claude # set to local to enable generator replacement (D8)
+    phase_3: script # test runner; local on fix-attempt is future work
+    phase_4: claude # commit + PR template generation
