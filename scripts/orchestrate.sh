@@ -36,13 +36,6 @@ fi
 # Project root is always the current working directory
 PROJECT_ROOT="$(pwd)"
 
-# Verify we're in a git repo
-if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-  echo "✗ Not inside a git repository." >&2
-  echo "  Run this from the root of your project." >&2
-  exit 1
-fi
-
 # Source modules from SCRIPT_DIR (Homebrew or local)
 LIB_DIR="$SCRIPT_DIR/lib"
 TEMPLATES_DIR="$SCRIPT_DIR/templates"
@@ -178,6 +171,13 @@ done
 export OPT_SKIP_CYCLE_CHECK
 
 [ -z "$SUBCOMMAND" ] && { err "No command given. Run: ./scripts/orchestrate.sh --help"; exit 1; }
+
+# Verify we're in a git repo (--help exits inside arg parsing before reaching here)
+if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+  echo "✗ Not inside a git repository." >&2
+  echo "  Run this from the root of your project." >&2
+  exit 1
+fi
 
 # ══════════════════════════════════════════════════════════════════
 # Subcommand: init
