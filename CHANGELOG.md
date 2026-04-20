@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.5.0] - 2026-04-19
+
+### Added
+
+- **ADR-008 Token-Economy & Block-Based Architecture** — Cost-aware orchestrator loop with block-gated execution (`scripts/lib/cost.sh`, `router.sh`, `learning.sh`, `size_gate.sh`, `cycle_gate.sh`); features are only promoted through pipeline stages when token budget and cycle/size gates allow
+- **ADR-009 Local-Model Integration** — Offline embedding, classification, summarization, and generation via pluggable local models (`scripts/lib/local_model.sh`, `scripts/lib/ingest.sh`); ingest pipeline falls back gracefully when no local model is configured
+- **ADR-010 Stuck-State Elimination** — Drops the bash skill registry in favour of Claude's native agent-discovery flow; orchestrator can no longer stall waiting for a skill that isn't registered
+- **`wt_cleanup_merged` in `scripts/lib/worktree.sh`** — Scans worktrees whose PRs have been merged and removes them; underlying function for the intended `clean-merged` subcommand
+- **`VERBOSE` guard in `scripts/lib/local_model.sh`** — Detailed local-model log lines are gated behind `VERBOSE=true`; intended to be exposed as a `--verbose` / `-v` flag (CLI wiring pending — see regression note below)
+- **Auto-update `global-context.md`** — Orchestrator appends a feature-completion summary to `global-context.md` after every successful feature run, keeping cross-feature memory current
+- **Bats unit-test coverage** — New test suites in `tests/lib/` for: ingest pid-file reads and JS-interpolation hardening, cost gate, router, size gate, cycle gate, verbose-flag output gating, worktree cleanup on merge, and `gc_append_feature_summary`
+
+### Changed
+
+- **Homebrew formula** — Now pins to a tag-based GitHub archive URL (`archive/refs/tags/v7.5.0.tar.gz`) instead of a branch tarball; SHA is deterministic and stable across re-downloads
+
+### Fixed
+
+- **`ingest.sh`** — Collapsed redundant pid-file reads to a single atomic check; removed JS-interpolation vectors from local-model CLI invocation to close a command-injection surface
+
+### Known regression
+
+- **`clean-merged` subcommand and `--verbose` flag not wired in `orchestrate.sh`** — PRs #30 and #31 (from `bocato/feat/worktree-cleanup-on-merge` and `bocato/feat/verbose-flag`) added the underlying library code, but the `orchestrate.sh` dispatcher entries were dropped when PR #29 (ADR-010) merged afterward. The lib functions (`wt_cleanup_merged`, `VERBOSE` guard) exist; the CLI entry points need to be re-added in a follow-up.
+
+## [7.4.0] - 2026-04-17
+
+### Changed
+
+- **Model selection** — Plan phase now runs on Opus (deeper reasoning for task decomposition); execute phase runs on Sonnet (faster, cost-efficient for code generation). Configured in `orchestrate.sh` runner and documented in ADR-008
+
 ## [7.3.0] - 2026-04-16
 
 ### Added
