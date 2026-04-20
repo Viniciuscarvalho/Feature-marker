@@ -86,7 +86,7 @@ ingest_reviews() {
   local ingest_record="$STATE_DIR/$feat_id/ingest.json"
   node -e "
     const fs = require('fs');
-    const [,, path, featId, prUrl, fixCount] = process.argv;
+    const [, path, featId, prUrl, fixCount] = process.argv;
     let records;
     try { records = JSON.parse(fs.readFileSync(path,'utf-8')); } catch(e) { records = []; }
     records.push({
@@ -129,8 +129,8 @@ ingest_write_fixes() {
 
       const fixes = data.fixes || [];
       const globalConf = data.confidence || 0;
-      const [,, projectPath, logPath, source] = process.argv;
-      const threshold = Number(process.argv[5]);
+      const [, projectPath, logPath, source] = process.argv;
+      const threshold = Number(process.argv[4]);
 
       let store;
       try { store = JSON.parse(fs.readFileSync(projectPath, 'utf-8')); } catch(e) { store = []; }
@@ -183,7 +183,7 @@ ingest_write_fixes() {
         require('fs').mkdirSync(logDir, { recursive: true });
         fs.writeFileSync(logPath, JSON.stringify({
           source, skipped_reason: 'confidence below threshold',
-          threshold: Number(process.argv[5]), skipped
+          threshold: Number(process.argv[4]), skipped
         }, null, 2));
       }
 
@@ -224,7 +224,7 @@ ingest_trigger_if_merged() {
     local bg_pid=$!
     node -e "
       const fs = require('fs');
-      const [,, pidFile, bgPid, featId] = process.argv;
+      const [, pidFile, bgPid, featId] = process.argv;
       fs.writeFileSync(pidFile, JSON.stringify({
         pid: Number(bgPid),
         feat_id: featId,
@@ -305,4 +305,5 @@ ingest_status() {
   done
 
   [ "$found" -eq 0 ] && info "No active background ingest jobs."
+  return 0
 }
