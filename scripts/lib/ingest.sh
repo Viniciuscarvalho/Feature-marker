@@ -37,9 +37,9 @@ ingest_reviews() {
   local pr_url
   pr_url=$(node -p "
     try {
-      JSON.parse(require('fs').readFileSync('$results_file','utf-8')).pr_url || '';
+      JSON.parse(require('fs').readFileSync(process.argv[1],'utf-8')).pr_url || '';
     } catch(e) { ''; }
-  " 2>/dev/null || echo "")
+  " "$results_file" 2>/dev/null || echo "")
 
   if [ -z "$pr_url" ]; then
     info "Ingest: no PR URL recorded for $feat_id — skipping"
@@ -86,17 +86,18 @@ ingest_reviews() {
   local ingest_record="$STATE_DIR/$feat_id/ingest.json"
   node -e "
     const fs = require('fs');
+    const [, path, featId, prUrl, fixCount] = process.argv;
     let records;
-    try { records = JSON.parse(fs.readFileSync('${ingest_record}','utf-8')); } catch(e) { records = []; }
+    try { records = JSON.parse(fs.readFileSync(path,'utf-8')); } catch(e) { records = []; }
     records.push({
       type: 'review_ingest',
-      feat_id: '${feat_id}',
-      pr_url: '${pr_url}',
+      feat_id: featId,
+      pr_url: prUrl,
       ran_at: new Date().toISOString(),
-      fixes_written: ${total_written}
+      fixes_written: Number(fixCount)
     });
-    fs.writeFileSync('${ingest_record}', JSON.stringify(records, null, 2));
-  " 2>/dev/null || true
+    fs.writeFileSync(path, JSON.stringify(records, null, 2));
+  " "$ingest_record" "$feat_id" "$pr_url" "$total_written" 2>/dev/null || true
 
   info "Ingest: wrote $total_written fix(es) to project learning store (feat: $feat_id)"
 }
@@ -128,10 +129,8 @@ ingest_write_fixes() {
 
       const fixes = data.fixes || [];
       const globalConf = data.confidence || 0;
-      const threshold = ${INGEST_CONFIDENCE_THRESHOLD};
-      const projectPath = '${project_path}';
-      const logPath = '${log_file}';
-      const source = '${source_label}';
+      const [, projectPath, logPath, source] = process.argv;
+      const threshold = Number(process.argv[4]);
 
       let store;
       try { store = JSON.parse(fs.readFileSync(projectPath, 'utf-8')); } catch(e) { store = []; }
@@ -184,13 +183,13 @@ ingest_write_fixes() {
         require('fs').mkdirSync(logDir, { recursive: true });
         fs.writeFileSync(logPath, JSON.stringify({
           source, skipped_reason: 'confidence below threshold',
-          threshold: ${INGEST_CONFIDENCE_THRESHOLD}, skipped
+          threshold: Number(process.argv[4]), skipped
         }, null, 2));
       }
 
       process.stdout.write(String(written));
     });
-  " 2>/dev/null || echo "0")
+  " "$project_path" "$log_file" "$source_label" "$INGEST_CONFIDENCE_THRESHOLD" 2>/dev/null || echo "0")
 
   echo "${written:-0}"
 }
@@ -210,13 +209,101 @@ ingest_trigger_if_merged() {
 
   local pr_url
   pr_url=$(node -p "
-    try { JSON.parse(require('fs').readFileSync('$results_file','utf-8')).pr_url || ''; }
+    try { JSON.parse(require('fs').readFileSync(process.argv[1],'utf-8')).pr_url || ''; }
     catch(e) { ''; }
-  " 2>/dev/null || echo "")
+  " "$results_file" 2>/dev/null || echo "")
 
   [ -z "$pr_url" ] && return 0
 
-  # Background: do not block Phase 4
-  (ingest_reviews "$feat_id" >> "$STATE_DIR/$feat_id/ingest-bg.log" 2>&1) &
-  info "Ingest: background review-ingest triggered for $feat_id (PID $!)"
+  local pid_file="$STATE_DIR/$feat_id/ingest.pid"
+  local log_file="$STATE_DIR/$feat_id/ingest-bg.log"
+  mkdir -p "$STATE_DIR/$feat_id"
+
+  if declare -f ingest_reviews &>/dev/null; then
+    (ingest_reviews "$feat_id" >> "$log_file" 2>&1; echo "exit:$?" >> "$log_file") &
+    local bg_pid=$!
+    node -e "
+      const fs = require('fs');
+      const [, pidFile, bgPid, featId] = process.argv;
+      fs.writeFileSync(pidFile, JSON.stringify({
+        pid: Number(bgPid),
+        feat_id: featId,
+        started_at: new Date().toISOString()
+      }, null, 2));
+    " "$pid_file" "$bg_pid" "$feat_id" 2>/dev/null || true
+    info "Ingest: background review-ingest triggered for $feat_id (PID $bg_pid)"
+  else
+    info "Ingest: ingest_reviews not available — skipping (merge ADR-009 to enable)"
+  fi
+}
+
+# ── ingest_reap_stale ─────────────────────────────────────────────────
+# Called at orchestrate.sh startup.
+# For each .pid file, checks if the process is still alive.
+# If dead, cleans up the pid file and logs the completion status.
+
+ingest_reap_stale() {
+  [ ! -d "$STATE_DIR" ] && return 0
+
+  local reaped=0
+  for pid_file in "$STATE_DIR"/*/ingest.pid; do
+    [ -f "$pid_file" ] || continue
+
+    local pid feat_id started_at fields
+    fields=$(node -p "
+      try {
+        const d = JSON.parse(require('fs').readFileSync(process.argv[1],'utf-8'));
+        [d.pid||0, d.feat_id||'', d.started_at||''].join('\t');
+      } catch(e) { '0\t\t'; }
+    " "$pid_file" 2>/dev/null || printf '0\t\t')
+    IFS=$'\t' read -r pid feat_id started_at <<< "$fields"
+
+    [ "$pid" -eq 0 ] && { rm -f "$pid_file"; continue; }
+
+    if kill -0 "$pid" 2>/dev/null; then
+      continue
+    fi
+
+    rm -f "$pid_file"
+    reaped=$((reaped + 1))
+
+    local log_file="$STATE_DIR/$feat_id/ingest-bg.log"
+    local exit_line=""
+    [ -f "$log_file" ] && exit_line=$(grep "^exit:" "$log_file" | tail -1 || echo "")
+
+    info "Ingest: reaped finished background job (feat: $feat_id, PID: $pid, started: $started_at, ${exit_line:-exit: unknown})"
+  done
+
+  [ "$reaped" -gt 0 ] && info "Ingest: reaped $reaped stale background job(s)"
+  return 0
+}
+
+# ── ingest_status ─────────────────────────────────────────────────────
+# Lists active background ingest jobs.
+
+ingest_status() {
+  [ ! -d "$STATE_DIR" ] && { info "No state directory found."; return 0; }
+
+  local found=0
+  for pid_file in "$STATE_DIR"/*/ingest.pid; do
+    [ -f "$pid_file" ] || continue
+    found=1
+
+    local pid feat_id started_at fields
+    fields=$(node -p "
+      try {
+        const d = JSON.parse(require('fs').readFileSync(process.argv[1],'utf-8'));
+        [d.pid||0, d.feat_id||'', d.started_at||''].join('\t');
+      } catch(e) { '0\t\t'; }
+    " "$pid_file" 2>/dev/null || printf '0\t\t')
+    IFS=$'\t' read -r pid feat_id started_at <<< "$fields"
+
+    local status="running"
+    kill -0 "$pid" 2>/dev/null || status="zombie (not yet reaped)"
+
+    echo "  feat: $feat_id | PID: $pid | started: $started_at | status: $status"
+  done
+
+  [ "$found" -eq 0 ] && info "No active background ingest jobs."
+  return 0
 }

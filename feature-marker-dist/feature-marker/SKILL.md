@@ -181,6 +181,7 @@ When invoked, the skill:
      - If installation fails: Falls back to standard commit workflow
 4. **Executes 5-phase workflow** via the `feature-marker` agent
 5. **Persists state** - Saves checkpoints after each phase/task for resume capability
+6. **Curates learning** - After Phase 4 (Commit & PR), if PR review comments or CI failure logs are available in the session, invoke the `learning-curator` sub-skill via `Skill` to summarize them into structured fix patterns for the learning store
 
 **Important**: The workflow is smart about file detection and dependencies:
 

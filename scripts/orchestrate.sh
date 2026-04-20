@@ -19,7 +19,6 @@
 #   --config <path>      Config file (default: orchestrator/config.yml)
 #   --plan               Show the plan, don't execute
 #   --dry-run             Alias for --plan
-#   -v, --verbose        Enable verbose output
 #   --help               Show this help
 
 set -euo pipefail
@@ -77,19 +76,25 @@ OPT_MODEL=""
 OPT_CONFIG="orchestrator/config.yml"
 OPT_DRY_RUN=false
 OPT_FEATURE=""
-OPT_RESUME=false
+OPT_RESUME_FEAT=""
+OPT_RESUME_ACK=false
 OPT_SKIP_CYCLE_CHECK=false
 OPT_SAMPLE=10
 OPT_LEARNING_ACTION=""
 OPT_LEARNING_ID=""
 OPT_LEARNING_CANDIDATES=false
 OPT_INGEST_FEAT=""
-VERBOSE=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    init|run|status|clean|clean-merged|calibrate|learning|promote-learning|ingest-reviews)
+    init|run|status|clean|calibrate|learning|promote-learning|ingest-status)
       SUBCOMMAND="$1"
+      ;;
+    --resume-paused)
+      shift; OPT_RESUME_FEAT="$1"; SUBCOMMAND="resume-paused"
+      ;;
+    --ack)
+      OPT_RESUME_ACK=true
       ;;
     --autonomy)
       shift; OPT_AUTONOMY="$1"
@@ -109,12 +114,6 @@ while [ $# -gt 0 ]; do
     --plan|--dry-run)
       OPT_DRY_RUN=true
       ;;
-    -v|--verbose)
-      VERBOSE=true
-      ;;
-    --resume)
-      OPT_RESUME=true
-      ;;
     --skip-cycle-check)
       OPT_SKIP_CYCLE_CHECK=true
       ;;
@@ -125,42 +124,39 @@ while [ $# -gt 0 ]; do
       OPT_LEARNING_CANDIDATES=true
       ;;
     list|archive|promote)
-      # Sub-subcommands for the learning subcommand
       [ "$SUBCOMMAND" = "learning" ] && OPT_LEARNING_ACTION="$1"
       ;;
     --help|-h)
       echo "Usage: orchestrate.sh <command> [flags]"
       echo ""
       echo "Commands:"
-      echo "  init                       Scaffold config, .env, features.md, .gitignore"
-      echo "  run                        Execute the orchestration loop"
-      echo "  status                     Show current orchestrator state"
-      echo "  clean                      Remove all worktrees and reset state"
-      echo "  clean-merged               Remove worktrees for branches already merged on GitHub"
-      echo "  calibrate                  Show token-cost calibration guidance"
-      echo "  learning list              List all learning entries"
-      echo "  learning list --candidates List only promotion candidates"
-      echo "  learning archive <id>      Archive a learning entry by ID"
-      echo "  learning promote <id>      Promote a project entry to global tier"
-      echo "  promote-learning <id>      Alias for: learning promote <id>"
-      echo "  ingest-reviews <feat-id>   Run Phase 4.5 review-ingest on demand (ADR-009)"
+      echo "  init                         Scaffold config, .env, features.md, .gitignore"
+      echo "  run                          Execute the orchestration loop"
+      echo "  status                       Show current orchestrator state"
+      echo "  clean                        Remove all worktrees and reset state"
+      echo "  calibrate                    Show token-cost calibration guidance"
+      echo "  learning list                List all learning entries"
+      echo "  learning list --candidates   List only promotion candidates"
+      echo "  learning archive <id>        Archive a learning entry by ID"
+      echo "  learning promote <id>        Promote a project entry to global tier"
+      echo "  promote-learning <id>        Alias for: learning promote <id>"
+      echo "  ingest-status                Show active background ingest jobs (ADR-009)"
       echo ""
       echo "Flags:"
-      echo "  --autonomy <level>         supervised | checkpoint | full_auto"
-      echo "  --adapter <type>           markdown | github | linear"
-      echo "  --model <name>             opus | sonnet | haiku | opusplan"
-      echo "  --config <path>            Config file (default: orchestrator/config.yml)"
-      echo "  --feature <id>             Run only the specified feature"
-      echo "  --plan, --dry-run          Show plan without executing"
-      echo "  --resume                   Skip completed, run pending"
-      echo "  --skip-cycle-check         Skip the cycle-completion gate"
-      echo "  --sample <n>               Sample size for calibrate (default: 10)"
-      echo "  -v, --verbose              Enable verbose output"
-      echo "  --help                     Show this help"
+      echo "  --autonomy <level>           supervised | checkpoint | full_auto"
+      echo "  --adapter <type>             markdown | github | linear"
+      echo "  --model <name>              opus | sonnet | haiku | opusplan"
+      echo "  --config <path>              Config file (default: orchestrator/config.yml)"
+      echo "  --feature <id>              Run only the specified feature"
+      echo "  --plan, --dry-run            Show plan without executing"
+      echo "  --resume-paused <feat-id>    Resume a paused feature from its checkpoint"
+      echo "  --ack                        Acknowledge human-class pauses for --resume-paused"
+      echo "  --skip-cycle-check           Skip the cycle-completion gate"
+      echo "  --sample <n>                 Sample size for calibrate (default: 10)"
+      echo "  --help                       Show this help"
       exit 0
       ;;
     *)
-      # Capture positional arguments for subcommands that need them
       if [ "$SUBCOMMAND" = "learning" ] && [ -z "$OPT_LEARNING_ACTION" ]; then
         OPT_LEARNING_ACTION="$1"
       elif [ "$SUBCOMMAND" = "learning" ] && [ -z "$OPT_LEARNING_ID" ]; then
@@ -180,7 +176,6 @@ while [ $# -gt 0 ]; do
 done
 
 export OPT_SKIP_CYCLE_CHECK
-export VERBOSE
 
 [ -z "$SUBCOMMAND" ] && { err "No command given. Run: ./scripts/orchestrate.sh --help"; exit 1; }
 
@@ -309,6 +304,7 @@ STARTER
 
 sub_run() {
   # Load modules
+  source "$LIB_DIR/util.sh"
   source "$LIB_DIR/config.sh"
   source "$LIB_DIR/worktree.sh"
   source "$LIB_DIR/memory.sh"
@@ -319,15 +315,14 @@ sub_run() {
   source "$LIB_DIR/learning.sh"
   source "$LIB_DIR/size_gate.sh"
   source "$LIB_DIR/cycle_gate.sh"
-  # ADR-009 modules
-  source "$LIB_DIR/local_model.sh"
-  source "$LIB_DIR/ingest.sh"
+  # ADR-009 modules (optional — loaded if present)
+  [ -f "$LIB_DIR/local_model.sh" ] && source "$LIB_DIR/local_model.sh"
+  [ -f "$LIB_DIR/ingest.sh"      ] && source "$LIB_DIR/ingest.sh"
   source "$LIB_DIR/runner.sh"
 
   # Resolve config file — check multiple locations
   local config_file="$OPT_CONFIG"
   if [ ! -f "$config_file" ]; then
-    # Try .orchestrator/config.yaml (new standard)
     if [ -f ".orchestrator/config.yaml" ]; then
       config_file=".orchestrator/config.yaml"
     elif [ -f ".orchestrator/config.yml" ]; then
@@ -348,13 +343,15 @@ sub_run() {
 
   banner "Orchestrate — $ADAPTER / $AUTONOMY / $BASE_BRANCH / model:$MODEL_DEFAULT"
 
-  # Pre-run: clean worktrees for branches already merged on GitHub
-  if [ "$AUTO_CLEANUP" = "true" ]; then
-    wt_cleanup_merged "$BASE_BRANCH" 2>/dev/null || true
+  # ADR-010: reap any finished background ingest jobs from prior sessions
+  if declare -f ingest_reap_stale &>/dev/null; then
+    ingest_reap_stale || true
   fi
 
-  # ADR-009 PR-E: startup health check (result cached to local_model_health.json)
-  local_model_health_check || true
+  # ADR-009 PR-E: startup health check (when local_model.sh is present)
+  if declare -f local_model_health_check &>/dev/null; then
+    local_model_health_check || true
+  fi
 
   # Agent discovery (ADR-006)
   local manifest_file="$CONFIG_DIR/agents-manifest.json"
@@ -463,17 +460,6 @@ sub_clean() {
 }
 
 # ══════════════════════════════════════════════════════════════════
-# Subcommand: clean-merged
-# ══════════════════════════════════════════════════════════════════
-
-sub_clean_merged() {
-  source "$LIB_DIR/worktree.sh"
-
-  banner "Cleaning worktrees for merged branches"
-  wt_cleanup_merged "${BASE_BRANCH:-main}"
-}
-
-# ══════════════════════════════════════════════════════════════════
 # Subcommand: calibrate (ADR-008 PR-A)
 # ══════════════════════════════════════════════════════════════════
 
@@ -557,19 +543,28 @@ sub_promote_learning() {
 }
 
 # ══════════════════════════════════════════════════════════════════
-# Subcommand: ingest-reviews (ADR-009 PR-G)
+# Subcommand: resume-paused (ADR-010)
 # ══════════════════════════════════════════════════════════════════
 
-sub_ingest_reviews() {
-  if [ -z "$OPT_INGEST_FEAT" ]; then
-    err "Usage: ingest-reviews <feat-id>"
+sub_resume_paused() {
+  if [ -z "$OPT_RESUME_FEAT" ]; then
+    err "Usage: ./scripts/orchestrate.sh --resume-paused <feat-id> [--ack]"
     exit 1
   fi
 
+  source "$LIB_DIR/util.sh"
   source "$LIB_DIR/config.sh"
+  source "$LIB_DIR/worktree.sh"
+  source "$LIB_DIR/memory.sh"
+  source "$LIB_DIR/display.sh"
+  source "$LIB_DIR/cost.sh"
+  source "$LIB_DIR/router.sh"
   source "$LIB_DIR/learning.sh"
-  source "$LIB_DIR/local_model.sh"
-  source "$LIB_DIR/ingest.sh"
+  source "$LIB_DIR/size_gate.sh"
+  source "$LIB_DIR/cycle_gate.sh"
+  [ -f "$LIB_DIR/local_model.sh" ] && source "$LIB_DIR/local_model.sh"
+  [ -f "$LIB_DIR/ingest.sh"      ] && source "$LIB_DIR/ingest.sh"
+  source "$LIB_DIR/runner.sh"
 
   local config_file="$OPT_CONFIG"
   if [ ! -f "$config_file" ]; then
@@ -579,16 +574,32 @@ sub_ingest_reviews() {
   fi
   load_config "$config_file" 2>/dev/null || true
 
-  if [ "${LOCAL_MODEL_ENABLED:-false}" != "true" ]; then
-    err "ingest-reviews requires local_model.enabled: true in config"
-    exit 1
+  WORKTREE_ROOT="$ROOT_DIR/$WORKTREE_BASE"
+  export ROOT_DIR CONFIG_DIR STATE_DIR RESULTS_DIR WORKTREE_ROOT
+  export WORKTREE_BASE BRANCH_PREFIX BASE_BRANCH ADAPTER AUTONOMY MODEL_DEFAULT MODEL_PLAN MODEL_EXECUTE
+  mkdir -p "$STATE_DIR" "$RESULTS_DIR"
+
+  banner "Resume Paused — $OPT_RESUME_FEAT"
+
+  local ack_flag=""
+  [ "$OPT_RESUME_ACK" = "true" ] && ack_flag="--ack"
+
+  run_feature_resume "$OPT_RESUME_FEAT" $ack_flag
+}
+
+# ══════════════════════════════════════════════════════════════════
+# Subcommand: ingest-status (ADR-009)
+# ══════════════════════════════════════════════════════════════════
+
+sub_ingest_status() {
+  [ -f "$LIB_DIR/ingest.sh" ] && source "$LIB_DIR/ingest.sh" || true
+
+  banner "Background Ingest Status"
+  if declare -f ingest_status &>/dev/null; then
+    ingest_status
+  else
+    info "ingest.sh not loaded — no background ingest infrastructure present."
   fi
-
-  # Run health check before ingesting
-  local_model_health_check || exit 1
-
-  banner "Review Ingest — $OPT_INGEST_FEAT"
-  ingest_reviews "$OPT_INGEST_FEAT"
 }
 
 # ══════════════════════════════════════════════════════════════════
@@ -596,13 +607,13 @@ sub_ingest_reviews() {
 # ══════════════════════════════════════════════════════════════════
 
 case "$SUBCOMMAND" in
-  init)             sub_init ;;
-  run)              sub_run ;;
-  status)           sub_status ;;
-  clean)            sub_clean ;;
-  clean-merged)     sub_clean_merged ;;
-  calibrate)        sub_calibrate ;;
-  learning)         sub_learning ;;
+  init)            sub_init ;;
+  run)             sub_run ;;
+  status)          sub_status ;;
+  clean)           sub_clean ;;
+  calibrate)       sub_calibrate ;;
+  learning)        sub_learning ;;
   promote-learning) sub_promote_learning ;;
-  ingest-reviews)   sub_ingest_reviews ;;
+  resume-paused)   sub_resume_paused ;;
+  ingest-status)   sub_ingest_status ;;
 esac

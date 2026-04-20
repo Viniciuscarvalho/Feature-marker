@@ -9,7 +9,19 @@
 #
 # All other node invocations are passed to the real node binary if available.
 
-REAL_NODE="$(PATH=/usr/bin:/usr/local/bin:/opt/homebrew/bin which node 2>/dev/null || true)"
+# Find real node by checking known paths in priority order.
+# ${BASH_SOURCE[0]} resolves to the stub name (not full path) when invoked via PATH,
+# so path-subtraction approaches cause infinite recursion. Instead, check explicit
+# locations: NVM_BIN (set by nvm), homebrew, and system.
+REAL_NODE=""
+for _candidate in \
+    "${NVM_BIN:+$NVM_BIN/node}" \
+    /opt/homebrew/bin/node \
+    /usr/local/bin/node \
+    /usr/bin/node \
+    ; do
+  [[ -n "$_candidate" && -x "$_candidate" ]] && { REAL_NODE="$_candidate"; break; }
+done
 
 # node -e "...writeFileSync(...)..." — health file write
 if [[ "${1:-}" == "-e" && "${2:-}" == *"writeFileSync"* ]]; then
@@ -24,7 +36,9 @@ if [[ "${1:-}" == "-e" && "${2:-}" == *"writeFileSync"* ]]; then
 fi
 
 # node -p "...readFileSync(LOCAL_MODEL_HEALTH_FILE...)..." — reachability probe
-if [[ "${1:-}" == "-p" && "${2:-}" == *"readFileSync"* ]]; then
+# Only intercept old-style calls with no extra arguments (no process.argv[1]).
+# Argv-based calls (new ingest.sh pattern) have $3+ set — pass those to real node.
+if [[ "${1:-}" == "-p" && "${2:-}" == *"readFileSync"* && $# -le 2 ]]; then
   echo "${NODE_HEALTH_REACHABLE:-false}"
   exit 0
 fi

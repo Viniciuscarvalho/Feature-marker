@@ -12,13 +12,6 @@
 #   - learning_read() / learning_write() for Phase 3 fix hints (learning.sh)
 #   - router_route_task() for stack-aware agent selection (router.sh)
 #   - cycle_gate_check() before advancing to next feature (cycle_gate.sh)
-#
-# ADR-009 additions (PR-H):
-#   - When LOCAL_MODEL_GENERATOR_MODEL is set, Phase 2 implementation and
-#     Phase 3 fix attempts route through local_model::generate instead of Claude.
-#   - Quality-warning banner printed at start when generator replacement is active.
-#   - Checkpoint engine field set to "local" for generator-replaced phases.
-#   - ingest_trigger_if_merged() called after PR creation (Phase 4.5).
 
 run_backlog() {
   local backlog_file="$1"
@@ -50,15 +43,6 @@ run_backlog() {
   total_count=$(echo "$items" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).total")
 
   banner "Orchestrator — $ready_count ready, $blocked_count blocked, $total_count total"
-
-  # ADR-009 PR-H: quality-warning banner when local generator replacement is active
-  if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ] && [ -n "${LOCAL_MODEL_GENERATOR_MODEL:-}" ]; then
-    echo ""
-    echo "  ! LOCAL GENERATOR ACTIVE (experimental)"
-    echo "    Phase 2/3 code generation via local model: ${LOCAL_MODEL_GENERATOR_MODEL}"
-    echo "    Quality tradeoffs apply — see ADR-009 Decision #8."
-    echo ""
-  fi
 
   if [ "$ready_count" -eq 0 ]; then
     info "No actionable features. All done or blocked."
@@ -108,11 +92,9 @@ run_backlog() {
     process_item "$single" 1 1
   else
     # Main loop — ADR-008: check hard-block deps + cycle gate per item
+    # ADR-010: process substitution replaces pipe so break/continue work in parent shell
     local index=0
-    echo "$items" | node -e "
-      const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));
-      d.ready.forEach(i => console.log(JSON.stringify(i)));
-    " | while IFS= read -r item_json; do
+    while IFS= read -r item_json; do
       index=$((index + 1))
 
       # ADR-008 PR-C: hard-block dependency check
@@ -139,7 +121,10 @@ run_backlog() {
           break
         fi
       fi
-    done
+    done < <(echo "$items" | node -e "
+      const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));
+      d.ready.forEach(i => console.log(JSON.stringify(i)));
+    ")
   fi
 
   # Post-loop: cleanup
@@ -264,6 +249,7 @@ EOPRD
       local exceeded_str="${SIZE_EXCEEDED_CRITERIA:+$SIZE_EXCEEDED_CRITERIA }${SIZE_EXCEEDED_TASKS:+$SIZE_EXCEEDED_TASKS }${SIZE_EXCEEDED_FILES:+$SIZE_EXCEEDED_FILES}"
       if ! size_gate_signal "$feat_id" "$AUTONOMY" "$exceeded_str"; then
         wt_update_status "$feat_id" "paused" "size-gate"
+        _runner_record_pause "$feat_id" "human" "size-gate"
         return 0
       fi
     fi
@@ -345,43 +331,19 @@ EOPRD
   [ -n "${MODEL_DEFAULT:-}" ] && model_flag="--model $MODEL_DEFAULT"
 
   if [ "$AUTONOMY" = "full_auto" ]; then
-    # ADR-009 PR-H: route Phase 2 through local generator when configured
-    local phase2_engine="${CFG_LOCAL_MODEL_ENGINE_PHASE2:-claude}"
-    if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ] && \
-       [ -n "${LOCAL_MODEL_GENERATOR_MODEL:-}" ] && \
-       [ "$phase2_engine" = "local" ]; then
-      info "Phase 2: local generator ($LOCAL_MODEL_GENERATOR_MODEL) for $feat_id"
-      local gen_prompt
-      gen_prompt=$(cat "$wt_path/.orchestrator-context.md" 2>/dev/null || echo "Implement $feat_id")
-      local gen_output
-      gen_output=$(local_model::generate "$gen_prompt")
-      if [ -n "$gen_output" ]; then
-        echo "$gen_output" >> "$log_file"
-        # Record engine=local in checkpoint
-        node -e "
-          const fs = require('fs');
-          const cp = '${STATE_DIR}/${feat_id}/checkpoint.json';
-          let d; try { d = JSON.parse(fs.readFileSync(cp,'utf-8')); } catch(e) { d = {}; }
-          d.phase2 = { engine: 'local', local_model: '${LOCAL_MODEL_GENERATOR_MODEL}', completed_at: new Date().toISOString() };
-          fs.writeFileSync(cp, JSON.stringify(d, null, 2));
-        " 2>/dev/null || true
-      else
-        info "Phase 2: local generator returned empty — falling back to Claude"
-        phase2_engine="claude"
-      fi
+    # ADR-009 PR-H: quality-warning banner when local generator replacement is active
+    if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ] && [ -n "${LOCAL_MODEL_GENERATOR_MODEL:-}" ]; then
+      echo ""
+      echo "  ! LOCAL GENERATOR ACTIVE (experimental)"
+      echo "    Phase 2/3 code generation via local model: ${LOCAL_MODEL_GENERATOR_MODEL}"
+      echo "    Quality tradeoffs apply — see ADR-009 Decision #8."
+      echo ""
     fi
 
-    if [ "$phase2_engine" != "local" ]; then
-      info "Autonomy=full_auto — invoking pipeline (model: ${MODEL_DEFAULT:-default}, agent: $routed_agent)..."
-      if command -v claude &>/dev/null; then
-        local skill_arg="feature-marker"
-        [ "$routed_agent" != "feature-marker" ] && skill_arg="$routed_agent"
-        (cd "$wt_path" && claude $model_flag --skill "$skill_arg" "prd-$feat_id") 2>&1 | tee "$log_file" || exit_code=$?
-      else
-        info "Claude CLI not found — simulating pipeline"
-        echo "full_auto: simulated pipeline for $feat_id (model: ${MODEL_DEFAULT:-default})" > "$log_file"
-      fi
-    fi
+    info "Autonomy=full_auto — invoking pipeline (model: ${MODEL_DEFAULT:-default}, agent: $routed_agent)..."
+    local skill_arg="feature-marker"
+    [ "$routed_agent" != "feature-marker" ] && skill_arg="$routed_agent"
+    (cd "$wt_path" && op_timeout "${SKILL_TIMEOUT_SECONDS:-1800}" claude --skill "$skill_arg" "prd-$feat_id") 2>&1 | tee "$log_file" || exit_code=$?
   elif [ "$AUTONOMY" = "checkpoint" ]; then
     info "Autonomy=checkpoint — pipeline ready, human reviews PR"
     echo "checkpoint: pipeline for $feat_id" > "$log_file"
@@ -431,6 +393,7 @@ EOPRD
     if [ "$has_breaking" = "true" ] && [ "$BREAKING_PAUSE" = "true" ]; then
       info "! BREAKING CHANGES in $feat_id — pausing"
       wt_update_status "$feat_id" "paused" "breaking-change-review"
+      _runner_record_pause "$feat_id" "human" "breaking-change-review"
       return 0
     fi
 
@@ -439,6 +402,7 @@ EOPRD
     if [ "$file_count" -gt "$MAX_FILE_CHANGES" ]; then
       info "! $feat_id touched $file_count files (limit: $MAX_FILE_CHANGES) — pausing"
       wt_update_status "$feat_id" "paused" "max-files-review"
+      _runner_record_pause "$feat_id" "human" "max-files-review"
       return 0
     fi
   fi
@@ -454,9 +418,10 @@ EOPRD
     fi
   elif [ "$exit_code" -eq 10 ]; then
     wt_update_status "$feat_id" "paused" "awaiting-review"
+    _runner_record_pause "$feat_id" "human" "supervised-checkpoint"
     info "Paused: $feat_id (supervised mode)"
   else
-    # Retry logic
+    # Retry logic — transient failures get retried with backoff
     local retry_count=0
     [ -f "$STATE_DIR/$feat_id/retry-count" ] && retry_count=$(cat "$STATE_DIR/$feat_id/retry-count")
     if [ "$retry_count" -lt "$MAX_RETRIES" ]; then
@@ -467,6 +432,7 @@ EOPRD
       mem_record_error "$feat_id" "implementation" "exit code $exit_code"
     else
       wt_update_status "$feat_id" "failed" "pipeline-error"
+      _runner_record_pause "$feat_id" "transient" "max-retries-exceeded"
       mem_record_error "$feat_id" "implementation" "FINAL FAILURE exit code $exit_code"
       err "$feat_id failed after $MAX_RETRIES attempts"
     fi
@@ -575,22 +541,7 @@ run_phase3_tests() {
     [ -n "${MODEL_DEFAULT:-}" ] && model_flag="--model $MODEL_DEFAULT"
 
     local fix_exit=0
-    # ADR-009 PR-H: route Phase 3 fix through local generator when configured
-    if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ] && [ -n "${LOCAL_MODEL_GENERATOR_MODEL:-}" ]; then
-      info "Phase 3: local generator fix attempt via $LOCAL_MODEL_GENERATOR_MODEL"
-      local local_fix
-      local_fix=$(local_model::generate "$fix_prompt")
-      [ -z "$local_fix" ] && fix_exit=1
-      # Record engine=local in checkpoint
-      node -e "
-        const fs = require('fs');
-        const cp = '${STATE_DIR}/${feat_id}/checkpoint.json';
-        let d; try { d = JSON.parse(fs.readFileSync(cp,'utf-8')); } catch(e) { d = {}; }
-        if (!d.phase3_fixes) d.phase3_fixes = [];
-        d.phase3_fixes.push({ engine: 'local', attempt: ${fix_attempts}, local_model: '${LOCAL_MODEL_GENERATOR_MODEL}', at: new Date().toISOString() });
-        fs.writeFileSync(cp, JSON.stringify(d, null, 2));
-      " 2>/dev/null || true
-    elif command -v claude &>/dev/null; then
+    if command -v claude &>/dev/null; then
       (cd "$wt_path" && printf '%b' "$fix_prompt" | claude $model_flag --print) 2>/dev/null || fix_exit=$?
     else
       info "Phase 3: Claude CLI not found — cannot attempt fix"
@@ -792,7 +743,7 @@ run_pr_creation() {
     wt_update_status "$feat_id" "pr-created" "complete"
     node -e "const fs=require('fs');const r=JSON.parse(fs.readFileSync('$results_file','utf-8'));r.pr_url='$pr_url';r.pipeline.review={status:'completed',pr_url:'$pr_url'};fs.writeFileSync('$results_file',JSON.stringify(r,null,2));" 2>/dev/null || true
     info "PR: $pr_url"
-    # ADR-009 PR-G: Phase 4.5 — trigger background review-ingest
+    # ADR-009 PR-G / ADR-010: trigger background review-ingest when available
     if declare -f ingest_trigger_if_merged &>/dev/null; then
       ingest_trigger_if_merged "$feat_id"
     fi
@@ -800,4 +751,112 @@ run_pr_creation() {
     wt_update_status "$feat_id" "done" "complete"
     info "Done: $feat_id (PR creation failed — skipping)"
   fi
+}
+
+# ── _runner_record_pause ──────────────────────────────────────────────
+# Internal: write pause taxonomy record to .orchestrator/state/{feat_id}/pause.json
+# pause_kind: "human" (operator must --ack) | "transient" (auto-retry on next run)
+
+_runner_record_pause() {
+  local feat_id="$1"
+  local pause_kind="$2"  # human | transient
+  local reason="$3"
+
+  local pause_file="$STATE_DIR/$feat_id/pause.json"
+  mkdir -p "$STATE_DIR/$feat_id"
+  node -e "
+    const fs = require('fs');
+    fs.writeFileSync('$pause_file', JSON.stringify({
+      feat_id: '$feat_id',
+      pause_kind: '$pause_kind',
+      reason: '$reason',
+      paused_at: new Date().toISOString()
+    }, null, 2));
+  " 2>/dev/null || true
+}
+
+# ── runner_clear_sentinels ────────────────────────────────────────────
+# Usage: runner_clear_sentinels <feat_id> <class>
+# class: "transient" — removes retry-count and phase3-fix-attempts
+#        "all"       — also removes pause.json (use with --ack)
+
+runner_clear_sentinels() {
+  local feat_id="$1"
+  local class="${2:-transient}"
+
+  local state_dir="$STATE_DIR/$feat_id"
+  [ ! -d "$state_dir" ] && return 0
+
+  rm -f "$state_dir/retry-count"
+  rm -f "$state_dir/phase3-fix-attempts"
+  info "Sentinels cleared (transient) for $feat_id"
+
+  if [ "$class" = "all" ]; then
+    rm -f "$state_dir/pause.json"
+    info "Sentinels cleared (human) for $feat_id"
+  fi
+}
+
+# ── run_feature_resume ────────────────────────────────────────────────
+# Usage: run_feature_resume <feat_id> [--ack]
+# Re-enters a paused feature from its checkpoint.
+# --ack required for human-class pauses.
+
+run_feature_resume() {
+  local feat_id="$1"
+  local ack=false
+  [ "${2:-}" = "--ack" ] && ack=true
+
+  local pause_file="$STATE_DIR/$feat_id/pause.json"
+  local results_file="$STATE_DIR/$feat_id/results.json"
+
+  if [ ! -f "$results_file" ]; then
+    err "resume: no results.json for $feat_id — has it run at all?"
+    return 1
+  fi
+
+  local pause_kind="transient"
+  local reason=""
+  if [ -f "$pause_file" ]; then
+    pause_kind=$(node -p "try{JSON.parse(require('fs').readFileSync('$pause_file','utf-8')).pause_kind||'transient'}catch(e){'transient'}" 2>/dev/null || echo "transient")
+    reason=$(node -p "try{JSON.parse(require('fs').readFileSync('$pause_file','utf-8')).reason||''}catch(e){''}" 2>/dev/null || echo "")
+  fi
+
+  if [ "$pause_kind" = "human" ] && [ "$ack" != "true" ]; then
+    err "resume: $feat_id is paused with pause_kind=human (reason: $reason)"
+    err "Use --resume-paused $feat_id --ack to acknowledge and resume."
+    return 1
+  fi
+
+  info "Resuming $feat_id (pause_kind: $pause_kind, reason: $reason)"
+  runner_clear_sentinels "$feat_id" "$( [ "$pause_kind" = "human" ] && echo all || echo transient )"
+
+  # Re-enter from the saved checkpoint phase or from the beginning
+  local checkpoint_file="$STATE_DIR/$feat_id/checkpoint.json"
+  local resume_phase="phase0"
+  if [ -f "$checkpoint_file" ]; then
+    resume_phase=$(node -e "
+      const cp = JSON.parse(require('fs').readFileSync('$checkpoint_file','utf-8'));
+      const phases = ['phase0','phase1','phase2','phase3','phase4'];
+      const last = phases.slice().reverse().find(p => cp[p] && cp[p].status === 'complete');
+      const next = last ? phases[phases.indexOf(last)+1] : phases[0];
+      console.log(next || 'done');
+    " 2>/dev/null || echo "phase0")
+  fi
+
+  if [ "$resume_phase" = "done" ]; then
+    info "$feat_id appears complete (all phases done). Nothing to resume."
+    return 0
+  fi
+
+  info "Resuming $feat_id from $resume_phase"
+
+  # Extract title from results.json and re-invoke run_feature
+  local title
+  title=$(node -p "try{JSON.parse(require('fs').readFileSync('$results_file','utf-8')).title||'$feat_id'}catch(e){'$feat_id'}" 2>/dev/null || echo "$feat_id")
+
+  # Re-enter run_feature with sentinel context set to resume
+  export RUNNER_RESUME_FROM="$resume_phase"
+  run_feature "$feat_id" "$title" "" "medium" "" "" "1" "1"
+  unset RUNNER_RESUME_FROM
 }

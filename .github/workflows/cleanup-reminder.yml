@@ -4,6 +4,9 @@ on:
   pull_request:
     types: [closed]
 
+permissions:
+  pull-requests: write
+
 jobs:
   cleanup-reminder:
     runs-on: ubuntu-latest
