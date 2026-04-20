@@ -331,8 +331,9 @@ EOPRD
   local skill_arg="feature-marker"
   [ "$routed_agent" != "feature-marker" ] && skill_arg="$routed_agent"
 
-  local extra_args=()
-  [ "$AUTONOMY" = "supervised" ] && extra_args+=("--interactive")
+  # --interactive flag for supervised mode; empty string otherwise (safe with set -u)
+  local interactive_flag=""
+  [ "$AUTONOMY" = "supervised" ] && interactive_flag="--interactive"
 
   # ADR-009 PR-H: quality-warning banner when local generator replacement is active
   if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ] && [ -n "${LOCAL_MODEL_GENERATOR_MODEL:-}" ]; then
@@ -345,7 +346,7 @@ EOPRD
 
   info "Autonomy=$AUTONOMY — invoking pipeline (model: ${MODEL_DEFAULT:-default}, agent: $skill_arg)..."
   (cd "$wt_path" && op_timeout "${SKILL_TIMEOUT_SECONDS:-1800}" \
-    claude --skill "$skill_arg" "${extra_args[@]}" "prd-$feat_id") 2>&1 \
+    claude --skill "$skill_arg" ${interactive_flag:+$interactive_flag} "prd-$feat_id") 2>&1 \
     | tee "$log_file" || exit_code=$?
 
   # ── ADR-008 PR-A: Phase 3 scripted tests ────────────────────────
