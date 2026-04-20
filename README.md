@@ -67,6 +67,12 @@ Building a feature end-to-end means context-switching between planning, coding, 
 
 ## How It Works
 
+Feature-marker has two entry points that share the same pipeline. Run it **inside Claude Code** for a single feature, or use the **terminal orchestrator** to process an entire backlog automatically. [Full walkthrough →](assets/HOW_IT_WORKS.md)
+
+<p align="center">
+  <img src="assets/img_two_paths.png" alt="Two paths: in-Claude skill vs terminal orchestrator" width="700">
+</p>
+
 ```
 /feature-marker my-feature
         │
@@ -89,6 +95,10 @@ Each phase writes a checkpoint. Re-run with the same feature name to resume from
 | 2   | **Implementation**      | Nothing normally                                                                       | On breaking changes or when file-change count exceeds `safety.max_file_changes` (default 50), execution pauses even in `full_auto`                               | `supervised`: pauses after every task                                                                 |
 | 3   | **Tests & Validation**  | Nothing — platform auto-detected                                                       | Stack detected from project files (`swift test`, `jest`, `cargo test`, `pytest`, `go test`). On test failure you are prompted to retry or continue.              | —                                                                                                     |
 | 4   | **Commit & PR**         | Git remote configured; platform CLI authenticated (`gh`, `az`, `glab`) for PR creation | `/commit` command auto-installed; PR opened as draft by default                                                                                                  | `checkpoint`: stops here for human review and merge. `full_auto`: enables auto-merge after CI passes. |
+
+<p align="center">
+  <img src="assets/img_pipeline.png" alt="Feature-marker pipeline phases" width="700">
+</p>
 
 ---
 
@@ -216,6 +226,10 @@ feature-marker-orchestrate --feature feat-001   # run a single feature by ID
 
 The orchestrator reads a backlog, creates an isolated git worktree per feature, runs the full feature-marker pipeline in each one, and propagates context (decisions, patterns, error history) across runs.
 
+<p align="center">
+  <img src="assets/img_orchestrator.png" alt="Orchestrator architecture" width="700">
+</p>
+
 ### First run walkthrough
 
 ```bash
@@ -236,11 +250,15 @@ feature-marker-orchestrate init
 # 2. Edit features.md or point config.yml at your backlog source
 
 # 3. Preview what will run without executing
-feature-marker-orchestrate --dry-run
+feature-marker-orchestrate run --dry-run
 
 # 4. Run
-feature-marker-orchestrate
+feature-marker-orchestrate run
 ```
+
+<p align="center">
+  <img src="assets/orchestrator-terminal-flow.png" alt="Orchestrator terminal execution flow" width="700">
+</p>
 
 ### CLI reference
 

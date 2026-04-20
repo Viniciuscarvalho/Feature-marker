@@ -327,33 +327,30 @@ EOPRD
   cost_record "$feat_id" "phase2" "$phase2_cost"
 
   # Invoke feature-marker via Claude Code
-  local model_flag=""
-  [ -n "${MODEL_DEFAULT:-}" ] && model_flag="--model $MODEL_DEFAULT"
+  # All three autonomy modes run the full pipeline; supervised adds --interactive.
+  local skill_arg="feature-marker"
+  [ "$routed_agent" != "feature-marker" ] && skill_arg="$routed_agent"
 
-  if [ "$AUTONOMY" = "full_auto" ]; then
-    # ADR-009 PR-H: quality-warning banner when local generator replacement is active
-    if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ] && [ -n "${LOCAL_MODEL_GENERATOR_MODEL:-}" ]; then
-      echo ""
-      echo "  ! LOCAL GENERATOR ACTIVE (experimental)"
-      echo "    Phase 2/3 code generation via local model: ${LOCAL_MODEL_GENERATOR_MODEL}"
-      echo "    Quality tradeoffs apply — see ADR-009 Decision #8."
-      echo ""
-    fi
+  local extra_args=()
+  [ "$AUTONOMY" = "supervised" ] && extra_args+=("--interactive")
 
-    info "Autonomy=full_auto — invoking pipeline (model: ${MODEL_DEFAULT:-default}, agent: $routed_agent)..."
-    local skill_arg="feature-marker"
-    [ "$routed_agent" != "feature-marker" ] && skill_arg="$routed_agent"
-    (cd "$wt_path" && op_timeout "${SKILL_TIMEOUT_SECONDS:-1800}" claude --skill "$skill_arg" "prd-$feat_id") 2>&1 | tee "$log_file" || exit_code=$?
-  elif [ "$AUTONOMY" = "checkpoint" ]; then
-    info "Autonomy=checkpoint — pipeline ready, human reviews PR"
-    echo "checkpoint: pipeline for $feat_id" > "$log_file"
-  else
-    info "Autonomy=supervised — paused for review"
-    echo "supervised: paused for $feat_id" > "$log_file"
+  # ADR-009 PR-H: quality-warning banner when local generator replacement is active
+  if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ] && [ -n "${LOCAL_MODEL_GENERATOR_MODEL:-}" ]; then
+    echo ""
+    echo "  ! LOCAL GENERATOR ACTIVE (experimental)"
+    echo "    Phase 2/3 code generation via local model: ${LOCAL_MODEL_GENERATOR_MODEL}"
+    echo "    Quality tradeoffs apply — see ADR-009 Decision #8."
+    echo ""
   fi
 
+  info "Autonomy=$AUTONOMY — invoking pipeline (model: ${MODEL_DEFAULT:-default}, agent: $skill_arg)..."
+  (cd "$wt_path" && op_timeout "${SKILL_TIMEOUT_SECONDS:-1800}" \
+    claude --skill "$skill_arg" "${extra_args[@]}" "prd-$feat_id") 2>&1 \
+    | tee "$log_file" || exit_code=$?
+
   # ── ADR-008 PR-A: Phase 3 scripted tests ────────────────────────
-  if [ "$AUTONOMY" = "full_auto" ] && [ "$exit_code" -eq 0 ]; then
+  # supervised handles tests interactively inside the Claude session; skip scripted runner.
+  if [ "$exit_code" -eq 0 ] && [ "$AUTONOMY" != "supervised" ]; then
     local phase3_fix_attempts=0
     run_phase3_tests "$feat_id" "$wt_path"
     local phase3_exit=$?
@@ -409,12 +406,13 @@ EOPRD
 
   # Handle result
   if [ "$exit_code" -eq 0 ]; then
-    if [ "$AUTONOMY" = "full_auto" ]; then
-      # PR creation
+    if [ "$AUTONOMY" = "full_auto" ] || [ "$AUTONOMY" = "checkpoint" ]; then
+      # full_auto: PR with auto-merge configured; checkpoint: draft PR for human review
       run_pr_creation "$feat_id" "$title" "$wt_path" "$results_file"
     else
-      wt_update_status "$feat_id" "ready" "awaiting-pipeline"
-      info "Ready: $feat_id"
+      # supervised — the interactive session handled Phase 4; mark complete
+      wt_update_status "$feat_id" "done" "complete"
+      info "Done: $feat_id (supervised)"
     fi
   elif [ "$exit_code" -eq 10 ]; then
     wt_update_status "$feat_id" "paused" "awaiting-review"
