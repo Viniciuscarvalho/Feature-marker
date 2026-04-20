@@ -22,7 +22,7 @@ You invoke Feature-marker directly in Claude Code. Claude runs the full pipeline
 
 Every feature goes through 4 phases. Each phase produces artifacts that feed the next.
 
-![Skill pipeline phases](assets/docs/img_pipeline.png)
+![Skill pipeline phases](./img_pipeline.png)
 
 ### Phase 1 — Analysis
 
@@ -329,5 +329,5 @@ vim features.md                  # Define backlog
 feature-marker-orchestrate run --dry-run
 
 # 5. Run
-feature-marker-orchestrate
+feature-marker-orchestrate run
 ```
