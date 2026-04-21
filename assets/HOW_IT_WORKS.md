@@ -207,6 +207,18 @@ Override per run:
 ./scripts/orchestrate.sh run --autonomy full_auto
 ```
 
+**What `full_auto` actually does differently:**
+
+- Passes `--dangerously-skip-permissions` to every Claude invocation so file
+  writes, bash commands, and network calls run without interactive prompts.
+  The orchestrator prints a warning banner before each feature.
+- Extends the Phase 3 Ralph Loop from 2 fix attempts to 5 (override via
+  `CFG_PHASE3_FULL_AUTO_MAX_FIX_ATTEMPTS`). Each fix attempt reads from and
+  writes to the 3-tier learning store, so repeated failures across features
+  converge on known-good fixes.
+- Use this only in sandboxed environments (isolated worktrees, disposable
+  CI runners) where unattended shell access is acceptable.
+
 ### Memory between features
 
 The orchestrator keeps three layers of context that accumulate as features complete:
