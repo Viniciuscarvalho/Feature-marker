@@ -1,5 +1,51 @@
 #!/bin/bash
 # lib/display.sh — Terminal progress and formatting
+#
+# Phase-aware display helpers:
+#   display_phase_start  — dim separator line printed when a phase begins
+#   display_phase_done   — green checkmark printed when a phase completes
+#   display_fix_attempt  — mini-header for each Phase 3 fix loop iteration
+
+# display_phase_start <phase_num>
+# Prints a dim separator indicating a pipeline phase is starting.
+# Reads label + ETA from fm_phase_label / fm_phase_eta if phases.sh is loaded.
+display_phase_start() {
+  local phase="$1"
+  local label eta
+  if declare -f fm_phase_label &>/dev/null; then
+    label=$(fm_phase_label "$phase" 2>/dev/null || echo "?")
+    eta=$(fm_phase_eta "$phase" 2>/dev/null || echo "")
+  else
+    label="?" eta=""
+  fi
+  local d="${FM_DIM:-}" r="${FM_RESET:-}"
+  local eta_str=""
+  [ -n "$eta" ] && eta_str=" $eta"
+  printf "\n  %s─── Phase %s · %s%s ────────────────────────────────────────%s\n\n" \
+    "$d" "$phase" "$label" "$eta_str" "$r"
+}
+
+# display_phase_done <phase_num> <elapsed_s>
+# Prints a green checkmark when a phase completes successfully.
+display_phase_done() {
+  local phase="$1" elapsed="${2:-0}"
+  local label
+  if declare -f fm_phase_label &>/dev/null; then
+    label=$(fm_phase_label "$phase" 2>/dev/null || echo "?")
+  else
+    label="?"
+  fi
+  local g="${FM_GREEN:-}" r="${FM_RESET:-}"
+  printf "  %s✓%s  Phase %s · %s — %ss\n" "$g" "$r" "$phase" "$label" "$elapsed"
+}
+
+# display_fix_attempt <attempt_n> <max_n>
+# Prints a mini-header at the start of each Phase 3 fix loop iteration.
+display_fix_attempt() {
+  local attempt="$1" max="$2"
+  local c="${FM_CYAN:-}" d="${FM_DIM:-}" r="${FM_RESET:-}"
+  printf "\n  %s·%s  Fix attempt %s/%s\n" "$c" "$r" "$attempt" "$max"
+}
 
 display_feature_status() {
   local feat_id="$1"

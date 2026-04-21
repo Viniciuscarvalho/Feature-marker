@@ -464,6 +464,7 @@ EOPRD
     echo ""
   fi
 
+  display_phase_start 1
   display_invocation_header "$feat_id" "$AUTONOMY" "${effective_model:-}" "$skill_arg" "$wt_path" "$log_file"
   if [ "$AUTONOMY" = "full_auto" ]; then
     _orchestrator_watcher_start \
@@ -482,6 +483,7 @@ EOPRD
   # supervised handles tests interactively inside the Claude session; skip scripted runner.
   if [ "$exit_code" -eq 0 ] && [ "$AUTONOMY" != "supervised" ]; then
     local phase3_fix_attempts=0
+    display_phase_start 3
     run_phase3_tests "$feat_id" "$wt_path"
     local phase3_exit=$?
     phase3_fix_attempts=$(cat "$STATE_DIR/$feat_id/phase3-fix-attempts" 2>/dev/null || echo "0")
@@ -538,6 +540,7 @@ EOPRD
   if [ "$exit_code" -eq 0 ]; then
     if [ "$AUTONOMY" = "full_auto" ] || [ "$AUTONOMY" = "checkpoint" ]; then
       # full_auto: PR with auto-merge configured; checkpoint: draft PR for human review
+      display_phase_start 4
       run_pr_creation "$feat_id" "$title" "$wt_path" "$results_file"
     else
       # supervised — the interactive session handled Phase 4; mark complete
@@ -610,6 +613,8 @@ run_phase3_tests() {
   local wt_path="$2"
 
   local fix_attempts=0
+  local phase3_start
+  phase3_start=$(date +%s)
   echo "$fix_attempts" > "$STATE_DIR/$feat_id/phase3-fix-attempts"
   # Reset attempt trail for this run
   rm -f "$STATE_DIR/$feat_id/phase3-attempts.log"
@@ -643,6 +648,7 @@ run_phase3_tests() {
 
   if [ "$test_exit" -eq 0 ]; then
     info "Phase 3: tests passed"
+    display_phase_done 3 $(( $(date +%s) - phase3_start ))
     return 0
   fi
 
@@ -662,7 +668,7 @@ run_phase3_tests() {
     fix_attempts=$((fix_attempts + 1))
     echo "$fix_attempts" > "$STATE_DIR/$feat_id/phase3-fix-attempts"
 
-    info "Phase 3: fix attempt $fix_attempts/$max_fix_attempts"
+    display_fix_attempt "$fix_attempts" "$max_fix_attempts"
 
     # Compute error signature from current test output
     local error_sig
@@ -719,6 +725,7 @@ run_phase3_tests() {
 
     if [ "$test_exit" -eq 0 ]; then
       info "Phase 3: tests passed after fix attempt $fix_attempts"
+      display_phase_done 3 $(( $(date +%s) - phase3_start ))
 
       # Verify retrieved hint was useful
       if [ -n "$used_learn_id" ]; then
@@ -980,6 +987,7 @@ run_pr_creation() {
   if [ $pr_exit -eq 0 ] && [ -n "$pr_url" ]; then
     wt_update_status "$feat_id" "pr-created" "complete"
     node -e "const fs=require('fs');const r=JSON.parse(fs.readFileSync('$results_file','utf-8'));r.pr_url='$pr_url';r.pipeline.review={status:'completed',pr_url:'$pr_url'};fs.writeFileSync('$results_file',JSON.stringify(r,null,2));" 2>/dev/null || true
+    display_phase_done 4 0
     info "PR: $pr_url"
     # ADR-009 PR-G / ADR-010: trigger background review-ingest when available
     if declare -f ingest_trigger_if_merged &>/dev/null; then

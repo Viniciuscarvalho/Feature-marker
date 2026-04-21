@@ -114,3 +114,71 @@ setup() {
   run _watcher_format_tick 15 "CHANGELOG.md " "4" 1 ""
   [[ "$output" == *"Commit"* ]]
 }
+
+# ── display_phase_start ───────────────────────────────────────────
+
+@test "display_phase_start 1 contains phase number and Plan label" {
+  run display_phase_start 1
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Phase 1"* ]]
+  [[ "$output" == *"Plan"* ]]
+}
+
+@test "display_phase_start 3 contains phase number and Test label" {
+  run display_phase_start 3
+  [[ "$output" == *"Phase 3"* ]]
+  [[ "$output" == *"Test"* ]]
+}
+
+@test "display_phase_start 4 contains phase number and Commit label" {
+  run display_phase_start 4
+  [[ "$output" == *"Phase 4"* ]]
+  [[ "$output" == *"Commit"* ]]
+}
+
+@test "display_phase_start includes ETA when phases.sh provides it" {
+  run display_phase_start 2
+  # fm_phase_eta 2 returns ~3-12 min
+  [[ "$output" == *"min"* ]]
+}
+
+# ── display_phase_done ────────────────────────────────────────────
+
+@test "display_phase_done emits checkmark" {
+  run display_phase_done 3 42
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"✓"* ]]
+}
+
+@test "display_phase_done includes phase label" {
+  run display_phase_done 3 42
+  [[ "$output" == *"Test"* ]]
+}
+
+@test "display_phase_done includes elapsed seconds" {
+  run display_phase_done 3 42
+  [[ "$output" == *"42s"* ]]
+}
+
+@test "display_phase_done 4 shows Commit" {
+  run display_phase_done 4 0
+  [[ "$output" == *"Commit"* ]]
+}
+
+# ── display_fix_attempt ───────────────────────────────────────────
+
+@test "display_fix_attempt shows attempt and max" {
+  run display_fix_attempt 1 5
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"1/5"* ]]
+}
+
+@test "display_fix_attempt 2/5 shows correct numbers" {
+  run display_fix_attempt 2 5
+  [[ "$output" == *"2/5"* ]]
+}
+
+@test "display_fix_attempt shows Fix attempt label" {
+  run display_fix_attempt 3 5
+  [[ "$output" == *"Fix attempt"* ]]
+}
