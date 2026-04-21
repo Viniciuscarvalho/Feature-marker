@@ -97,13 +97,9 @@ The orchestrator is a bash script that runs **outside** Claude Code, in your reg
 
 ```bash
 # First time: scaffold config files
-./scripts/orchestrate.sh init
+feature-marker-orchestrate init
 
 # Run the orchestration loop
-./scripts/orchestrate.sh run
-
-# Or with Homebrew
-feature-marker-orchestrate init
 feature-marker-orchestrate run
 ```
 
@@ -111,7 +107,7 @@ feature-marker-orchestrate run
 
 ### How it works step by step
 
-The orchestrator is a `for` loop in bash. For each feature in the backlog, it calls `claude --skill feature-marker` to run the pipeline. When Claude finishes, control returns to bash — it collects results and updates memory. Once all features finish, the loop creates PRs and cleans up worktrees in a single pass.
+The orchestrator is a `for` loop in bash. For each feature in the backlog, it calls `claude --agent feature-marker` to run the pipeline. When Claude finishes, control returns to bash — it collects results and updates memory. Once all features finish, the loop creates PRs and cleans up worktrees in a single pass.
 
 ![Terminal execution flow](./orchestrator-terminal-flow.png)
 
@@ -120,7 +116,7 @@ The orchestrator is a `for` loop in bash. For each feature in the backlog, it ca
 **1. Initialize** — creates config files in your project:
 
 ```bash
-./scripts/orchestrate.sh init
+feature-marker-orchestrate init
 # Creates:
 #   .orchestrator/config.yaml   — settings (committed to git)
 #   .env.example                — API key template (committed)
@@ -171,13 +167,13 @@ For `linear` or `github`, the orchestrator fetches issues automatically based on
 **5. Preview** — see what would happen without executing:
 
 ```bash
-./scripts/orchestrate.sh run --dry-run
+feature-marker-orchestrate run --dry-run
 ```
 
 **6. Run**:
 
 ```bash
-./scripts/orchestrate.sh run
+feature-marker-orchestrate run
 ```
 
 ### Backlog sources
@@ -204,8 +200,20 @@ All API keys live in `.env` (never committed). The `config.yaml` only has parame
 Override per run:
 
 ```bash
-./scripts/orchestrate.sh run --autonomy full_auto
+feature-marker-orchestrate run --autonomy full_auto
 ```
+
+**What `full_auto` actually does differently:**
+
+- Passes `--permission-mode bypassPermissions` to every Claude invocation so
+  file writes, bash commands, and network calls run without interactive prompts.
+  The orchestrator prints a warning banner before each feature.
+- Extends the Phase 3 Ralph Loop from 2 fix attempts to 5 (override via
+  `CFG_PHASE3_FULL_AUTO_MAX_FIX_ATTEMPTS`). Each fix attempt reads from and
+  writes to the 3-tier learning store, so repeated failures across features
+  converge on known-good fixes.
+- Use this only in sandboxed environments (isolated worktrees, disposable
+  CI runners) where unattended shell access is acceptable.
 
 ### Memory between features
 
@@ -245,10 +253,10 @@ If no agents are found, Feature-marker handles everything — the system degrade
 **Subcommands:**
 
 ```bash
-./scripts/orchestrate.sh run          # Execute the orchestration loop
-./scripts/orchestrate.sh init         # Scaffold config files
-./scripts/orchestrate.sh status       # Show current state
-./scripts/orchestrate.sh clean        # Remove worktrees + reset state
+feature-marker-orchestrate run          # Execute the orchestration loop
+feature-marker-orchestrate init         # Scaffold config files
+feature-marker-orchestrate status       # Show current state
+feature-marker-orchestrate clean        # Remove worktrees + reset state
 ```
 
 **Flags:**
@@ -279,13 +287,13 @@ feature-marker-orchestrate run --feature feat-auth 2>&1 | tee debug.log
 ┌─────────────────────────────────────────────────────┐
 │              Your terminal                           │
 │                                                      │
-│  ./scripts/orchestrate.sh run                        │
+│  feature-marker-orchestrate run                        │
 │     │                                                │
 │     ├─ reads config.yaml + .env                      │
 │     ├─ fetches backlog (Linear / GitHub / .md)       │
 │     ├─ for each feature:                             │
 │     │    ├─ git worktree add                         │
-│     │    ├─ claude --skill feature-marker            │ ← calls Claude Code
+│     │    ├─ claude --agent feature-marker            │ ← calls Claude Code
 │     │    │         prd-<feat-id>                     │
 │     │    │    └─ Feature-marker skill runs           │ ← same skill as Path 1
 │     │    │       PRD → TechSpec → Tasks → Code       │

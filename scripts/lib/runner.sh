@@ -335,6 +335,25 @@ EOPRD
   local interactive_flag=""
   [ "$AUTONOMY" = "supervised" ] && interactive_flag="--interactive"
 
+  # Translate internal model aliases (e.g. "opusplan") to Claude CLI-compatible names.
+  # "opusplan" means Opus for planning / Sonnet for execution; Phase 2 uses Opus.
+  local effective_model="${MODEL_DEFAULT:-}"
+  [ "$effective_model" = "opusplan" ] && effective_model="opus"
+
+  # full_auto skips Claude's permission prompts so the pipeline can run
+  # unattended. --permission-mode bypassPermissions avoids the interactive
+  # "Verify the reason" confirmation that --dangerously-skip-permissions triggers.
+  # The extended Ralph Loop (run_phase3_tests) compensates with more fix attempts.
+  local perm_flag=""
+  if [ "$AUTONOMY" = "full_auto" ]; then
+    perm_flag="--permission-mode bypassPermissions"
+    echo ""
+    echo "  ⚠  FULL_AUTO — running with bypassPermissions mode"
+    echo "     File writes, bash commands, and network calls run WITHOUT prompts."
+    echo "     Phase 3 Ralph Loop active — learning store captures fixes and failures."
+    echo ""
+  fi
+
   # ADR-009 PR-H: quality-warning banner when local generator replacement is active
   if [ "${LOCAL_MODEL_ENABLED:-false}" = "true" ] && [ -n "${LOCAL_MODEL_GENERATOR_MODEL:-}" ]; then
     echo ""
@@ -344,9 +363,9 @@ EOPRD
     echo ""
   fi
 
-  info "Autonomy=$AUTONOMY — invoking pipeline (model: ${MODEL_DEFAULT:-default}, agent: $skill_arg)..."
+  info "Autonomy=$AUTONOMY — invoking pipeline (model: ${effective_model:-default}, agent: $skill_arg)..."
   (cd "$wt_path" && op_timeout "${SKILL_TIMEOUT_SECONDS:-1800}" \
-    claude --skill "$skill_arg" ${interactive_flag:+$interactive_flag} "prd-$feat_id") 2>&1 \
+    claude ${effective_model:+--model "$effective_model"} --agent "$skill_arg" $perm_flag ${interactive_flag:+$interactive_flag} -p "prd-$feat_id") 2>&1 \
     | tee "$log_file" || exit_code=$?
 
   # ── ADR-008 PR-A: Phase 3 scripted tests ────────────────────────
@@ -511,8 +530,12 @@ run_phase3_tests() {
   test_output=$(cat /tmp/phase3-test-output-$$.txt 2>/dev/null || echo "test output unavailable")
   rm -f /tmp/phase3-test-output-$$.txt
 
-  # Fix loop — max 2 attempts
+  # Fix loop — default 2 attempts; full_auto runs an extended Ralph Loop.
   local max_fix_attempts=2
+  if [ "$AUTONOMY" = "full_auto" ]; then
+    max_fix_attempts="${CFG_PHASE3_FULL_AUTO_MAX_FIX_ATTEMPTS:-5}"
+    info "Phase 3: Ralph Loop active — up to $max_fix_attempts fix attempts (full_auto)"
+  fi
 
   while [ "$fix_attempts" -lt "$max_fix_attempts" ]; do
     fix_attempts=$((fix_attempts + 1))
@@ -537,11 +560,16 @@ run_phase3_tests() {
     fi
 
     local model_flag=""
-    [ -n "${MODEL_DEFAULT:-}" ] && model_flag="--model $MODEL_DEFAULT"
+    local _fix_model="${MODEL_DEFAULT:-}"
+    [ "$_fix_model" = "opusplan" ] && _fix_model="opus"
+    [ -n "$_fix_model" ] && model_flag="--model $_fix_model"
+
+    local fix_perm_flag=""
+    [ "$AUTONOMY" = "full_auto" ] && fix_perm_flag="--permission-mode bypassPermissions"
 
     local fix_exit=0
     if command -v claude &>/dev/null; then
-      (cd "$wt_path" && printf '%b' "$fix_prompt" | claude $model_flag --print) 2>/dev/null || fix_exit=$?
+      (cd "$wt_path" && printf '%b' "$fix_prompt" | claude $model_flag $fix_perm_flag --print) 2>/dev/null || fix_exit=$?
     else
       info "Phase 3: Claude CLI not found — cannot attempt fix"
       return 1
