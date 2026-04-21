@@ -48,11 +48,14 @@ RESULTS_DIR="$CONFIG_DIR/results"
 
 cd "$ROOT_DIR"
 
+# Load ANSI color helpers early so log/info/err have color before sub_run
+[ -f "$LIB_DIR/ansi.sh" ] && source "$LIB_DIR/ansi.sh" && fm_ansi_init
+
 # ── Helpers (available before modules load) ──────────────────────
 
-log()    { echo "▶ [orchestrate] $*"; }
-info()   { echo "  [orchestrate] $*"; }
-err()    { echo "✗ [orchestrate] $*" >&2; }
+log()    { printf "${FM_CYAN:-}▶${FM_RESET:-} %s\n" "$*"; }
+info()   { printf "${FM_DIM:-}·${FM_RESET:-} %s\n" "$*"; }
+err()    { printf "${FM_RED:-}${FM_BOLD:-}✗ %s${FM_RESET:-}\n" "$*" >&2; }
 banner() {
   echo ""
   echo "═══════════════════════════════════════════════════"
@@ -318,6 +321,8 @@ sub_run() {
   # ADR-009 modules (optional — loaded if present)
   [ -f "$LIB_DIR/local_model.sh" ] && source "$LIB_DIR/local_model.sh"
   [ -f "$LIB_DIR/ingest.sh"      ] && source "$LIB_DIR/ingest.sh"
+  # Terminal UX modules (optional — loaded if present)
+  [ -f "$LIB_DIR/phases.sh" ] && source "$LIB_DIR/phases.sh"
   source "$LIB_DIR/runner.sh"
 
   # Resolve config file — check multiple locations
