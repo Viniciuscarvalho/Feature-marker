@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.6.0] - 2026-04-21
+
+### Added
+
+- **Ollama & semantic embedding retrieval** (PR #39) — Learning module now integrates with Ollama for local semantic embeddings; retrieved context is ranked by cosine similarity and injected into the orchestrator prompt at the start of each feature run
+- **`full_auto` mode with `--dangerously-skip-permissions` and Ralph Loop** (PR #43) — Full-autonomy run path now passes `--dangerously-skip-permissions` to Claude Code so the inner agent never stalls on a permission prompt; the outer retry loop (Ralph Loop) keeps cycling until the feature reaches DONE or the retry budget is exhausted
+
+### Fixed
+
+- **`--help` outside a git repo** (PR #36) — CLI argument parsing now runs before the git-repo guard; `feature-marker-orchestrate --help` works in any directory, not just inside a git repo
+- **Context-gatherer Phase 0.1 failures** (PR #37) — Resolved a cluster of failures: missing tool declarations in the gatherer prompt, slug generation edge cases, `mkdir -p` race condition on worktree init, and incorrect resume-state detection after a partial run
+- **`full_auto` hang and invalid model flag** (PR #43) — Corrected the Claude CLI flags used in the `full_auto` runner; the hang introduced in v7.5.0 (noted as a known regression) is resolved
+
+### Documentation
+
+- **`HOW_IT_WORKS.md`** (PR #38) — New top-level reference document covering the end-to-end orchestrator flow; also patches the gap between checkpoint and supervised modes in `orchestrate.sh`
+- **`depends-on` syntax and checkpoint halt behavior** (PR #40) — Corrected YAML syntax examples and documented how a failed checkpoint halts all downstream dependent features
+- **Per-run log path and `--verbose` capture** (PR #41) — Documented where each run's log lands and that `--verbose` routes full Claude output to the run log file
+- **Phase-2 cost estimate variance** (PR #42) — Clarified that Phase-2 token estimates vary with routing decisions; added a note in cost docs so operators know to treat the figure as a lower bound
+
 ## [7.5.0] - 2026-04-19
 
 ### Added
