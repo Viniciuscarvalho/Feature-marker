@@ -119,7 +119,7 @@ run_backlog() {
   fi
 
   # Single-feature mode
-  local ran_count=0
+  local ran_count=0 paused_count=0
   if [ -n "${OPT_FEATURE:-}" ]; then
     local single
     single=$(echo "$items" | node -e "
@@ -142,7 +142,6 @@ run_backlog() {
     ")
 
     local index=0
-    local ran_count=0
     for _i in "${!item_list[@]}"; do
       local item_json="${item_list[$_i]}"
       index=$((index + 1))
@@ -171,10 +170,16 @@ run_backlog() {
       local _status_before
       _status_before=$(wt_get_status "$feat_id_check")
 
-      process_item "$item_json" "$index" "$ready_count" "$next_feat_id"
+      local _pi_exit=0
+      process_item "$item_json" "$index" "$ready_count" "$next_feat_id" || _pi_exit=$?
 
       if [ "$_status_before" != "done" ] && [ "$_status_before" != "pr-created" ]; then
         ran_count=$((ran_count + 1))
+      fi
+
+      # exit 2 = phase3-paused; backlog continues to next feature
+      if [ "$_pi_exit" -eq 2 ]; then
+        paused_count=$((paused_count + 1))
       fi
 
       # ADR-008 PR-D: cycle gate — assert previous feature completed full cycle
@@ -208,7 +213,7 @@ run_backlog() {
   end_time=$(date +%s)
   local total_time=$((end_time - start_time))
 
-  local done_n=0 pr_n=0 ready_n=0 failed_n=0
+  local done_n=0 pr_n=0 ready_n=0 failed_n=0 paused_n=0
   for dir in "$STATE_DIR"/*/; do
     [ -d "$dir" ] || continue
     local fid
@@ -221,11 +226,12 @@ run_backlog() {
       pr-created) pr_n=$((pr_n+1)) ;;
       ready) ready_n=$((ready_n+1)) ;;
       failed) failed_n=$((failed_n+1)) ;;
+      paused) paused_n=$((paused_n+1)) ;;
     esac
   done
 
-  local processed=$((done_n + pr_n + ready_n + failed_n))
-  display_summary "$done_n" "$pr_n" "$ready_n" "$failed_n" "$total_time" "$processed" "$ran_count"
+  local processed=$((done_n + pr_n + ready_n + failed_n + paused_n))
+  display_summary "$done_n" "$pr_n" "$ready_n" "$failed_n" "$total_time" "$processed" "$ran_count" "$paused_n"
 
   echo ""
   log "Per-feature:"
@@ -477,7 +483,7 @@ EOPRD
     node -e "
       require('fs').writeFileSync('$results_file', JSON.stringify({
         feature_id: '$feat_id',
-        status: $exit_code === 0 ? 'completed' : ($exit_code === 10 ? 'paused' : 'failed'),
+        status: $exit_code === 0 ? 'completed' : ($exit_code === 2 || $exit_code === 10 ? 'paused' : 'failed'),
         title: $(printf '%s' "$title" | node -p "JSON.stringify(require('fs').readFileSync('/dev/stdin','utf-8').trim())"),
         pipeline: { prd: { status: 'completed' }, techspec: { status: 'pending' }, tasks: { status: 'pending' }, implementation: { status: 'pending' }, tests: { status: 'pending' }, review: { status: 'pending' } },
         context_generated: { files_created: [], files_modified: [], schema_changes: [], new_dependencies: [], breaking_changes: [] },
@@ -517,6 +523,9 @@ EOPRD
       wt_update_status "$feat_id" "done" "complete"
       info "Done: $feat_id (supervised)"
     fi
+  elif [ "$exit_code" -eq 2 ]; then
+    # Phase 3 exhausted — status/pause record already written by run_phase3_tests
+    info "Paused: $feat_id (phase3-exhausted)"
   elif [ "$exit_code" -eq 10 ]; then
     wt_update_status "$feat_id" "paused" "awaiting-review"
     _runner_record_pause "$feat_id" "human" "supervised-checkpoint"
@@ -566,10 +575,14 @@ EOPRD
 # ── run_phase3_tests ──────────────────────────────────────────────────
 # ADR-008 PR-A: Scripted test runner for Phase 3.
 # Detects stack, runs the appropriate test command.
-# On failure, invokes Claude for a fix (max 2 attempts).
-# Captures successful fixes to the learning store.
+# On failure, invokes Claude for a fix (up to max_fix_attempts).
+# Learning store integration:
+#   - Successful fix: learning_write (success) + learning_verify "true" on retrieved hint
+#   - Failed attempt: learning_write (failure marker) + learning_verify "false" on retrieved hint
+#   - Cross-attempt trail: accumulated in phase3-attempts.log, prepended to fix_prompt
+# On exhaustion: feature is paused (exit 2); run_backlog continues to next feature.
 # Writes fix attempt count to $STATE_DIR/$feat_id/phase3-fix-attempts.
-# Returns 0 on success (tests pass), 1 on persistent failure.
+# Returns 0 on success, 1 on unrecoverable error, 2 on exhaustion (paused).
 
 run_phase3_tests() {
   local feat_id="$1"
@@ -577,6 +590,8 @@ run_phase3_tests() {
 
   local fix_attempts=0
   echo "$fix_attempts" > "$STATE_DIR/$feat_id/phase3-fix-attempts"
+  # Reset attempt trail for this run
+  rm -f "$STATE_DIR/$feat_id/phase3-attempts.log"
 
   # Detect stack from worktree
   local wt_file_paths
@@ -620,24 +635,36 @@ run_phase3_tests() {
     info "Phase 3: Ralph Loop active — up to $max_fix_attempts fix attempts (full_auto)"
   fi
 
+  local trail_file="$STATE_DIR/$feat_id/phase3-attempts.log"
+
   while [ "$fix_attempts" -lt "$max_fix_attempts" ]; do
     fix_attempts=$((fix_attempts + 1))
     echo "$fix_attempts" > "$STATE_DIR/$feat_id/phase3-fix-attempts"
 
     info "Phase 3: fix attempt $fix_attempts/$max_fix_attempts"
 
-    # ADR-008 PR-C: check learning store for a known fix
+    # Compute error signature from current test output
     local error_sig
     error_sig=$(echo "$test_output" | head -5 | tr '\n' ' ' | sed 's/  */ /g')
-    local learned_fix
+
+    # Check learning store for a known fix; track the entry ID for later verification
+    local learned_fix used_learn_id=""
     learned_fix=$(learning_read "$feat_id" "$error_sig")
 
+    # Build fix prompt; prepend cross-attempt trail from attempt 2 onward (capped at last 3)
     local fix_prompt="Fix the failing tests. Test output:\n$test_output"
+    if [ "$fix_attempts" -gt 1 ] && [ -f "$trail_file" ]; then
+      local trail_content
+      trail_content=$(tail -c 2000 "$trail_file")
+      fix_prompt="Previous fix attempts for context:\n$trail_content\n\nCurrent failing tests:\n$test_output"
+    fi
+
     if [ -n "$learned_fix" ] && [ "$learned_fix" != "null" ]; then
       local hint
       hint=$(echo "$learned_fix" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).fix" 2>/dev/null || echo "")
+      used_learn_id=$(echo "$learned_fix" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).id" 2>/dev/null || echo "")
       if [ -n "$hint" ]; then
-        info "Phase 3: applying learned fix hint"
+        info "Phase 3: applying learned fix hint (id: $used_learn_id)"
         fix_prompt="$fix_prompt\n\nKnown fix hint: $hint"
       fi
     fi
@@ -665,19 +692,25 @@ run_phase3_tests() {
       return 1
     fi
 
-    # Re-run tests
+    # Re-run tests after fix attempt
     test_exit=0
     (cd "$wt_path" && eval "$test_cmd" >/tmp/phase3-test-output-$$.txt 2>&1) || test_exit=$?
 
     if [ "$test_exit" -eq 0 ]; then
       info "Phase 3: tests passed after fix attempt $fix_attempts"
 
-      # ADR-008 PR-C: capture successful fix to learning store
+      # Verify retrieved hint was useful
+      if [ -n "$used_learn_id" ]; then
+        local _vpath="$ROOT_DIR/.claude/feature-state/learned.json"
+        [ -f "$_vpath" ] && learning_verify "$used_learn_id" "true" "$_vpath"
+      fi
+
+      # Capture successful fix to learning store
       local fix_description
       fix_description=$(printf '%b' "$fix_prompt" | head -3 | tr '\n' ' ')
       learning_write "$feat_id" "$error_sig" "$fix_description"
 
-      # Verify the learning entry
+      # Verify the entry was written (idempotent verify on the new/updated entry)
       local project_path
       project_path="$ROOT_DIR/.claude/feature-state/learned.json"
       if [ -f "$project_path" ]; then
@@ -696,13 +729,60 @@ run_phase3_tests() {
       return 0
     fi
 
+    # Fix attempt failed — capture and learn from it
+    local prev_test_output="$test_output"
     test_output=$(cat /tmp/phase3-test-output-$$.txt 2>/dev/null || echo "test output unavailable")
     rm -f /tmp/phase3-test-output-$$.txt
+
+    # Verify retrieved hint was not useful (decay its confidence)
+    if [ -n "$used_learn_id" ]; then
+      local _vpath_fail="$ROOT_DIR/.claude/feature-state/learned.json"
+      [ -f "$_vpath_fail" ] && learning_verify "$used_learn_id" "false" "$_vpath_fail"
+    fi
+
+    # Write failure fingerprint to learning store so future runs know this was tried
+    local fix_desc_short post_error_sig
+    fix_desc_short=$(printf '%b' "$fix_prompt" | head -1 | cut -c1-120)
+    post_error_sig=$(echo "$test_output" | head -3 | tr '\n' ' ' | sed 's/  */ /g')
+    learning_write "$feat_id" "$error_sig" "FAILED[attempt $fix_attempts]: $fix_desc_short | result: $post_error_sig"
+
+    # Append stanza to cross-attempt trail (capped: keep only last 3 attempts worth)
+    {
+      echo "=== Attempt $fix_attempts/$max_fix_attempts ==="
+      echo "Error: $error_sig"
+      echo "Fix tried: $fix_desc_short"
+      echo "Result: $post_error_sig"
+      echo ""
+    } >> "$trail_file"
+    # Trim to last 3 stanzas (~60 lines) to keep prompt size bounded
+    if [ "$(wc -l < "$trail_file" 2>/dev/null || echo 0)" -gt 60 ]; then
+      tail -60 "$trail_file" > "${trail_file}.tmp" && mv "${trail_file}.tmp" "$trail_file"
+    fi
+
     mem_record_error "$feat_id" "phase3" "fix attempt $fix_attempts failed: $test_cmd"
   done
 
-  err "Phase 3: tests still failing after $max_fix_attempts fix attempts"
-  return 1
+  # All fix attempts exhausted — pause the feature so the backlog can continue
+  err "Phase 3: tests still failing after $max_fix_attempts fix attempts — pausing $feat_id"
+  wt_update_status "$feat_id" "paused" "phase3-exhausted"
+  _runner_record_pause "$feat_id" "human" "phase3-exhausted"
+
+  local last_error_sig
+  last_error_sig=$(echo "$test_output" | head -5 | tr '\n' ' ' | sed 's/  */ /g')
+  node -e "
+    const fs = require('fs');
+    const data = {
+      reason: 'phase3-exhausted',
+      attempts: $fix_attempts,
+      last_error_sig: $(node -p "JSON.stringify('$last_error_sig')" 2>/dev/null || echo '""'),
+      trail_path: '$trail_file',
+      paused_at: new Date().toISOString()
+    };
+    fs.writeFileSync('$STATE_DIR/$feat_id/pause-reason.json', JSON.stringify(data, null, 2));
+  " 2>/dev/null || true
+
+  display_paused_handoff "$feat_id" "$fix_attempts" "$STATE_DIR/$feat_id/pause-reason.json"
+  return 2
 }
 
 # ── dep_check_merge_state ─────────────────────────────────────────────
