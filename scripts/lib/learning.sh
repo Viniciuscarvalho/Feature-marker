@@ -40,7 +40,7 @@ _learning_ensure_file() {
   local dir
   dir=$(dirname "$path")
   mkdir -p "$dir"
-  [ ! -f "$path" ] && echo '[]' > "$path"
+  [ -f "$path" ] || echo '[]' > "$path"
 }
 
 # Path to the embedding sidecar file alongside a learned.json store.
@@ -309,16 +309,16 @@ learning_verify() {
   local success="$2"
   local tier_path="$3"
 
-  [ ! -f "$tier_path" ] && return
+  [ -f "$tier_path" ] || return 0
 
   node -e "
     const fs = require('fs');
     const path = '$tier_path';
     let entries;
-    try { entries = JSON.parse(fs.readFileSync(path, 'utf-8')); } catch(e) { return; }
+    try { entries = JSON.parse(fs.readFileSync(path, 'utf-8')); } catch(e) { process.exit(0); }
 
     const e = entries.find(e => e.id === '$learn_id');
-    if (!e) return;
+    if (!e) process.exit(0);
 
     if ('$success' === 'true') {
       e.success_count = (e.success_count || 0) + 1;

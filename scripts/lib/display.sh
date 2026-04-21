@@ -101,7 +101,7 @@ draw_progress_bar() {
 }
 
 display_summary() {
-  local done_n="$1" pr_n="$2" ready_n="$3" failed_n="$4" total_time="$5" processed="$6" ran_n="${7:-$6}"
+  local done_n="$1" pr_n="$2" ready_n="$3" failed_n="$4" total_time="$5" processed="$6" ran_n="${7:-$6}" paused_n="${8:-0}"
 
   echo ""
   echo "  ┌──────────────────────────────────────┐"
@@ -111,6 +111,7 @@ display_summary() {
   printf "  │  PR:      %-26s │\n" "$pr_n"
   printf "  │  Ready:   %-26s │\n" "$ready_n"
   printf "  │  Failed:  %-26s │\n" "$failed_n"
+  printf "  │  Paused:  %-26s │\n" "$paused_n"
   echo "  ├──────────────────────────────────────┤"
   printf "  │  Ran this session: %-17s │\n" "$ran_n"
   echo "  ├──────────────────────────────────────┤"
@@ -119,6 +120,32 @@ display_summary() {
   [ "${ran_n:-0}" -gt 0 ] && avg=$((total_time / ran_n))
   printf "  │  Avg:     %-26s │\n" "${avg}s/feature"
   echo "  └──────────────────────────────────────┘"
+}
+
+# display_paused_handoff <feat_id> <attempts> [pause_reason_path]
+# Prints a plain-text guidance block when Phase 3 is exhausted.
+# PR B upgrades this to a boxed ANSI variant.
+display_paused_handoff() {
+  local feat_id="$1" attempts="$2" pause_reason_path="${3:-}"
+
+  local resume_cmd="feature-marker-orchestrate --resume-paused $feat_id --ack"
+  local trail_path=""
+  if [ -n "$pause_reason_path" ] && [ -f "$pause_reason_path" ]; then
+    trail_path=$(node -p "
+      try { JSON.parse(require('fs').readFileSync('$pause_reason_path','utf-8')).trail_path || ''; }
+      catch(e) { ''; }
+    " 2>/dev/null || echo "")
+  fi
+
+  echo ""
+  echo "  ⏸  $feat_id — Phase 3 paused after $attempts fix attempt(s)"
+  echo "     Tests still failing. Review the attempt trail and fix manually."
+  echo ""
+  [ -n "$trail_path" ] && echo "     Trail: $trail_path"
+  echo "     Resume: $resume_cmd"
+  echo ""
+  echo "     Backlog continues with the next ready feature."
+  echo ""
 }
 
 display_routing() {
