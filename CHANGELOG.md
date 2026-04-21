@@ -10,13 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Ollama & semantic embedding retrieval** (PR #39) — Learning module now integrates with Ollama for local semantic embeddings; retrieved context is ranked by cosine similarity and injected into the orchestrator prompt at the start of each feature run
-- **`full_auto` mode with `--dangerously-skip-permissions` and Ralph Loop** (PR #43) — Full-autonomy run path now passes `--dangerously-skip-permissions` to Claude Code so the inner agent never stalls on a permission prompt; the outer retry loop (Ralph Loop) keeps cycling until the feature reaches DONE or the retry budget is exhausted
+- **`full_auto` mode with extended Ralph Loop** (PR #43) — Full-autonomy run path uses `--permission-mode bypassPermissions` so the inner agent never stalls on a permission prompt (replaces `--dangerously-skip-permissions`, which triggered an interactive "Verify the reason" confirmation in `-p` mode); the outer retry loop (Ralph Loop) keeps cycling until the feature reaches DONE or the retry budget is exhausted
 
 ### Fixed
 
 - **`--help` outside a git repo** (PR #36) — CLI argument parsing now runs before the git-repo guard; `feature-marker-orchestrate --help` works in any directory, not just inside a git repo
 - **Context-gatherer Phase 0.1 failures** (PR #37) — Resolved a cluster of failures: missing tool declarations in the gatherer prompt, slug generation edge cases, `mkdir -p` race condition on worktree init, and incorrect resume-state detection after a partial run
-- **`full_auto` hang and invalid model flag** (PR #43) — Corrected the Claude CLI flags used in the `full_auto` runner; the hang introduced in v7.5.0 (noted as a known regression) is resolved
+- **`full_auto` hang and invalid model flag** (PR #43) — Replaced `--dangerously-skip-permissions` (which blocks `-p` mode with an interactive confirmation) with `--permission-mode bypassPermissions`; also translates the internal `opusplan` alias to `opus` before passing `--model` to the Claude CLI. Both changes applied to Phase 2 invocation and Phase 3 Ralph Loop fix attempts
 
 ### Documentation
 

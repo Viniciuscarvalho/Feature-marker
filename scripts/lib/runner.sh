@@ -13,6 +13,44 @@
 #   - router_route_task() for stack-aware agent selection (router.sh)
 #   - cycle_gate_check() before advancing to next feature (cycle_gate.sh)
 
+# _orchestrator_watcher_start <sentinel> <watch_dir> [interval_s]
+# Launches a background heartbeat process that prints [progress] lines to stdout
+# every interval_s seconds. Tracks newly-written files under watch_dir by name.
+# PID stored at <sentinel>.pid so _orchestrator_watcher_stop can kill it.
+# Set PROGRESS_INTERVAL=0 to disable entirely.
+_orchestrator_watcher_start() {
+  local sentinel="$1" watch_dir="$2" interval="${3:-45}"
+  [ "${interval}" -le 0 ] 2>/dev/null && return 0
+  local ref="${sentinel}.ref" pid_file="${sentinel}.pid"
+  local start_ts
+  start_ts=$(date +%s)
+  touch "$sentinel" "$ref"
+  (
+    while [ -f "$sentinel" ]; do
+      sleep "$interval"
+      [ -f "$sentinel" ] || break
+      elapsed=$(( $(date +%s) - start_ts ))
+      changed=$(find "$watch_dir" -newer "$ref" -type f 2>/dev/null | sort | while IFS= read -r f; do basename "$f"; done | tr '\n' ' ')
+      touch "$ref"
+      if [ -n "$changed" ]; then
+        printf '  [progress] %ds elapsed — files written: %s\n' "$elapsed" "$changed"
+      else
+        printf '  [progress] %ds elapsed — Claude working (no new files in last %ds)\n' "$elapsed" "$interval"
+      fi
+    done
+  ) &
+  echo $! > "$pid_file"
+}
+
+# _orchestrator_watcher_stop <sentinel>
+# Removes the sentinel (stopping the watcher loop) and kills the background PID.
+_orchestrator_watcher_stop() {
+  local sentinel="$1" pid
+  pid=$(cat "${sentinel}.pid" 2>/dev/null || true)
+  rm -f "$sentinel" "${sentinel}.ref" "${sentinel}.pid"
+  [ -n "$pid" ] && { kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; }
+}
+
 run_backlog() {
   local backlog_file="$1"
   local start_time
@@ -81,6 +119,7 @@ run_backlog() {
   fi
 
   # Single-feature mode
+  local ran_count=0
   if [ -n "${OPT_FEATURE:-}" ]; then
     local single
     single=$(echo "$items" | node -e "
@@ -89,12 +128,23 @@ run_backlog() {
       if (f) console.log(JSON.stringify(f)); else process.exit(1);
     " 2>/dev/null) || { err "Feature $OPT_FEATURE not found in ready list"; return 1; }
     info "Single-feature mode: $OPT_FEATURE"
-    process_item "$single" 1 1
+    process_item "$single" 1 1 ""
+    ran_count=1
   else
     # Main loop — ADR-008: check hard-block deps + cycle gate per item
-    # ADR-010: process substitution replaces pipe so break/continue work in parent shell
+    # ADR-010: collect into array first so we can look ahead for next_feat_id
+    local item_list=()
+    while IFS= read -r _item_line; do
+      item_list+=("$_item_line")
+    done < <(echo "$items" | node -e "
+      const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));
+      d.ready.forEach(i => console.log(JSON.stringify(i)));
+    ")
+
     local index=0
-    while IFS= read -r item_json; do
+    local ran_count=0
+    for _i in "${!item_list[@]}"; do
+      local item_json="${item_list[$_i]}"
       index=$((index + 1))
 
       # ADR-008 PR-C: hard-block dependency check
@@ -110,21 +160,40 @@ run_backlog() {
         fi
       fi
 
-      process_item "$item_json" "$index" "$ready_count"
+      # Look ahead: ID of next item for "what next" guidance
+      local next_feat_id=""
+      local _next_i=$((_i + 1))
+      if [ "$_next_i" -lt "${#item_list[@]}" ]; then
+        next_feat_id=$(echo "${item_list[$_next_i]}" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).id")
+      fi
+
+      # Track which features actually ran (vs skipped as already-done)
+      local _status_before
+      _status_before=$(wt_get_status "$feat_id_check")
+
+      process_item "$item_json" "$index" "$ready_count" "$next_feat_id"
+
+      if [ "$_status_before" != "done" ] && [ "$_status_before" != "pr-created" ]; then
+        ran_count=$((ran_count + 1))
+      fi
 
       # ADR-008 PR-D: cycle gate — assert previous feature completed full cycle
       if [ "${OPT_SKIP_CYCLE_CHECK:-false}" != "true" ]; then
         if ! cycle_gate_check "$feat_id_check"; then
-          info "Cycle gate: $feat_id_check did not complete full cycle"
           cycle_gate_report "$feat_id_check"
-          info "Use --skip-cycle-check to bypass. Stopping backlog loop."
+          echo ""
+          echo "  ⚠  Cycle gate: $feat_id_check did not complete a full cycle."
+          echo "     The feature has no merged PR or incomplete phase checkpoints."
+          echo "     Stopping to protect downstream features from running on a broken base."
+          echo ""
+          echo "     To skip the gate and continue anyway:"
+          local _gate_cmd="feature-marker-orchestrate run --autonomy ${AUTONOMY:-full_auto} --skip-cycle-check"
+          echo "       $_gate_cmd"
+          echo ""
           break
         fi
       fi
-    done < <(echo "$items" | node -e "
-      const d = JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8'));
-      d.ready.forEach(i => console.log(JSON.stringify(i)));
-    ")
+    done
   fi
 
   # Post-loop: cleanup
@@ -156,7 +225,7 @@ run_backlog() {
   done
 
   local processed=$((done_n + pr_n + ready_n + failed_n))
-  display_summary "$done_n" "$pr_n" "$ready_n" "$failed_n" "$total_time" "$processed"
+  display_summary "$done_n" "$pr_n" "$ready_n" "$failed_n" "$total_time" "$processed" "$ran_count"
 
   echo ""
   log "Per-feature:"
@@ -173,7 +242,7 @@ run_backlog() {
 }
 
 process_item() {
-  local item_json="$1" index="$2" total="$3"
+  local item_json="$1" index="$2" total="$3" next_feat_id="${4:-}"
 
   # Extract fields
   local feat_id title body priority labels deps
@@ -184,13 +253,14 @@ process_item() {
   labels=$(echo "$item_json" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).labels.join(', ')")
   deps=$(echo "$item_json" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).dependencies.join(', ')||'none'")
 
-  run_feature "$feat_id" "$title" "$body" "$priority" "$labels" "$deps" "$index" "$total"
+  run_feature "$feat_id" "$title" "$body" "$priority" "$labels" "$deps" "$index" "$total" "$next_feat_id"
 }
 
 run_feature() {
-  local feat_id="$1" title="$2" body="$3" priority="$4" labels="$5" deps="$6" index="$7" total="$8"
+  local feat_id="$1" title="$2" body="$3" priority="$4" labels="$5" deps="$6" index="$7" total="$8" next_feat_id="${9:-}"
 
   banner "[$index/$total] $feat_id: $title [$priority]"
+  display_backlog_table "$feat_id"
 
   # Skip if already completed
   local current
@@ -364,9 +434,22 @@ EOPRD
   fi
 
   info "Autonomy=$AUTONOMY — invoking pipeline (model: ${effective_model:-default}, agent: $skill_arg)..."
+  if [ "$AUTONOMY" = "full_auto" ]; then
+    echo "  [progress] Claude runs in batch (-p) mode — output is buffered until completion."
+    echo "             Monitor artifacts : $wt_path/tasks/prd-$feat_id/"
+    echo "             Monitor run log   : $log_file  (populates when Claude exits)"
+    echo ""
+    _orchestrator_watcher_start \
+      "$STATE_DIR/$feat_id/.watcher-active" \
+      "$wt_path/tasks/prd-$feat_id" \
+      "${PROGRESS_INTERVAL:-45}"
+  fi
+
   (cd "$wt_path" && op_timeout "${SKILL_TIMEOUT_SECONDS:-1800}" \
     claude ${effective_model:+--model "$effective_model"} --agent "$skill_arg" $perm_flag ${interactive_flag:+$interactive_flag} -p "prd-$feat_id") 2>&1 \
     | tee "$log_file" || exit_code=$?
+
+  _orchestrator_watcher_stop "$STATE_DIR/$feat_id/.watcher-active"
 
   # ── ADR-008 PR-A: Phase 3 scripted tests ────────────────────────
   # supervised handles tests interactively inside the Claude session; skip scripted runner.
@@ -477,7 +560,7 @@ EOPRD
   fi
 
   info "Feature time: ${duration}s"
-  echo ""
+  display_next_steps "$feat_id" "$exit_code" "$next_feat_id" "${AUTONOMY:-full_auto}" "${MODEL_DEFAULT:-}" "${ADAPTER:-}"
 }
 
 # ── run_phase3_tests ──────────────────────────────────────────────────
@@ -569,7 +652,14 @@ run_phase3_tests() {
 
     local fix_exit=0
     if command -v claude &>/dev/null; then
+      if [ "$AUTONOMY" = "full_auto" ]; then
+        _orchestrator_watcher_start \
+          "$STATE_DIR/$feat_id/.fix-watcher-active" \
+          "$wt_path" \
+          "${PROGRESS_INTERVAL:-45}"
+      fi
       (cd "$wt_path" && printf '%b' "$fix_prompt" | claude $model_flag $fix_perm_flag --print) 2>/dev/null || fix_exit=$?
+      _orchestrator_watcher_stop "$STATE_DIR/$feat_id/.fix-watcher-active"
     else
       info "Phase 3: Claude CLI not found — cannot attempt fix"
       return 1
