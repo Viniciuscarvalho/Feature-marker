@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.7.0] - 2026-04-21
+
+### Added
+
+- **Live backlog table in orchestrator progress view** (PR #46) — The UX orchestrator now renders a live-updating table of the feature backlog during a run, giving operators real-time visibility into which tasks are queued, in-progress, and done
+- **Next-steps guidance after a run** (PR #46) — After each orchestrator cycle completes, the UX layer surfaces a curated next-steps panel so operators know exactly what action to take (e.g. review PR, approve checkpoint, retry failed task) without scanning raw logs
+- **Summary accuracy improvements** (PR #46) — Orchestrator run summaries now reflect the actual terminal state of each task rather than the last known state, eliminating stale "in-progress" entries in post-run reports
+
+### Fixed
+
+- **Git push and `gh pr create` errors surfaced on PR creation failure** (PR #46) — When the orchestrator's automated PR creation step fails (network error, branch protection, quota limit, etc.) the underlying `git push` or `gh pr create` stderr is now captured and shown to the operator instead of a generic "PR creation failed" message
+
 ## [7.6.0] - 2026-04-21
 
 ### Added
