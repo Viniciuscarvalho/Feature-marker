@@ -840,23 +840,43 @@ run_pr_creation() {
   fi
 
   info "Creating PR for $feat_id..."
-  (
-    cd "$wt_path"
-    git add -A 2>/dev/null || true
-    git commit -m "feat: $title" --allow-empty >/dev/null 2>&1 || true
-    git push origin "${BRANCH_PREFIX:-feat}/$feat_id" >/dev/null 2>&1 || true
-  )
+  local branch="${BRANCH_PREFIX:-feat}/$feat_id"
+  local push_err="" push_exit=0
+
+  if [ -d "$wt_path" ]; then
+    local push_tmpfile
+    push_tmpfile=$(mktemp)
+    (
+      cd "$wt_path"
+      git add -A 2>/dev/null || true
+      git commit -m "feat: $title" --allow-empty 2>/dev/null || true
+      git push origin "$branch"
+    ) 2>"$push_tmpfile"
+    push_exit=$?
+    push_err=$(cat "$push_tmpfile")
+    rm -f "$push_tmpfile"
+  else
+    push_err="worktree $wt_path no longer exists (cleaned up before PR creation)"
+    push_exit=1
+  fi
 
   local pr_flag=""
   [ "$PR_STRATEGY" = "draft" ] && pr_flag="--draft"
 
-  local pr_url
-  pr_url=$(gh pr create --base "$BASE_BRANCH" --head "${BRANCH_PREFIX:-feat}/$feat_id" \
+  local pr_url="" pr_err="" pr_exit pr_tmpfile
+  pr_tmpfile=$(mktemp)
+  pr_url=$(gh pr create --base "$BASE_BRANCH" --head "$branch" \
     --title "feat: $title" \
     --body "Automated by feature-marker orchestrator." \
-    $pr_flag 2>/dev/null) || pr_url=""
+    $pr_flag 2>"$pr_tmpfile")
+  pr_exit=$?
+  pr_err=$(cat "$pr_tmpfile")
+  rm -f "$pr_tmpfile"
 
-  if [ -n "$pr_url" ]; then
+  # gh pr create may also surface the URL when an existing PR already matches
+  [ -z "$pr_url" ] && pr_url=$(echo "$pr_err" | grep -Eo 'https://github\.com/[^ ]+' | head -1)
+
+  if [ $pr_exit -eq 0 ] && [ -n "$pr_url" ]; then
     wt_update_status "$feat_id" "pr-created" "complete"
     node -e "const fs=require('fs');const r=JSON.parse(fs.readFileSync('$results_file','utf-8'));r.pr_url='$pr_url';r.pipeline.review={status:'completed',pr_url:'$pr_url'};fs.writeFileSync('$results_file',JSON.stringify(r,null,2));" 2>/dev/null || true
     info "PR: $pr_url"
@@ -866,7 +886,32 @@ run_pr_creation() {
     fi
   else
     wt_update_status "$feat_id" "done" "complete"
-    info "Done: $feat_id (PR creation failed — skipping)"
+    local W=64
+    local inner=$((W - 2))
+    echo ""
+    printf "  ┌%s┐\n" "$(printf '─%.0s' $(seq 1 $W))"
+    printf "  │  %-*s│\n" "$((inner - 2))" "PR creation failed: $feat_id"
+    printf "  ├%s┤\n" "$(printf '─%.0s' $(seq 1 $W))"
+    if [ $push_exit -ne 0 ] && [ -n "$push_err" ]; then
+      printf "  │  %-*s│\n" "$((inner - 2))" "git push $branch:"
+      while IFS= read -r line; do
+        printf "  │    %-*s│\n" "$((inner - 4))" "${line:0:$((inner - 4))}"
+      done <<< "$(echo "$push_err" | head -5)"
+    fi
+    if [ -n "$pr_err" ]; then
+      printf "  │  %-*s│\n" "$((inner - 2))" ""
+      printf "  │  %-*s│\n" "$((inner - 2))" "gh pr create:"
+      while IFS= read -r line; do
+        printf "  │    %-*s│\n" "$((inner - 4))" "${line:0:$((inner - 4))}"
+      done <<< "$(echo "$pr_err" | head -5)"
+    fi
+    printf "  ├%s┤\n" "$(printf '─%.0s' $(seq 1 $W))"
+    printf "  │  %-*s│\n" "$((inner - 2))" "To create manually:"
+    printf "  │    %-*s│\n" "$((inner - 4))" "git push origin $branch"
+    printf "  │    %-*s│\n" "$((inner - 4))" "gh pr create --base $BASE_BRANCH --head $branch \\"
+    printf "  │      %-*s│\n" "$((inner - 6))" "--title \"feat: $title\""
+    printf "  └%s┘\n" "$(printf '─%.0s' $(seq 1 $W))"
+    echo ""
   fi
 }
 
