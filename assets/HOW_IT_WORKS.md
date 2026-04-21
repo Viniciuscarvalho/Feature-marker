@@ -264,6 +264,13 @@ If no agents are found, Feature-marker handles everything — the system degrade
 --config <path>        # Use a different config file
 ```
 
+**Per-run logs** are written to `.orchestrator/state/<feat-id>/logs/run-<timestamp>.log`.
+There is no verbose flag; pipe stdout+stderr to capture all output:
+
+```bash
+feature-marker-orchestrate run --feature feat-auth 2>&1 | tee debug.log
+```
+
 ---
 
 ## How the two paths relate
