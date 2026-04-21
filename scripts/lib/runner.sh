@@ -359,7 +359,7 @@ EOPRD
 
   info "Autonomy=$AUTONOMY — invoking pipeline (model: ${MODEL_DEFAULT:-default}, agent: $skill_arg)..."
   (cd "$wt_path" && op_timeout "${SKILL_TIMEOUT_SECONDS:-1800}" \
-    claude --skill "$skill_arg" $perm_flag ${interactive_flag:+$interactive_flag} "prd-$feat_id") 2>&1 \
+    claude ${MODEL_DEFAULT:+--model "$MODEL_DEFAULT"} --agent "$skill_arg" $perm_flag ${interactive_flag:+$interactive_flag} -p "prd-$feat_id") 2>&1 \
     | tee "$log_file" || exit_code=$?
 
   # ── ADR-008 PR-A: Phase 3 scripted tests ────────────────────────
