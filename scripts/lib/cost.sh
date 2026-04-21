@@ -52,6 +52,12 @@ cost_init() {
 #   task_count  : number of tasks (relevant for phase 2 and phase 3 fix attempts)
 #   agent_type  : "specialist" | "generic"
 # Prints the estimated token count to stdout.
+#
+# Note: phase 2 estimates are routing-dependent. A feature routed to a
+# specialist agent (e.g. swift-expert) uses COST_PHASE_2_SPECIALIST (8K/task
+# default), while feature-marker fallback uses COST_PHASE_2_GENERIC (12K/task
+# default). The same feature can show different phase 2 estimates across runs
+# if agent availability changes — this is expected, not a bug.
 
 cost_estimate_phase() {
   local phase="$1"
