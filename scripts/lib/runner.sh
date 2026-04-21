@@ -335,14 +335,20 @@ EOPRD
   local interactive_flag=""
   [ "$AUTONOMY" = "supervised" ] && interactive_flag="--interactive"
 
+  # Translate internal model aliases (e.g. "opusplan") to Claude CLI-compatible names.
+  # "opusplan" means Opus for planning / Sonnet for execution; Phase 2 uses Opus.
+  local effective_model="${MODEL_DEFAULT:-}"
+  [ "$effective_model" = "opusplan" ] && effective_model="opus"
+
   # full_auto skips Claude's permission prompts so the pipeline can run
-  # unattended. The extended Ralph Loop (run_phase3_tests) compensates by
-  # giving Claude more fix attempts and feeding the learning store.
+  # unattended. --permission-mode bypassPermissions avoids the interactive
+  # "Verify the reason" confirmation that --dangerously-skip-permissions triggers.
+  # The extended Ralph Loop (run_phase3_tests) compensates with more fix attempts.
   local perm_flag=""
   if [ "$AUTONOMY" = "full_auto" ]; then
-    perm_flag="--dangerously-skip-permissions"
+    perm_flag="--permission-mode bypassPermissions"
     echo ""
-    echo "  ⚠  FULL_AUTO — passing --dangerously-skip-permissions to Claude"
+    echo "  ⚠  FULL_AUTO — running with bypassPermissions mode"
     echo "     File writes, bash commands, and network calls run WITHOUT prompts."
     echo "     Phase 3 Ralph Loop active — learning store captures fixes and failures."
     echo ""
@@ -357,9 +363,9 @@ EOPRD
     echo ""
   fi
 
-  info "Autonomy=$AUTONOMY — invoking pipeline (model: ${MODEL_DEFAULT:-default}, agent: $skill_arg)..."
+  info "Autonomy=$AUTONOMY — invoking pipeline (model: ${effective_model:-default}, agent: $skill_arg)..."
   (cd "$wt_path" && op_timeout "${SKILL_TIMEOUT_SECONDS:-1800}" \
-    claude ${MODEL_DEFAULT:+--model "$MODEL_DEFAULT"} --agent "$skill_arg" $perm_flag ${interactive_flag:+$interactive_flag} -p "prd-$feat_id") 2>&1 \
+    claude ${effective_model:+--model "$effective_model"} --agent "$skill_arg" $perm_flag ${interactive_flag:+$interactive_flag} -p "prd-$feat_id") 2>&1 \
     | tee "$log_file" || exit_code=$?
 
   # ── ADR-008 PR-A: Phase 3 scripted tests ────────────────────────
@@ -554,10 +560,12 @@ run_phase3_tests() {
     fi
 
     local model_flag=""
-    [ -n "${MODEL_DEFAULT:-}" ] && model_flag="--model $MODEL_DEFAULT"
+    local _fix_model="${MODEL_DEFAULT:-}"
+    [ "$_fix_model" = "opusplan" ] && _fix_model="opus"
+    [ -n "$_fix_model" ] && model_flag="--model $_fix_model"
 
     local fix_perm_flag=""
-    [ "$AUTONOMY" = "full_auto" ] && fix_perm_flag="--dangerously-skip-permissions"
+    [ "$AUTONOMY" = "full_auto" ] && fix_perm_flag="--permission-mode bypassPermissions"
 
     local fix_exit=0
     if command -v claude &>/dev/null; then
