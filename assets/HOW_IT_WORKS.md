@@ -159,7 +159,7 @@ labels: auth, backend
 ## [MEDIUM] feat-002: Webhook retry with backoff
 
 Add retry logic to the webhook dispatcher.
-depends-on: none
+Depends on: none
 
 ## [LOW] feat-003: Dark mode toggle
 
@@ -255,6 +255,8 @@ If no agents are found, Feature-marker handles everything — the system degrade
 
 ```bash
 --autonomy <level>     # supervised | checkpoint | full_auto
+                       # checkpoint: stages worktrees + estimates cost, then halts at
+                       # awaiting-pipeline — Claude does not run until you resume manually
 --adapter <type>       # linear | github | jira | markdown
 --dry-run              # Show plan without executing (use with run)
 --feature <id>         # Run only one feature
