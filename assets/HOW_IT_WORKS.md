@@ -111,7 +111,7 @@ feature-marker-orchestrate run
 
 ### How it works step by step
 
-The orchestrator is a `for` loop in bash. For each feature in the backlog, it calls `claude --skill feature-marker` to run the pipeline. When Claude finishes, control returns to bash — it collects results and updates memory. Once all features finish, the loop creates PRs and cleans up worktrees in a single pass.
+The orchestrator is a `for` loop in bash. For each feature in the backlog, it calls `claude --agent feature-marker` to run the pipeline. When Claude finishes, control returns to bash — it collects results and updates memory. Once all features finish, the loop creates PRs and cleans up worktrees in a single pass.
 
 ![Terminal execution flow](./orchestrator-terminal-flow.png)
 
@@ -209,8 +209,8 @@ Override per run:
 
 **What `full_auto` actually does differently:**
 
-- Passes `--dangerously-skip-permissions` to every Claude invocation so file
-  writes, bash commands, and network calls run without interactive prompts.
+- Passes `--permission-mode bypassPermissions` to every Claude invocation so
+  file writes, bash commands, and network calls run without interactive prompts.
   The orchestrator prints a warning banner before each feature.
 - Extends the Phase 3 Ralph Loop from 2 fix attempts to 5 (override via
   `CFG_PHASE3_FULL_AUTO_MAX_FIX_ATTEMPTS`). Each fix attempt reads from and
@@ -297,7 +297,7 @@ feature-marker-orchestrate run --feature feat-auth 2>&1 | tee debug.log
 │     ├─ fetches backlog (Linear / GitHub / .md)       │
 │     ├─ for each feature:                             │
 │     │    ├─ git worktree add                         │
-│     │    ├─ claude --skill feature-marker            │ ← calls Claude Code
+│     │    ├─ claude --agent feature-marker            │ ← calls Claude Code
 │     │    │         prd-<feat-id>                     │
 │     │    │    └─ Feature-marker skill runs           │ ← same skill as Path 1
 │     │    │       PRD → TechSpec → Tasks → Code       │
