@@ -1,0 +1,594 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.xctest/Contents/MacOS/AppPackageTests",
+      "packagePath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample",
+      "productName" : "AppPackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.App-x86_64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build/sources",
+      "importPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/Sources/App/main.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "App",
+      "moduleOutputPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules/App.swiftmodule",
+      "objects" : [
+        "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build/main.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-apple-macosx10.13",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-Onone",
+        "-enable-testing",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "App_main",
+        "-swift-version",
+        "5",
+        "-Xfrontend",
+        "-experimental-lazy-typecheck",
+        "-Xfrontend",
+        "-experimental-skip-all-function-bodies",
+        "-Xfrontend",
+        "-experimental-allow-module-with-compiler-errors",
+        "-Xfrontend",
+        "-empty-abi-descriptor",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "swift_sample"
+      ],
+      "outputFileMapPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules/App.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : true,
+      "sources" : [
+        "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/Sources/App/main.swift"
+      ],
+      "tempsPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.AppPackageTests-x86_64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/sources",
+      "importPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules/AppTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "AppPackageTests",
+      "moduleOutputPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules/AppPackageTests.swiftmodule",
+      "objects" : [
+        "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-apple-macosx10.13",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/include/AppPackageTests-Swift.h",
+        "-Xfrontend",
+        "-experimental-lazy-typecheck",
+        "-Xfrontend",
+        "-experimental-skip-all-function-bodies",
+        "-Xfrontend",
+        "-experimental-allow-module-with-compiler-errors",
+        "-Xfrontend",
+        "-empty-abi-descriptor",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "swift_sample"
+      ],
+      "outputFileMapPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules/AppPackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : true,
+      "sources" : [
+        "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.AppTests-x86_64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppTests.build/sources",
+      "importPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/Tests/AppTests/AppTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules/App.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "AppTests",
+      "moduleOutputPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules/AppTests.swiftmodule",
+      "objects" : [
+        "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppTests.build/AppTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "5",
+        "-Xfrontend",
+        "-experimental-lazy-typecheck",
+        "-Xfrontend",
+        "-experimental-skip-all-function-bodies",
+        "-Xfrontend",
+        "-experimental-allow-module-with-compiler-errors",
+        "-Xfrontend",
+        "-empty-abi-descriptor",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "swift_sample"
+      ],
+      "outputFileMapPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules/AppTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : true,
+      "sources" : [
+        "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/Tests/AppTests/AppTests.swift"
+      ],
+      "tempsPath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "App" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "App",
+      "-package-name",
+      "swift_sample",
+      "-c",
+      "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/Sources/App/main.swift",
+      "-I",
+      "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules",
+      "-target",
+      "x86_64-apple-macosx10.13",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-Onone",
+      "-enable-testing",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "App_main",
+      "-swift-version",
+      "5",
+      "-Xfrontend",
+      "-experimental-lazy-typecheck",
+      "-Xfrontend",
+      "-experimental-skip-all-function-bodies",
+      "-Xfrontend",
+      "-experimental-allow-module-with-compiler-errors",
+      "-Xfrontend",
+      "-empty-abi-descriptor",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "swift_sample",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "AppPackageTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "AppPackageTests",
+      "-package-name",
+      "swift_sample",
+      "-c",
+      "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.derived/runner.swift",
+      "-I",
+      "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules",
+      "-target",
+      "x86_64-apple-macosx10.13",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/include/AppPackageTests-Swift.h",
+      "-Xfrontend",
+      "-experimental-lazy-typecheck",
+      "-Xfrontend",
+      "-experimental-skip-all-function-bodies",
+      "-Xfrontend",
+      "-experimental-allow-module-with-compiler-errors",
+      "-Xfrontend",
+      "-empty-abi-descriptor",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "swift_sample",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "AppTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "AppTests",
+      "-package-name",
+      "swift_sample",
+      "-c",
+      "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/Tests/AppTests/AppTests.swift",
+      "-I",
+      "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/Modules",
+      "-target",
+      "x86_64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "5",
+      "-Xfrontend",
+      "-experimental-lazy-typecheck",
+      "-Xfrontend",
+      "-experimental-skip-all-function-bodies",
+      "-Xfrontend",
+      "-experimental-allow-module-with-compiler-errors",
+      "-Xfrontend",
+      "-empty-abi-descriptor",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "swift_sample",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "App" : [
+
+    ],
+    "AppPackageTests" : [
+      "AppTests",
+      "App"
+    ],
+    "AppTests" : [
+      "App"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/Sources/App/main.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build/sources"
+    },
+    "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/sources"
+    },
+    "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/Tests/AppTests/AppTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppTests.build/sources"
+    },
+    "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}

@@ -337,19 +337,22 @@ EOPRD
   cp "$context_file" "$wt_path/.orchestrator-context.md"
   info "Context injected"
 
-  # ── ADR-008 PR-B: stack detection + agent routing ────────────────
+  # ── ADR-011 + ADR-008: stack profile (rich detector) + agent routing ─
   router_init "$feat_id"
 
-  # Detect stack from worktree file structure
+  # stack_profile_init runs the rich detector and exports PROJECT_STACK,
+  # PROJECT_TEST_CMD, PROJECT_BUILD_CMD, etc. for use throughout the pipeline.
+  stack_profile_init "$wt_path" 2>/dev/null || true
+
+  local detected_stack="${PROJECT_STACK:-unknown}"
+  local routed_agent="${ROUTING_FALLBACK:-feature-marker}"
+
+  # File path list still needed for router_route_task cache key; reuse PROJECT_SOURCE_DIRS
   local wt_file_paths
   wt_file_paths=$(find "$wt_path" -type f \( -name "*.swift" -o -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.py" -o -name "*.rs" -o -name "*.go" \) 2>/dev/null | head -20 | tr '\n' ':')
 
-  local detected_stack="unknown"
-  local routed_agent="${ROUTING_FALLBACK:-feature-marker}"
-
-  if [ -n "$wt_file_paths" ]; then
-    detected_stack=$(router_detect_stack_from_paths "$wt_file_paths")
-    routed_agent=$(router_route_task "$feat_id" "feature" "$wt_file_paths")
+  if [ -n "$detected_stack" ] && [ "$detected_stack" != "unknown" ]; then
+    routed_agent=$(router_route_task "$feat_id" "feature" "${wt_file_paths:-}")
     info "Stack: $detected_stack → agent: $routed_agent"
   fi
 
@@ -359,7 +362,7 @@ EOPRD
   local routing_file="$STATE_DIR/$feat_id/routing.json"
   local manifest_file="$CONFIG_DIR/agents-manifest.json"
   local agent_count=0
-  [ -f "$manifest_file" ] && agent_count=$(node -p "JSON.parse(require('fs').readFileSync('$manifest_file','utf-8')).agents.length" 2>/dev/null || echo "0")
+  [ -f "$manifest_file" ] && agent_count=$(json_count_array "$manifest_file" "agents" 2>/dev/null || echo "0")
 
   if [ "$ROUTING_PREFER" = "true" ] && [ "$agent_count" -gt 0 ]; then
     local tasks_file
@@ -480,22 +483,41 @@ EOPRD
   # Collect results
   cp "$log_file" "$RESULTS_DIR/${feat_id}_run.log" 2>/dev/null || true
   if [ ! -f "$results_file" ]; then
-    node -e "
-      require('fs').writeFileSync('$results_file', JSON.stringify({
-        feature_id: '$feat_id',
-        status: $exit_code === 0 ? 'completed' : ($exit_code === 2 || $exit_code === 10 ? 'paused' : 'failed'),
-        title: $(printf '%s' "$title" | node -p "JSON.stringify(require('fs').readFileSync('/dev/stdin','utf-8').trim())"),
-        pipeline: { prd: { status: 'completed' }, techspec: { status: 'pending' }, tasks: { status: 'pending' }, implementation: { status: 'pending' }, tests: { status: 'pending' }, review: { status: 'pending' } },
-        context_generated: { files_created: [], files_modified: [], schema_changes: [], new_dependencies: [], breaking_changes: [] },
-        pr_url: null, duration_seconds: $duration, errors: [], tasks: []
-      }, null, 2));
-    "
+    local title_json
+    title_json=$(printf '%s' "$title" | json_stringify 2>/dev/null || printf '""')
+    json_write_results "$results_file" \
+      feature_id      "$feat_id" \
+      status_ok       "$exit_code" \
+      title           "$title" \
+      duration_seconds "$duration" \
+      2>/dev/null || true
+    # Write the richer default shape if json_write_results produced a minimal file
+    if [ -f "$results_file" ] && ! python3 -c "import json,sys; d=json.load(open('$results_file')); assert 'pipeline' in d" 2>/dev/null; then
+      python3 - "$results_file" "$feat_id" "$exit_code" "$title_json" "$duration" <<'PYEOF' 2>/dev/null || true
+import json, sys
+f, feat_id, ec, title_json, dur = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], int(sys.argv[5])
+existing = {}
+try: existing = json.load(open(f))
+except: pass
+status = "completed" if ec == 0 else ("paused" if ec in (2,10) else "failed")
+existing.update({
+  "feature_id": feat_id, "status": status, "title": json.loads(title_json),
+  "pipeline": {"prd":{"status":"completed"},"techspec":{"status":"pending"},
+               "tasks":{"status":"pending"},"implementation":{"status":"pending"},
+               "tests":{"status":"pending"},"review":{"status":"pending"}},
+  "context_generated":{"files_created":[],"files_modified":[],"schema_changes":[],
+                        "new_dependencies":[],"breaking_changes":[]},
+  "pr_url": None, "duration_seconds": dur, "errors": [], "tasks": []
+})
+json.dump(existing, open(f,"w"), indent=2)
+PYEOF
+    fi
   fi
 
   # Safety guardrails
   if [ -f "$results_file" ]; then
     local has_breaking
-    has_breaking=$(node -p "(JSON.parse(require('fs').readFileSync('$results_file','utf-8')).context_generated?.breaking_changes||[]).length>0" 2>/dev/null || echo "false")
+    has_breaking=$(python3 -c "import json,sys; d=json.load(open('$results_file')); print('true' if len(d.get('context_generated',{}).get('breaking_changes',[])) > 0 else 'false')" 2>/dev/null || echo "false")
     if [ "$has_breaking" = "true" ] && [ "$BREAKING_PAUSE" = "true" ]; then
       info "! BREAKING CHANGES in $feat_id — pausing"
       wt_update_status "$feat_id" "paused" "breaking-change-review"
@@ -593,25 +615,25 @@ run_phase3_tests() {
   # Reset attempt trail for this run
   rm -f "$STATE_DIR/$feat_id/phase3-attempts.log"
 
-  # Detect stack from worktree
-  local wt_file_paths
-  wt_file_paths=$(find "$wt_path" -type f \( -name "*.swift" -o -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.py" -o -name "*.rs" -o -name "*.go" \) 2>/dev/null | head -20 | tr '\n' ':')
-  local stack="unknown"
-  [ -n "$wt_file_paths" ] && stack=$(router_detect_stack_from_paths "$wt_file_paths")
+  # Re-init stack profile (idempotent — uses cache when already run for this worktree)
+  stack_profile_init "$wt_path" 2>/dev/null || true
+  local stack="${PROJECT_STACK:-unknown}"
 
-  # Map stack to test command
-  local test_cmd=""
-  case "$stack" in
-    ios)    test_cmd="swift test" ;;
-    node)   test_cmd="jest" ;;
-    rust)   test_cmd="cargo test" ;;
-    python) test_cmd="pytest" ;;
-    go)     test_cmd="go test ./..." ;;
-    *)
-      info "Phase 3: unknown stack — skipping scripted tests"
-      return 0
-      ;;
-  esac
+  # Use PROJECT_TEST_CMD from the profile; fall back to built-in defaults
+  local test_cmd="${PROJECT_TEST_CMD:-}"
+  if [ -z "$test_cmd" ]; then
+    case "$stack" in
+      ios)    test_cmd="swift test" ;;
+      nodejs|node) test_cmd="jest" ;;
+      rust)   test_cmd="cargo test" ;;
+      python) test_cmd="pytest" ;;
+      go)     test_cmd="go test ./..." ;;
+      *)
+        info "Phase 3: unknown stack — skipping scripted tests"
+        return 0
+        ;;
+    esac
+  fi
 
   info "Phase 3: running tests ($stack): $test_cmd"
 
@@ -661,8 +683,8 @@ run_phase3_tests() {
 
     if [ -n "$learned_fix" ] && [ "$learned_fix" != "null" ]; then
       local hint
-      hint=$(echo "$learned_fix" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).fix" 2>/dev/null || echo "")
-      used_learn_id=$(echo "$learned_fix" | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf-8')).id" 2>/dev/null || echo "")
+      hint=$(echo "$learned_fix" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('fix',''))" 2>/dev/null || echo "")
+      used_learn_id=$(echo "$learned_fix" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null || echo "")
       if [ -n "$hint" ]; then
         info "Phase 3: applying learned fix hint (id: $used_learn_id)"
         fix_prompt="$fix_prompt\n\nKnown fix hint: $hint"

@@ -24,12 +24,8 @@ router_init() {
   mkdir -p "$CONFIG_DIR"
 
   if [ ! -f "$STACK_MAP_FILE" ]; then
-    node -e "
-      require('fs').writeFileSync('$STACK_MAP_FILE', JSON.stringify({
-        created_at: new Date().toISOString(),
-        entries: {}
-      }, null, 2));
-    " 2>/dev/null || echo '{"created_at":"","entries":{}}' > "$STACK_MAP_FILE"
+    json_init_file "$STACK_MAP_FILE" 2>/dev/null \
+      || echo '{"created_at":"","entries":{}}' > "$STACK_MAP_FILE"
   fi
 }
 
@@ -41,15 +37,26 @@ router_init() {
 router_detect_stack_from_paths() {
   local paths_str="$1"
 
-  # Replace colons with newlines for iteration
+  # Prefer stack_profile_primary when stack_profile_init has already run for this worktree.
+  # Fall back to extension counting so direct callers (e.g. tests) still work without a worktree.
+  if [ -n "${PROJECT_STACK:-}" ] && [ "${PROJECT_STACK}" != "unknown" ]; then
+    # Normalise: stack-detector.sh uses "nodejs" but the router historically used "node"
+    case "$PROJECT_STACK" in
+      nodejs) echo "node" ;;
+      *)      echo "$PROJECT_STACK" ;;
+    esac
+    return 0
+  fi
+
+  # Extension-counting fallback (preserved for backward compatibility)
   local stack="unknown"
   local swift_count=0 node_count=0 python_count=0 rust_count=0 go_count=0
 
   local IFS_ORIG="$IFS"
   IFS=":"
-  for path in $paths_str; do
+  for p in $paths_str; do
     IFS="$IFS_ORIG"
-    case "$path" in
+    case "$p" in
       *.swift)           swift_count=$((swift_count + 1)) ;;
       *.ts|*.tsx|*.js)   node_count=$((node_count + 1)) ;;
       *.py)              python_count=$((python_count + 1)) ;;
@@ -60,7 +67,6 @@ router_detect_stack_from_paths() {
   done
   IFS="$IFS_ORIG"
 
-  # Pick the most frequent stack; ties broken by declaration order
   local max=0
   [ "$swift_count"  -gt "$max" ] && max="$swift_count"  && stack="ios"
   [ "$node_count"   -gt "$max" ] && max="$node_count"   && stack="node"
@@ -156,28 +162,16 @@ router_route_task() {
     fi
   fi
 
-  # Cache the result
-  node -e "
-    const fs = require('fs');
-    let data;
-    try {
-      data = JSON.parse(fs.readFileSync('$STACK_MAP_FILE', 'utf-8'));
-    } catch(e) {
-      data = { created_at: new Date().toISOString(), entries: {} };
-    }
-    const key = '${feat_id}::${task_id}';
-    data.entries[key] = {
-      feat_id: '$feat_id',
-      task_id: '$task_id',
-      stack: '$stack',
-      classification_label: '$classification_label',
-      preferred_agent: '$preferred_agent',
-      resolved_agent: '$resolved_agent',
-      file_paths: '$file_paths',
-      cached_at: new Date().toISOString()
-    };
-    fs.writeFileSync('$STACK_MAP_FILE', JSON.stringify(data, null, 2));
-  " 2>/dev/null || true
+  # Cache the result — values passed as argv, not interpolated into JS source
+  json_set_entry "$STACK_MAP_FILE" "${feat_id}::${task_id}" \
+    feat_id              "$feat_id" \
+    task_id              "$task_id" \
+    stack                "$stack" \
+    classification_label "$classification_label" \
+    preferred_agent      "$preferred_agent" \
+    resolved_agent       "$resolved_agent" \
+    file_paths           "$file_paths" \
+    2>/dev/null || true
 
   echo "$resolved_agent"
 }
@@ -193,12 +187,5 @@ router_get_cached() {
 
   [ ! -f "$STACK_MAP_FILE" ] && echo "" && return
 
-  node -p "
-    try {
-      const data = JSON.parse(require('fs').readFileSync('$STACK_MAP_FILE', 'utf-8'));
-      const key = '${feat_id}::${task_id}';
-      const entry = data.entries && data.entries[key];
-      entry ? entry.resolved_agent : '';
-    } catch(e) { ''; }
-  " 2>/dev/null || echo ""
+  json_get_entry "$STACK_MAP_FILE" "${feat_id}::${task_id}" resolved_agent 2>/dev/null || echo ""
 }

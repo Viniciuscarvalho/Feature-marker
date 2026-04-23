@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/primary.swiftdeps"
+  },
+  "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.derived/runner.swift": {
+    "dependencies": "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/runner.d",
+    "object": "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/runner.swift.o",
+    "swiftmodule": "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/runner~partial.swiftmodule",
+    "swift-dependencies": "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/runner.swiftdeps",
+    "diagnostics": "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/AppPackageTests.build/runner.dia"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build/primary.swiftdeps"
+  },
+  "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/Sources/App/main.swift": {
+    "dependencies": "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build/main.d",
+    "object": "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build/main.swift.o",
+    "swiftmodule": "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build/main.swiftdeps",
+    "diagnostics": "/Users/viniciuscarvalho/Documents/Feature-marker/tests/fixtures/swift-sample/.build/index-build/x86_64-apple-macosx/debug/App.build/main.dia"
+  }
+}
