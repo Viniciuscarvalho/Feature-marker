@@ -318,6 +318,8 @@ sub_run() {
   # ADR-009 modules (optional — loaded if present)
   [ -f "$LIB_DIR/local_model.sh" ] && source "$LIB_DIR/local_model.sh"
   [ -f "$LIB_DIR/ingest.sh"      ] && source "$LIB_DIR/ingest.sh"
+  # ADR-011 PR-F: local-model injection screen (optional — requires local_model.sh)
+  [ -f "$LIB_DIR/injection_screen.sh" ] && source "$LIB_DIR/injection_screen.sh"
   source "$LIB_DIR/runner.sh"
 
   # Resolve config file — check multiple locations
