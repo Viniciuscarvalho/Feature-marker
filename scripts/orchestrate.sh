@@ -371,6 +371,13 @@ sub_run() {
   count=$(run_adapter)
   info "Loaded $count features"
 
+  # ADR-011 PR-B: sanitize backlog items before any feature processing
+  if [ "${SANITIZE_MODE:-strict}" != "off" ] && command -v node &>/dev/null; then
+    local backlog_json="$ROOT_DIR/$BACKLOG_OUTPUT"
+    [ -f "$backlog_json" ] && node "$SCRIPT_DIR/sanitize-backlog.js" "$backlog_json" 2>&1 \
+      | grep -v "^$" | sed 's/^/  [sanitize] /' || true
+  fi
+
   local backlog_file="$ROOT_DIR/$BACKLOG_OUTPUT"
 
   # Dry-run: show plan and exit
