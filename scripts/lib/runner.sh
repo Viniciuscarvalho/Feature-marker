@@ -289,6 +289,13 @@ run_feature() {
   wt_path=$(wt_create "$feat_id" "$BASE_BRANCH")
   info "Worktree: $wt_path"
 
+  # ADR-011 PR-C: emit per-worktree .claude/settings.json with stack-adaptive allowlist
+  # stack_profile_init hasn't run yet at this point so we pass "unknown" as a placeholder;
+  # guardrails.sh is called again after stack detection with the resolved stack.
+  if [ -f "${LIB_DIR}/../guardrails.sh" ]; then
+    bash "${LIB_DIR}/../guardrails.sh" emit "$wt_path" "unknown" 2>/dev/null || true
+  fi
+
   # Seed PRD — ADR-011 PR-B: body is sanitised and wrapped in a USER_FEATURE fence.
   # The RULES block below is the only authoritative instruction source for Claude;
   # the USER_FEATURE block is treated as untrusted user input from the backlog.
@@ -371,6 +378,10 @@ EOPRD
   if [ -n "$detected_stack" ] && [ "$detected_stack" != "unknown" ]; then
     routed_agent=$(router_route_task "$feat_id" "feature" "${wt_file_paths:-}")
     info "Stack: $detected_stack → agent: $routed_agent"
+    # ADR-011 PR-C: re-emit settings.json now that we have the real stack
+    if [ -f "${LIB_DIR}/../guardrails.sh" ]; then
+      bash "${LIB_DIR}/../guardrails.sh" emit "$wt_path" "$detected_stack" 2>/dev/null || true
+    fi
   fi
 
   export ROUTED_AGENT="$routed_agent"
@@ -981,6 +992,15 @@ run_pr_creation() {
 
   local pr_flag=""
   [ "$PR_STRATEGY" = "draft" ] && pr_flag="--draft"
+
+  # ADR-011 PR-C: audit command log before creating PR
+  if [ -f "${LIB_DIR}/../audit_commands.sh" ]; then
+    bash "${LIB_DIR}/../audit_commands.sh" verify-clean "$wt_path" 2>&1 || {
+      warn "audit_commands: deny-list hits detected — blocking PR creation for $feat_id"
+      wt_update_status "$feat_id" "error" "audit-denied"
+      return 1
+    }
+  fi
 
   local pr_url="" pr_err="" pr_exit pr_tmpfile
   pr_tmpfile=$(mktemp)
