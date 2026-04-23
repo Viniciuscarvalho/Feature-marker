@@ -309,6 +309,9 @@ sub_run() {
   source "$LIB_DIR/worktree.sh"
   source "$LIB_DIR/memory.sh"
   source "$LIB_DIR/display.sh"
+  # ADR-011 foundation modules (must load before router)
+  source "$LIB_DIR/json_io.sh"
+  source "$LIB_DIR/stack_profile.sh"
   # ADR-008 modules
   source "$LIB_DIR/cost.sh"
   source "$LIB_DIR/router.sh"

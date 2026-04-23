@@ -1,0 +1,4 @@
+.build/
+.orchestrator/
+*.o
+*.d
