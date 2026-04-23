@@ -68,17 +68,18 @@ export BASE_BRANCH ADAPTER AUTONOMY WORKTREE_BASE BRANCH_PREFIX
 # ── source worktree manager ─────────────────────────────────────
 
 source "$SCRIPT_DIR/worktree-manager.sh"
+# shellcheck source=lib/ui.sh
+source "$SCRIPT_DIR/lib/ui.sh"
 
 # ── helpers ──────────────────────────────────────────────────────
 
-log()    { echo "▶ [orchestrator] $*"; }
-info()   { echo "  [orchestrator] $*"; }
-err()    { echo "✗ [orchestrator] $*" >&2; }
+log()    { printf "${C_CYAN}▶${C_NC} [orchestrator] %s\n" "$*"; }
+info()   { printf "${C_DIM}  [orchestrator] %s${C_NC}\n" "$*"; }
+err()    { printf "${C_RED}✗${C_NC} [orchestrator] %s\n" "$*" >&2; }
 banner() {
-  echo ""
-  echo "═══════════════════════════════════════════════════"
-  echo "  $*"
-  echo "═══════════════════════════════════════════════════"
+  printf "\n${C_BOLD}${C_CYAN}%s${C_NC}\n" "═══════════════════════════════════════════════════"
+  printf "${C_BOLD}  %s${C_NC}\n" "$*"
+  printf "${C_BOLD}${C_CYAN}%s${C_NC}\n" "═══════════════════════════════════════════════════"
 }
 
 write_status() {

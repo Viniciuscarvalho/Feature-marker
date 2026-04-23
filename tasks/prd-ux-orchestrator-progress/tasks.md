@@ -2,14 +2,17 @@
 
 ## Task List
 
-- [ ] 1. Add `display_backlog_table()` to `display.sh`
-- [ ] 2. Call `display_backlog_table()` at each feature-start banner in `runner.sh`
-- [ ] 3. Add `display_next_steps()` to `display.sh`
-- [ ] 4. Thread `next_feat_id` from `run_backlog()` into `run_feature()` and call `display_next_steps()`
-- [ ] 5. Improve cycle-gate block messaging in `runner.sh`
-- [ ] 6. Fix `processed` count (introduce `ran_count`) in `run_backlog()`
-- [ ] 7. Add "Ran this session" row to `display_summary()` in `display.sh`
+- [x] 1. Add `display_backlog_table()` to `display.sh`
+- [x] 2. Call `display_backlog_table()` at each feature-start banner in `runner.sh`
+- [x] 3. Add `display_next_steps()` to `display.sh`
+- [x] 4. Thread `next_feat_id` from `run_backlog()` into `run_feature()` and call `display_next_steps()`
+- [x] 5. Improve cycle-gate block messaging in `runner.sh`
+- [x] 6. Fix `processed` count (introduce `ran_count`) in `run_backlog()`
+- [x] 7. Add "Ran this session" row to `display_summary()` in `display.sh`
 - [ ] 8. Manual smoke test against stub-project
+- [x] 9. Create `scripts/lib/ui.sh` — TTY-gated color module (C_RED, C_GREEN, C_YELLOW, C_CYAN, C_DIM, C_BOLD, C_NC + FM_FORCE_COLOR override)
+- [x] 10. Color status icons in `display_backlog_table`, `display_next_steps`, `display_paused_handoff`; color the "BACKLOG [N/M done]" header
+- [x] 11. Add `display_live_phase()` to `display.sh`; wire into heartbeat loop in `runner.sh`
 
 ## Task Details
 
