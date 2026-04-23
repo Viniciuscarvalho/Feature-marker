@@ -1,5 +1,51 @@
 #!/bin/bash
 # lib/display.sh — Terminal progress and formatting
+#
+# Phase-aware display helpers:
+#   display_phase_start  — dim separator line printed when a phase begins
+#   display_phase_done   — green checkmark printed when a phase completes
+#   display_fix_attempt  — mini-header for each Phase 3 fix loop iteration
+
+# display_phase_start <phase_num>
+# Prints a dim separator indicating a pipeline phase is starting.
+# Reads label + ETA from fm_phase_label / fm_phase_eta if phases.sh is loaded.
+display_phase_start() {
+  local phase="$1"
+  local label eta
+  if declare -f fm_phase_label &>/dev/null; then
+    label=$(fm_phase_label "$phase" 2>/dev/null || echo "?")
+    eta=$(fm_phase_eta "$phase" 2>/dev/null || echo "")
+  else
+    label="?" eta=""
+  fi
+  local d="${FM_DIM:-}" r="${FM_RESET:-}"
+  local eta_str=""
+  [ -n "$eta" ] && eta_str=" $eta"
+  printf "\n  %s─── Phase %s · %s%s ────────────────────────────────────────%s\n\n" \
+    "$d" "$phase" "$label" "$eta_str" "$r"
+}
+
+# display_phase_done <phase_num> <elapsed_s>
+# Prints a green checkmark when a phase completes successfully.
+display_phase_done() {
+  local phase="$1" elapsed="${2:-0}"
+  local label
+  if declare -f fm_phase_label &>/dev/null; then
+    label=$(fm_phase_label "$phase" 2>/dev/null || echo "?")
+  else
+    label="?"
+  fi
+  local g="${FM_GREEN:-}" r="${FM_RESET:-}"
+  printf "  %s✓%s  Phase %s · %s — %ss\n" "$g" "$r" "$phase" "$label" "$elapsed"
+}
+
+# display_fix_attempt <attempt_n> <max_n>
+# Prints a mini-header at the start of each Phase 3 fix loop iteration.
+display_fix_attempt() {
+  local attempt="$1" max="$2"
+  local c="${FM_CYAN:-}" d="${FM_DIM:-}" r="${FM_RESET:-}"
+  printf "\n  %s·%s  Fix attempt %s/%s\n" "$c" "$r" "$attempt" "$max"
+}
 
 display_feature_status() {
   local feat_id="$1"
@@ -123,8 +169,8 @@ display_summary() {
 }
 
 # display_paused_handoff <feat_id> <attempts> [pause_reason_path]
-# Prints a plain-text guidance block when Phase 3 is exhausted.
-# PR B upgrades this to a boxed ANSI variant.
+# Prints a boxed guidance block when Phase 3 fix budget is exhausted.
+# Uses FM_YELLOW / FM_BOLD / FM_RESET when colors are initialized.
 display_paused_handoff() {
   local feat_id="$1" attempts="$2" pause_reason_path="${3:-}"
 
@@ -137,16 +183,103 @@ display_paused_handoff() {
     " 2>/dev/null || echo "")
   fi
 
+  local y="${FM_YELLOW:-}" b="${FM_BOLD:-}" r="${FM_RESET:-}"
+
   echo ""
-  echo "  ⏸  $feat_id — Phase 3 paused after $attempts fix attempt(s)"
-  echo "     Tests still failing. Review the attempt trail and fix manually."
-  echo ""
-  [ -n "$trail_path" ] && echo "     Trail: $trail_path"
-  echo "     Resume: $resume_cmd"
-  echo ""
-  echo "     Backlog continues with the next ready feature."
+  printf "  %s┌──────────────────────────────────────────────────────────┐%s\n" "$y" "$r"
+  printf "  %s│%s  %s⏸  %s — Phase 3 paused%s\n" "$y" "$r" "$b" "$feat_id" "$r"
+  printf "  %s│%s\n" "$y" "$r"
+  printf "  %s│%s  Exhausted %s fix attempt(s). Tests still failing.\n" "$y" "$r" "$attempts"
+  printf "  %s│%s  Review the attempt trail and fix manually.\n" "$y" "$r"
+  if [ -n "$trail_path" ]; then
+    printf "  %s│%s\n" "$y" "$r"
+    printf "  %s│%s  Trail: %s\n" "$y" "$r" "$trail_path"
+  fi
+  printf "  %s│%s\n" "$y" "$r"
+  printf "  %s│%s  Resume: %s\n" "$y" "$r" "$resume_cmd"
+  printf "  %s│%s  Backlog continues with the next ready feature.\n" "$y" "$r"
+  printf "  %s└──────────────────────────────────────────────────────────┘%s\n" "$y" "$r"
   echo ""
 }
+
+# display_fullauto_banner
+# Boxed warning printed once when AUTONOMY=full_auto — bypassPermissions active.
+display_fullauto_banner() {
+  local y="${FM_YELLOW:-}" b="${FM_BOLD:-}" r="${FM_RESET:-}"
+  echo ""
+  printf "  %s┌──────────────────────────────────────────────────────────┐%s\n" "$y" "$r"
+  printf "  %s│%s  %s⚠  FULL_AUTO — bypassPermissions mode%s\n" "$y" "$r" "$b" "$r"
+  printf "  %s│%s  File writes, bash commands, network — no prompts.\n" "$y" "$r"
+  printf "  %s│%s  Phase 3 Ralph Loop active — learning store captures.\n" "$y" "$r"
+  printf "  %s└──────────────────────────────────────────────────────────┘%s\n" "$y" "$r"
+  echo ""
+}
+
+# display_invocation_header <feat_id> <autonomy> <model> <agent> <wt_path> <log_file>
+# Printed before Claude is invoked. Shows feature, mode, and artifact paths.
+display_invocation_header() {
+  local feat_id="$1" autonomy="$2" model="${3:-default}" agent="$4" wt_path="$5" log_file="$6"
+  local c="${FM_CYAN:-}" b="${FM_BOLD:-}" d="${FM_DIM:-}" r="${FM_RESET:-}"
+  [ -z "$model" ] && model="default"
+
+  echo ""
+  printf "  %s▶%s  %s%s%s\n" "$c" "$r" "$b" "$feat_id" "$r"
+  printf "  %s│%s  Autonomy : %s\n" "$d" "$r" "$autonomy"
+  printf "  %s│%s  Model    : %s\n" "$d" "$r" "$model"
+  printf "  %s│%s  Agent    : %s\n" "$d" "$r" "$agent"
+  if [ "$autonomy" = "full_auto" ]; then
+    printf "  %s│%s  Artifacts: %s/tasks/prd-%s/\n" "$d" "$r" "$wt_path" "$feat_id"
+    printf "  %s│%s  Log      : %s\n" "$d" "$r" "$log_file"
+    printf "  %s│%s  %s(output buffered — watcher prints progress below)%s\n" "$d" "$r" "$d" "$r"
+  fi
+  echo ""
+}
+
+# _watcher_format_tick <elapsed_s> <changed_files_space_sep> <current_phase> <interactive> <style>
+# Formats a single heartbeat line. Extracted for testability.
+# style: "classic" for old [progress] format; anything else for new format.
+# interactive: "1" for TTY-rich output, "0" for log-safe plain text.
+_watcher_format_tick() {
+  local elapsed="$1" changed_files="$2" current_phase="$3" interactive="${4:-0}" style="${5:-}"
+
+  local phase_label=""
+  if declare -f fm_phase_label &>/dev/null && [ -n "$current_phase" ]; then
+    phase_label=$(fm_phase_label "$current_phase" 2>/dev/null || echo "?")
+  fi
+
+  if [ "$style" = "classic" ]; then
+    if [ -n "$changed_files" ]; then
+      printf '  [progress] %ds elapsed — files written: %s\n' "$elapsed" "$changed_files"
+    else
+      printf '  [progress] %ds elapsed — Claude working (no new files)\n' "$elapsed"
+    fi
+    return
+  fi
+
+  local phase_hdr=""
+  if [ -n "$current_phase" ] && [ -n "$phase_label" ]; then
+    phase_hdr="[Phase ${current_phase}/4 · ${phase_label}] "
+  fi
+
+  if [ "$interactive" = "1" ]; then
+    local c="${FM_CYAN:-}" d="${FM_DIM:-}" r="${FM_RESET:-}"
+    if [ -n "$changed_files" ]; then
+      printf '  %s▶%s %s%ds · wrote %s\n' "$c" "$r" "$phase_hdr" "$elapsed" \
+        "$(printf '%s' "$changed_files" | sed 's/[[:space:]]*$//')"
+    else
+      printf '  %s·%s %s%ds\n' "$d" "$r" "$phase_hdr" "$elapsed"
+    fi
+  else
+    if [ -n "$changed_files" ]; then
+      printf '  [fm] phase=%s elapsed=%ds files=%s\n' \
+        "${current_phase:-?}" "$elapsed" \
+        "$(printf '%s' "$changed_files" | sed 's/[[:space:]]*$//' | tr ' ' ',')"
+    else
+      printf '  [fm] phase=%s elapsed=%ds\n' "${current_phase:-?}" "$elapsed"
+    fi
+  fi
+}
+export -f _watcher_format_tick
 
 display_routing() {
   local routing_file="$1"

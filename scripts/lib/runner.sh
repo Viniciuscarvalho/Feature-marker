@@ -14,29 +14,58 @@
 #   - cycle_gate_check() before advancing to next feature (cycle_gate.sh)
 
 # _orchestrator_watcher_start <sentinel> <watch_dir> [interval_s]
-# Launches a background heartbeat process that prints [progress] lines to stdout
-# every interval_s seconds. Tracks newly-written files under watch_dir by name.
-# PID stored at <sentinel>.pid so _orchestrator_watcher_stop can kill it.
+# Launches a background heartbeat that prints phase-aware progress lines every
+# interval_s seconds. Uses FM_PROGRESS_STYLE=classic for legacy [progress] format.
 # Set PROGRESS_INTERVAL=0 to disable entirely.
 _orchestrator_watcher_start() {
   local sentinel="$1" watch_dir="$2" interval="${3:-45}"
   [ "${interval}" -le 0 ] 2>/dev/null && return 0
-  local ref="${sentinel}.ref" pid_file="${sentinel}.pid"
+  local ref="${sentinel}.ref" pid_file="${sentinel}.pid" phase_file="${sentinel}.phase"
   local start_ts
   start_ts=$(date +%s)
   touch "$sentinel" "$ref"
+  printf '' > "$phase_file"
   (
+    [ -f "${LIB_DIR:-}/phases.sh" ] && source "${LIB_DIR}/phases.sh" 2>/dev/null || true
+    local last_phase=""
     while [ -f "$sentinel" ]; do
       sleep "$interval"
       [ -f "$sentinel" ] || break
+      local elapsed
       elapsed=$(( $(date +%s) - start_ts ))
-      changed=$(find "$watch_dir" -newer "$ref" -type f 2>/dev/null | sort | while IFS= read -r f; do basename "$f"; done | tr '\n' ' ')
-      touch "$ref"
-      if [ -n "$changed" ]; then
-        printf '  [progress] %ds elapsed — files written: %s\n' "$elapsed" "$changed"
-      else
-        printf '  [progress] %ds elapsed — Claude working (no new files in last %ds)\n' "$elapsed" "$interval"
+
+      # Collect changed files (full paths for phase detection, basenames for display)
+      local changed_paths changed_names current_phase
+      changed_paths=$(find "$watch_dir" -newer "$ref" -type f 2>/dev/null | sort || true)
+      changed_names=""
+      if [ -n "$changed_paths" ]; then
+        changed_names=$(printf '%s\n' "$changed_paths" | while IFS= read -r f; do basename "$f"; done | tr '\n' ' ')
       fi
+      touch "$ref"
+
+      # Detect phase from most recently written file
+      current_phase=$(cat "$phase_file" 2>/dev/null || true)
+      if [ -n "$changed_paths" ] && declare -f fm_phase_for_file &>/dev/null; then
+        while IFS= read -r f; do
+          local p
+          p=$(fm_phase_for_file "$f" 2>/dev/null || true)
+          [ -n "$p" ] && current_phase="$p"
+        done <<< "$changed_paths"
+        [ -n "$current_phase" ] && printf '%s' "$current_phase" > "$phase_file"
+      fi
+
+      # Emit phase transition separator
+      if [ -n "$current_phase" ] && [ -n "$last_phase" ] && [ "$current_phase" != "$last_phase" ]; then
+        local prev_label cur_label
+        prev_label=$(fm_phase_label "$last_phase" 2>/dev/null || echo "$last_phase")
+        cur_label=$(fm_phase_label "$current_phase" 2>/dev/null || echo "$current_phase")
+        printf '  %s─── Phase %s → Phase %s ─────────────────────────────────────%s\n' \
+          "${FM_DIM:-}" "$prev_label" "$cur_label" "${FM_RESET:-}"
+      fi
+      last_phase="$current_phase"
+
+      _watcher_format_tick "$elapsed" "$changed_names" "$current_phase" \
+        "${FM_INTERACTIVE:-0}" "${FM_PROGRESS_STYLE:-}"
     done
   ) &
   echo $! > "$pid_file"
@@ -423,11 +452,7 @@ EOPRD
   local perm_flag=""
   if [ "$AUTONOMY" = "full_auto" ]; then
     perm_flag="--permission-mode bypassPermissions"
-    echo ""
-    echo "  ⚠  FULL_AUTO — running with bypassPermissions mode"
-    echo "     File writes, bash commands, and network calls run WITHOUT prompts."
-    echo "     Phase 3 Ralph Loop active — learning store captures fixes and failures."
-    echo ""
+    display_fullauto_banner
   fi
 
   # ADR-009 PR-H: quality-warning banner when local generator replacement is active
@@ -439,12 +464,9 @@ EOPRD
     echo ""
   fi
 
-  info "Autonomy=$AUTONOMY — invoking pipeline (model: ${effective_model:-default}, agent: $skill_arg)..."
+  display_phase_start 1
+  display_invocation_header "$feat_id" "$AUTONOMY" "${effective_model:-}" "$skill_arg" "$wt_path" "$log_file"
   if [ "$AUTONOMY" = "full_auto" ]; then
-    echo "  [progress] Claude runs in batch (-p) mode — output is buffered until completion."
-    echo "             Monitor artifacts : $wt_path/tasks/prd-$feat_id/"
-    echo "             Monitor run log   : $log_file  (populates when Claude exits)"
-    echo ""
     _orchestrator_watcher_start \
       "$STATE_DIR/$feat_id/.watcher-active" \
       "$wt_path/tasks/prd-$feat_id" \
@@ -461,6 +483,7 @@ EOPRD
   # supervised handles tests interactively inside the Claude session; skip scripted runner.
   if [ "$exit_code" -eq 0 ] && [ "$AUTONOMY" != "supervised" ]; then
     local phase3_fix_attempts=0
+    display_phase_start 3
     run_phase3_tests "$feat_id" "$wt_path"
     local phase3_exit=$?
     phase3_fix_attempts=$(cat "$STATE_DIR/$feat_id/phase3-fix-attempts" 2>/dev/null || echo "0")
@@ -517,6 +540,7 @@ EOPRD
   if [ "$exit_code" -eq 0 ]; then
     if [ "$AUTONOMY" = "full_auto" ] || [ "$AUTONOMY" = "checkpoint" ]; then
       # full_auto: PR with auto-merge configured; checkpoint: draft PR for human review
+      display_phase_start 4
       run_pr_creation "$feat_id" "$title" "$wt_path" "$results_file"
     else
       # supervised — the interactive session handled Phase 4; mark complete
@@ -589,6 +613,8 @@ run_phase3_tests() {
   local wt_path="$2"
 
   local fix_attempts=0
+  local phase3_start
+  phase3_start=$(date +%s)
   echo "$fix_attempts" > "$STATE_DIR/$feat_id/phase3-fix-attempts"
   # Reset attempt trail for this run
   rm -f "$STATE_DIR/$feat_id/phase3-attempts.log"
@@ -622,6 +648,7 @@ run_phase3_tests() {
 
   if [ "$test_exit" -eq 0 ]; then
     info "Phase 3: tests passed"
+    display_phase_done 3 $(( $(date +%s) - phase3_start ))
     return 0
   fi
 
@@ -641,7 +668,7 @@ run_phase3_tests() {
     fix_attempts=$((fix_attempts + 1))
     echo "$fix_attempts" > "$STATE_DIR/$feat_id/phase3-fix-attempts"
 
-    info "Phase 3: fix attempt $fix_attempts/$max_fix_attempts"
+    display_fix_attempt "$fix_attempts" "$max_fix_attempts"
 
     # Compute error signature from current test output
     local error_sig
@@ -698,6 +725,7 @@ run_phase3_tests() {
 
     if [ "$test_exit" -eq 0 ]; then
       info "Phase 3: tests passed after fix attempt $fix_attempts"
+      display_phase_done 3 $(( $(date +%s) - phase3_start ))
 
       # Verify retrieved hint was useful
       if [ -n "$used_learn_id" ]; then
@@ -959,6 +987,7 @@ run_pr_creation() {
   if [ $pr_exit -eq 0 ] && [ -n "$pr_url" ]; then
     wt_update_status "$feat_id" "pr-created" "complete"
     node -e "const fs=require('fs');const r=JSON.parse(fs.readFileSync('$results_file','utf-8'));r.pr_url='$pr_url';r.pipeline.review={status:'completed',pr_url:'$pr_url'};fs.writeFileSync('$results_file',JSON.stringify(r,null,2));" 2>/dev/null || true
+    display_phase_done 4 0
     info "PR: $pr_url"
     # ADR-009 PR-G / ADR-010: trigger background review-ingest when available
     if declare -f ingest_trigger_if_merged &>/dev/null; then
