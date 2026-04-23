@@ -35,7 +35,7 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     --version|-V)
-      echo "feature-marker v5.2.0"
+      echo "feature-marker v7.0.0"
       exit 0
       ;;
     --interactive|-i)
@@ -247,7 +247,7 @@ if [[ "${INTERACTIVE_MODE}" == "true" ]]; then
     echo "  The agent will execute all 4 phases with file generation"
     echo ""
   fi
-else
+elif [[ -z "${EXECUTION_MODE:-}" ]]; then
   info "To start/continue this workflow, use Claude Code:"
   echo "  /feature-marker ${FEATURE_NAME}"
   echo "  /feature-marker --interactive ${FEATURE_NAME}  # For interactive mode"
