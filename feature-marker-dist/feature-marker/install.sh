@@ -8,11 +8,13 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # Source directories (in the repository)
 SKILL_SRC="${REPO_ROOT}/feature-marker"
 AGENT_SRC="${REPO_ROOT}/agents/feature-marker.md"
+PHASES_SRC="${REPO_ROOT}/agents/phases"
 TUI_SRC="${REPO_ROOT}/../feature-marker-tui"
 
 # Destination directories (in user's ~/.claude)
 SKILL_DST="${HOME}/.claude/skills/feature-marker"
 AGENT_DST="${HOME}/.claude/agents/feature-marker.md"
+PHASES_DST="${HOME}/.claude/skills/feature-marker/agents/phases"
 TUI_INSTALL_DIR="${HOME}/.local/bin"
 
 # Parse arguments
@@ -52,17 +54,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "╔═══════════════════════════════════════╗"
-echo "║   Installing feature-marker v3.0.0   ║"
+echo "║   Installing feature-marker v7.0.0   ║"
 echo "╚═══════════════════════════════════════╝"
 echo ""
 
 echo "Source:"
-echo "  Skill: ${SKILL_SRC}"
-echo "  Agent: ${AGENT_SRC}"
+echo "  Skill:  ${SKILL_SRC}"
+echo "  Agent:  ${AGENT_SRC}"
+echo "  Phases: ${PHASES_SRC}"
 echo ""
 echo "Destination:"
-echo "  Skill: ${SKILL_DST}"
-echo "  Agent: ${AGENT_DST}"
+echo "  Skill:  ${SKILL_DST}"
+echo "  Agent:  ${AGENT_DST}"
+echo "  Phases: ${PHASES_DST}"
 echo ""
 
 # Validate source files exist
@@ -73,6 +77,11 @@ fi
 
 if [[ ! -f "${AGENT_SRC}" ]]; then
   echo "ERROR: Agent source file not found: ${AGENT_SRC}" >&2
+  exit 1
+fi
+
+if [[ ! -d "${PHASES_SRC}" ]]; then
+  echo "ERROR: Phases source directory not found: ${PHASES_SRC}" >&2
   exit 1
 fi
 
@@ -113,6 +122,16 @@ fi
 echo "Copying agent file..."
 cp -f "${AGENT_SRC}" "${AGENT_DST}"
 
+# Copy phase agent files
+echo "Copying phase agents..."
+mkdir -p "${PHASES_DST}"
+if command -v rsync &> /dev/null; then
+  rsync -a --delete "${PHASES_SRC}/" "${PHASES_DST}/"
+else
+  rm -rf "${PHASES_DST}"
+  cp -R "${PHASES_SRC}" "${PHASES_DST}"
+fi
+
 # Set permissions
 echo "Setting permissions..."
 chmod +x "${SKILL_DST}/feature-marker.sh" 2>/dev/null || true
@@ -130,8 +149,9 @@ echo "║       Installation Complete!          ║"
 echo "╚═══════════════════════════════════════╝"
 echo ""
 echo "Installed:"
-echo "  ✓ Skill: ${SKILL_DST}"
-echo "  ✓ Agent: ${AGENT_DST}"
+echo "  ✓ Skill:  ${SKILL_DST}"
+echo "  ✓ Agent:  ${AGENT_DST}"
+echo "  ✓ Phases: ${PHASES_DST}"
 
 # Install TUI if requested
 if [[ "${INSTALL_TUI}" == "true" ]]; then

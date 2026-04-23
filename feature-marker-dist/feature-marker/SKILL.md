@@ -41,18 +41,17 @@ Automates feature development with a 4-phase workflow:
 
 ```
 /feature-marker <feature-slug>
-/feature-marker --interactive <feature-slug>
-/feature-marker --mode <mode> <feature-slug>
 ```
 
-**Modes**: `full` (default) · `tasks-only` · `spec-driven` · `test-only`
+The skill reads project state on every invocation and presents a single confirmation:
 
-The skill detects project state on every invocation and suggests the right path:
-
-- Checkpoint found → offers to resume
+- Checkpoint found → offers to resume from saved phase
 - Tasks exist → suggests implement → test → pr
 - PRD/TechSpec exist → suggests generating missing files first
 - Nothing found → starts from PRD generation
+
+For programmatic use: `/feature-marker --mode <mode> <feature-slug>`
+where mode is one of: `full` · `tasks-only` · `spec-driven` · `test-only`
 
 ## Prerequisites
 
@@ -111,14 +110,6 @@ If interrupted, re-invoke with the same feature slug:
 
 The skill detects the checkpoint and offers to resume from the saved phase and task index.
 
-## Platform Detection (PR)
-
-| Remote URL                             | PR Skill      |
-| -------------------------------------- | ------------- |
-| `github.com`                           | `checking-pr` |
-| `dev.azure.com`                        | `azure-pr`    |
-| `gitlab.com` / `bitbucket.org` / other | `checking-pr` |
-
 ## Configuration
 
 Override defaults with `.feature-marker.json` at the repo root:
@@ -132,14 +123,3 @@ Override defaults with `.feature-marker.json` at the repo root:
   "state_path": ".claude/feature-state"
 }
 ```
-
-## Error Handling
-
-| Scenario             | Behavior                             |
-| -------------------- | ------------------------------------ |
-| Missing files        | Auto-generate via commands           |
-| No git repo          | Fail early with message              |
-| No tests             | Skip Test phase with warning         |
-| Test failures        | Report, allow fix, offer retry       |
-| Unknown platform     | Fall back to `checking-pr`           |
-| PR skill unavailable | Commit only; log manual instructions |
