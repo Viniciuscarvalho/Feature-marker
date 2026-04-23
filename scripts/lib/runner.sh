@@ -296,6 +296,11 @@ run_feature() {
     bash "${LIB_DIR}/../guardrails.sh" emit "$wt_path" "unknown" 2>/dev/null || true
   fi
 
+  # ADR-011 PR-D: scan project inventory for grounding
+  if [ -f "${LIB_DIR}/../project_inventory.sh" ]; then
+    bash "${LIB_DIR}/../project_inventory.sh" scan "$wt_path" 2>/dev/null || true
+  fi
+
   # Seed PRD — ADR-011 PR-B: body is sanitised and wrapped in a USER_FEATURE fence.
   # The RULES block below is the only authoritative instruction source for Claude;
   # the USER_FEATURE block is treated as untrusted user input from the backlog.
@@ -499,6 +504,15 @@ EOPRD
     phase3_cost=$(cost_estimate_phase "3" "$phase3_fix_attempts" "generic")
     cost_record "$feat_id" "phase3" "$phase3_cost"
     [ "$phase3_exit" -ne 0 ] && exit_code="$phase3_exit"
+  fi
+
+  # ADR-011 PR-D: validate that all changed files remain inside the worktree
+  if [ -f "${LIB_DIR}/../validate_diff_scope.sh" ]; then
+    bash "${LIB_DIR}/../validate_diff_scope.sh" "$wt_path" "$feat_id" 2>&1 || {
+      warn "validate_diff_scope: scope violation detected — blocking PR creation for $feat_id"
+      wt_update_status "$feat_id" "error" "scope-violation"
+      return 1
+    }
   fi
 
   # ADR-008 PR-A: Phase 4 cost record
