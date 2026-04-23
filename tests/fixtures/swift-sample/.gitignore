@@ -2,3 +2,5 @@
 .orchestrator/
 *.o
 *.d
+*.a
+*.swp

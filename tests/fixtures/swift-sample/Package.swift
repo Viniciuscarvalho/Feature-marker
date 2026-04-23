@@ -2,9 +2,28 @@
 import PackageDescription
 
 let package = Package(
-    name: "App",
+    name: "SampleApp",
+    products: [
+        .executable(name: "SampleApp", targets: ["App"]),
+        .library(name: "SampleLib", targets: ["SampleLib"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
+    ],
     targets: [
-        .target(name: "App", path: "Sources/App"),
-        .testTarget(name: "AppTests", dependencies: ["App"], path: "Tests/AppTests"),
+        .executableTarget(
+            name: "App",
+            dependencies: ["SampleLib"],
+            path: "Sources/App"
+        ),
+        .target(
+            name: "SampleLib",
+            path: "Sources/SampleLib"
+        ),
+        .testTarget(
+            name: "AppTests",
+            dependencies: ["SampleLib"],
+            path: "Tests/AppTests"
+        ),
     ]
 )

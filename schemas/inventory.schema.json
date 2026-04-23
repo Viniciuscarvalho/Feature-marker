@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature-marker project inventory (ADR-011 PR-D)",
+  "type": "object",
+  "required": [
+    "stack",
+    "files",
+    "manifest",
+    "symbols"
+  ],
+  "properties": {
+    "stack": {
+      "type": "string",
+      "enum": [
+        "ios",
+        "nodejs",
+        "node",
+        "rust",
+        "python",
+        "go",
+        "unknown"
+      ],
+      "description": "Detected stack identifier"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Source file paths relative to the worktree root"
+    },
+    "manifest": {
+      "type": "object",
+      "description": "Parsed manifest data (Package.swift targets, package.json scripts, Cargo.toml members, etc.)"
+    },
+    "symbols": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Best-effort list of top-level symbol names (classes, structs, functions). Empty for unknown stacks."
+    }
+  }
+}
