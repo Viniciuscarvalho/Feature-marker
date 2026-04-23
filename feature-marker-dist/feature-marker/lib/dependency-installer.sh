@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Check if product-manager skill exists, install if missing
 ensure_product_manager_skill() {
-  local skill_path="${HOME}/.claude/skills/product-manager/SKILL.md"
+  local skill_path="${SKILLS_DIR:-${HOME}/.claude/skills}/product-manager/SKILL.md"
 
   if [[ -f "${skill_path}" ]]; then
     echo "✓ product-manager skill already installed"
@@ -34,12 +34,12 @@ ensure_product_manager_skill() {
 
 # Check if commit command exists, install if missing
 ensure_commit_command() {
-  local user_commit_path="${HOME}/.claude/commands/commit.md"
+  local user_commit_path="${COMMANDS_DIR:-${HOME}/.claude/commands}/commit.md"
   local bundled_commit_path
 
   # Try to find bundled commit.md in feature-marker installation
-  if [[ -f "${HOME}/.claude/skills/feature-marker/resources/commit.md" ]]; then
-    bundled_commit_path="${HOME}/.claude/skills/feature-marker/resources/commit.md"
+  if [[ -f "${SKILLS_DIR:-${HOME}/.claude/skills}/feature-marker/resources/commit.md" ]]; then
+    bundled_commit_path="${SKILLS_DIR:-${HOME}/.claude/skills}/feature-marker/resources/commit.md"
   elif [[ -n "${FEATURE_MARKER_ROOT:-}" ]] && [[ -f "${FEATURE_MARKER_ROOT}/resources/commit.md" ]]; then
     bundled_commit_path="${FEATURE_MARKER_ROOT}/resources/commit.md"
   else
@@ -74,7 +74,7 @@ ensure_commit_command() {
 
 # Check if spec-workflow skills exist
 check_spec_workflow_skills() {
-  local skills_dir="${HOME}/.claude/skills"
+  local skills_dir="${SKILLS_DIR:-${HOME}/.claude/skills}"
   local required_skills=("spec-orchestrator" "spec-executor")
 
   for skill in "${required_skills[@]}"; do
@@ -91,8 +91,8 @@ get_bundled_spec_workflow_path() {
   local bundled_path=""
 
   # Priority 1: Installed feature-marker skill location
-  if [[ -d "${HOME}/.claude/skills/feature-marker/resources/spec-workflow/skills" ]]; then
-    bundled_path="${HOME}/.claude/skills/feature-marker/resources/spec-workflow/skills"
+  if [[ -d "${SKILLS_DIR:-${HOME}/.claude/skills}/feature-marker/resources/spec-workflow/skills" ]]; then
+    bundled_path="${SKILLS_DIR:-${HOME}/.claude/skills}/feature-marker/resources/spec-workflow/skills"
   # Priority 2: FEATURE_MARKER_ROOT environment variable
   elif [[ -n "${FEATURE_MARKER_ROOT:-}" ]] && [[ -d "${FEATURE_MARKER_ROOT}/resources/spec-workflow/skills" ]]; then
     bundled_path="${FEATURE_MARKER_ROOT}/resources/spec-workflow/skills"
@@ -110,7 +110,7 @@ get_bundled_spec_workflow_path() {
 
 # Install spec-workflow skills from bundled resources
 ensure_spec_workflow_skills() {
-  local target_dir="${HOME}/.claude/skills"
+  local target_dir="${SKILLS_DIR:-${HOME}/.claude/skills}"
   local skills=("idea-explorer" "spec-writer" "spec-orchestrator" "spec-executor" "create-worktree" "spec-workflow-init")
   local installed=0
 

@@ -18,19 +18,19 @@ init_feature_state() {
   if [[ ! -f "$checkpoint" ]]; then
     cat > "$checkpoint" << EOF
 {
-  "version": "1.2.0",
+  "version": "7.0.0",
   "feature_name": "${feature_name}",
   "project_path": "$(pwd)",
-  "current_phase": 0,
+  "current_phase": "plan",
   "phase_status": "pending",
+  "spec_driven": false,
   "phases": {
-    "1": {"name": "Analysis & Planning", "status": "pending"},
-    "2": {"name": "Implementation", "status": "pending"},
-    "3": {"name": "Tests & Validation", "status": "pending"},
-    "4": {"name": "Commit & PR", "status": "pending"}
+    "plan":      {"status": "pending"},
+    "implement": {"status": "pending"},
+    "test":      {"status": "pending"},
+    "pr":        {"status": "pending"}
   },
   "last_updated": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "paused": false,
   "error_state": null
 }
 EOF
@@ -63,9 +63,9 @@ get_current_phase() {
   local checkpoint="${STATE_PATH}/${feature_name}/checkpoint.json"
 
   if [[ -f "$checkpoint" ]]; then
-    jq -r '.current_phase // 0' "$checkpoint"
+    jq -r '.current_phase // "plan"' "$checkpoint"
   else
-    echo "0"
+    echo "plan"
   fi
 }
 
@@ -81,7 +81,7 @@ get_phase_status() {
   fi
 }
 
-# Update phase in checkpoint
+# Update phase in checkpoint (phase is one of: plan, implement, test, pr)
 update_phase() {
   local feature_name="$1"
   local phase="$2"
@@ -91,7 +91,7 @@ update_phase() {
   if [[ -f "$checkpoint" ]]; then
     local tmp=$(mktemp)
     jq --arg phase "$phase" --arg status "$status" --arg now "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" '
-      .current_phase = ($phase | tonumber) |
+      .current_phase = $phase |
       .phase_status = $status |
       .phases[$phase].status = $status |
       .last_updated = $now
@@ -134,14 +134,14 @@ save_error_state() {
   fi
 }
 
-# Check if workflow is paused
-is_paused() {
+# Check if workflow has an error state
+has_error_state() {
   local feature_name="$1"
   local checkpoint="${STATE_PATH}/${feature_name}/checkpoint.json"
 
   if [[ -f "$checkpoint" ]]; then
-    local paused=$(jq -r '.paused // false' "$checkpoint")
-    [[ "$paused" == "true" ]]
+    local error=$(jq -r '.error_state // empty' "$checkpoint")
+    [[ -n "$error" ]]
   else
     return 1
   fi

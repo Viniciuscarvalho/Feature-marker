@@ -88,7 +88,7 @@ confirm_mode() {
 # Check if files exist for tasks-only mode
 validate_tasks_only_mode() {
   local feature_name="$1"
-  local feature_path="${DOCS_PATH}/prd-${feature_name}"
+  local feature_path="${DOCS_PATH}/${feature_name}"
 
   local missing=()
 
@@ -118,7 +118,7 @@ check_ralph_available() {
   fi
 
   # Check if skill exists
-  if [[ -f "${HOME}/.claude/skills/ralph-wiggum/ralph-wiggum.sh" ]]; then
+  if [[ -f "${SKILLS_DIR:-${HOME}/.claude/skills}/ralph-wiggum/ralph-wiggum.sh" ]]; then
     return 0
   fi
 
@@ -141,9 +141,8 @@ show_ralph_install_instructions() {
 
 # Check if spec-workflow skills are available
 check_spec_workflow_available() {
-  local skills_dir="${HOME}/.claude/skills"
+  local skills_dir="${SKILLS_DIR:-${HOME}/.claude/skills}"
 
-  # Check for core spec-workflow skills
   if [[ -f "${skills_dir}/spec-orchestrator/SKILL.md" ]] && \
      [[ -f "${skills_dir}/spec-executor/SKILL.md" ]]; then
     return 0
@@ -157,8 +156,8 @@ get_bundled_spec_workflow_path() {
   local bundled_path=""
 
   # Priority 1: Installed feature-marker skill location
-  if [[ -d "${HOME}/.claude/skills/feature-marker/resources/spec-workflow/skills" ]]; then
-    bundled_path="${HOME}/.claude/skills/feature-marker/resources/spec-workflow/skills"
+  if [[ -d "${SKILLS_DIR:-${HOME}/.claude/skills}/feature-marker/resources/spec-workflow/skills" ]]; then
+    bundled_path="${SKILLS_DIR:-${HOME}/.claude/skills}/feature-marker/resources/spec-workflow/skills"
   # Priority 2: FEATURE_MARKER_ROOT environment variable
   elif [[ -n "${FEATURE_MARKER_ROOT:-}" ]] && [[ -d "${FEATURE_MARKER_ROOT}/resources/spec-workflow/skills" ]]; then
     bundled_path="${FEATURE_MARKER_ROOT}/resources/spec-workflow/skills"
@@ -176,7 +175,7 @@ get_bundled_spec_workflow_path() {
 
 # Install spec-workflow skills from bundled resources
 install_spec_workflow_skills() {
-  local target_dir="${HOME}/.claude/skills"
+  local target_dir="${SKILLS_DIR:-${HOME}/.claude/skills}"
   local skills=("idea-explorer" "spec-writer" "spec-orchestrator" "spec-executor" "create-worktree" "spec-workflow-init")
 
   # Get bundled path

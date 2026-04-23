@@ -5,6 +5,8 @@ set -euo pipefail
 # Default paths (can be overridden via .feature-marker.json)
 DOCS_PATH="./tasks"
 STATE_PATH=".claude/feature-state"
+SKILLS_DIR="${HOME}/.claude/skills"
+COMMANDS_DIR="${HOME}/.claude/commands"
 
 # Load project-specific configuration if exists
 load_config() {
@@ -28,7 +30,7 @@ validate_git_repo() {
 # Validate required directories exist
 validate_directories() {
   local feature_name="$1"
-  local feature_path="${DOCS_PATH}/prd-${feature_name}"
+  local feature_path="${DOCS_PATH}/${feature_name}"
 
   if [[ ! -d "${DOCS_PATH}" ]]; then
     echo "Creating ${DOCS_PATH} directory..."
@@ -47,7 +49,7 @@ validate_directories() {
 # Check if feature files exist
 check_feature_files() {
   local feature_name="$1"
-  local feature_path="${DOCS_PATH}/prd-${feature_name}"
+  local feature_path="${DOCS_PATH}/${feature_name}"
   local status=0
 
   echo "Checking feature files in ${feature_path}..."
@@ -79,7 +81,7 @@ check_feature_files() {
 # Get the path to a feature's docs directory
 get_feature_path() {
   local feature_name="$1"
-  echo "${DOCS_PATH}/prd-${feature_name}"
+  echo "${DOCS_PATH}/${feature_name}"
 }
 
 # Get the path to a feature's state directory
