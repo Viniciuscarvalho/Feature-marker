@@ -48,16 +48,19 @@ RESULTS_DIR="$CONFIG_DIR/results"
 
 cd "$ROOT_DIR"
 
+# ── Colors (load early so helpers and display.sh can use them) ────
+# shellcheck source=lib/ui.sh
+source "$LIB_DIR/ui.sh"
+
 # ── Helpers (available before modules load) ──────────────────────
 
-log()    { echo "▶ [orchestrate] $*"; }
-info()   { echo "  [orchestrate] $*"; }
-err()    { echo "✗ [orchestrate] $*" >&2; }
+log()    { printf "${C_CYAN}▶${C_NC} [orchestrate] %s\n" "$*"; }
+info()   { printf "${C_DIM}  [orchestrate] %s${C_NC}\n" "$*"; }
+err()    { printf "${C_RED}✗${C_NC} [orchestrate] %s\n" "$*" >&2; }
 banner() {
-  echo ""
-  echo "═══════════════════════════════════════════════════"
-  echo "  $*"
-  echo "═══════════════════════════════════════════════════"
+  printf "\n${C_BOLD}${C_CYAN}%s${C_NC}\n" "═══════════════════════════════════════════════════"
+  printf "${C_BOLD}  %s${C_NC}\n" "$*"
+  printf "${C_BOLD}${C_CYAN}%s${C_NC}\n" "═══════════════════════════════════════════════════"
 }
 
 # ── CLI Parsing ──────────────────────────────────────────────────

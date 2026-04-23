@@ -45,9 +45,12 @@ display_backlog() {
 display_backlog_table() {
   local active_feat="${1:-}"
   [ ! -d "$STATE_DIR" ] && return
+  local _g="${C_GREEN:-}" _r="${C_RED:-}" _y="${C_YELLOW:-}" \
+        _cy="${C_CYAN:-}" _d="${C_DIM:-}" _bo="${C_BOLD:-}" _nc="${C_NC:-}"
   node -e "
     const fs = require('fs'), path = require('path');
     const sd = '$STATE_DIR', active = '$active_feat';
+    const G='$_g', R='$_r', Y='$_y', CY='$_cy', D='$_d', BO='$_bo', NC='$_nc';
     let dirs;
     try { dirs = fs.readdirSync(sd).filter(d => fs.existsSync(path.join(sd,d,'status.json'))); }
     catch(e) { process.exit(0); }
@@ -61,28 +64,30 @@ display_backlog_table() {
     const doneN = features.filter(f=>f.status==='done'||f.status==='pr-created').length;
     const totalTok = features.reduce((s,f)=>s+f.tokens,0);
     const fmtTok = n => n>=1000 ? Math.round(n/1000)+'k' : (n||'—');
+    // icon() returns a single colored glyph (1 visible char + ANSI codes).
+    // Status cell = icon(1) + space(1) + label(≤10 padded) = 12 visible chars.
     const icon = f => {
-      if (f.id===active||f.status==='in-progress') return '→';
-      if (f.status==='done'||f.status==='pr-created') return '✓';
-      if (f.status==='failed') return '✗';
-      if (f.status==='paused') return '⏸';
-      return '·';
+      if (f.id===active||f.status==='in-progress') return CY+'→'+NC;
+      if (f.status==='done'||f.status==='pr-created') return G+'✓'+NC;
+      if (f.status==='failed') return R+'✗'+NC;
+      if (f.status==='paused') return Y+'⏸'+NC;
+      return D+'·'+NC;
     };
-    const hdr = '  BACKLOG  ['+doneN+'/'+features.length+' done]'+(totalTok?' — ~'+fmtTok(totalTok)+' tokens':'');
+    const hdrText = '  BACKLOG  ['+doneN+'/'+features.length+' done]'+(totalTok?' — ~'+fmtTok(totalTok)+' tokens':'');
     const W = 64;
     const pad = (s,n) => String(s).substring(0,n).padEnd(n);
     console.log('');
     console.log('  ┌'+'─'.repeat(W)+'┐');
-    console.log('  │  '+hdr.padEnd(W-2)+'│');
+    console.log('  │  '+BO+CY+hdrText+NC+' '.repeat(Math.max(0,W-2-hdrText.length))+'│');
     console.log('  ├'+'─'.repeat(16)+'┬'+'─'.repeat(14)+'┬'+'─'.repeat(14)+'┬'+'─'.repeat(18)+'┤');
     console.log('  │  '+pad('Feature',14)+'│  '+pad('Status',12)+'│  '+pad('Phase',12)+'│  '+pad('Tokens',14)+'│');
     console.log('  ├'+'─'.repeat(16)+'┼'+'─'.repeat(14)+'┼'+'─'.repeat(14)+'┼'+'─'.repeat(18)+'┤');
     for (const f of features) {
       const ico = icon(f);
-      const sl = (ico+' '+(f.status==='pr-created'?'pr-created':f.status)).substring(0,12).padEnd(12);
+      const statusLabel = (f.status==='pr-created'?'pr-created':f.status).substring(0,10).padEnd(10);
       const pl = (f.phase).substring(0,12).padEnd(12);
       const tl = String(fmtTok(f.tokens)).padStart(14);
-      console.log('  │  '+pad(f.id,14)+'│  '+sl+'│  '+pl+'│  '+tl+'  │');
+      console.log('  │  '+pad(f.id,14)+'│  '+ico+' '+statusLabel+'│  '+pl+'│  '+tl+'  │');
     }
     console.log('  └'+'─'.repeat(16)+'┴'+'─'.repeat(14)+'┴'+'─'.repeat(14)+'┴'+'─'.repeat(18)+'┘');
   " 2>/dev/null || true
@@ -138,11 +143,11 @@ display_paused_handoff() {
   fi
 
   echo ""
-  echo "  ⏸  $feat_id — Phase 3 paused after $attempts fix attempt(s)"
+  printf "  ${C_YELLOW:-}⏸${C_NC:-}  %s — Phase 3 paused after %s fix attempt(s)\n" "$feat_id" "$attempts"
   echo "     Tests still failing. Review the attempt trail and fix manually."
   echo ""
   [ -n "$trail_path" ] && echo "     Trail: $trail_path"
-  echo "     Resume: $resume_cmd"
+  printf "     Resume: ${C_CYAN:-}%s${C_NC:-}\n" "$resume_cmd"
   echo ""
   echo "     Backlog continues with the next ready feature."
   echo ""
@@ -181,20 +186,65 @@ display_next_steps() {
 
   echo ""
   if [ "$exit_code" -ne 0 ]; then
-    printf "  ⚠  %s exited with errors (code %s) — review log before continuing.\n" "$feat_id" "$exit_code"
+    printf "  ${C_YELLOW:-}⚠${C_NC:-}  %s exited with errors (code %s) — review log before continuing.\n" "$feat_id" "$exit_code"
   fi
   printf "  ┌%s┐\n" "$(printf '─%.0s' $(seq 1 $W))"
   if [ -n "$next_feat" ]; then
-    printf "  │  %-*s│\n" "$inner" "$feat_id → done.  Next: $next_feat"
+    printf "  │  ${C_GREEN:-}%-*s${C_NC:-}│\n" "$inner" "$feat_id → done.  Next: $next_feat"
     printf "  │  %-*s│\n" "$inner" ""
     printf "  │  %-*s│\n" "$inner" "Continue with the same command:"
     printf "  │  %-*s│\n" "$inner" ""
-    printf "  │    %-*s│\n" "$((inner - 2))" "$cmd"
+    printf "  │    ${C_CYAN:-}%-*s${C_NC:-}│\n" "$((inner - 2))" "$cmd"
   else
-    printf "  │  %-*s│\n" "$inner" "All features complete."
+    printf "  │  ${C_GREEN:-}%-*s${C_NC:-}│\n" "$inner" "All features complete."
     printf "  │  %-*s│\n" "$inner" ""
     printf "  │  %-*s│\n" "$inner" "Run: feature-marker-orchestrate status"
   fi
   printf "  └%s┘\n" "$(printf '─%.0s' $(seq 1 $W))"
   echo ""
+}
+
+# display_live_phase <feat_id> <start_epoch>
+# Reads $STATE_DIR/$feat_id/status.json and cost.json to emit a one-line
+# live status during a Claude run. Gracefully omits missing segments.
+display_live_phase() {
+  local feat_id="$1" start_epoch="${2:-0}"
+  local status_file="$STATE_DIR/$feat_id/status.json"
+  local cost_file="$STATE_DIR/$feat_id/cost.json"
+
+  local phase="" task_seg="" tokens="?" elapsed=""
+
+  if [ -f "$status_file" ]; then
+    phase=$(node -p "
+      try {
+        const s = JSON.parse(require('fs').readFileSync('$status_file','utf-8'));
+        s.phase || '?';
+      } catch(e) { '?'; }
+    " 2>/dev/null || echo "?")
+    task_seg=$(node -p "
+      try {
+        const s = JSON.parse(require('fs').readFileSync('$status_file','utf-8'));
+        (s.task_index && s.total_tasks) ? ' · task ' + s.task_index + '/' + s.total_tasks : '';
+      } catch(e) { ''; }
+    " 2>/dev/null || echo "")
+  fi
+
+  if [ -f "$cost_file" ]; then
+    tokens=$(node -p "
+      try {
+        const t = JSON.parse(require('fs').readFileSync('$cost_file','utf-8')).cumulative_tokens || 0;
+        '~' + (t >= 1000 ? Math.round(t/1000)+'k' : t);
+      } catch(e) { '?' }
+    " 2>/dev/null || echo "?")
+  fi
+
+  if [ "$start_epoch" -gt 0 ] 2>/dev/null; then
+    local now secs
+    now=$(date +%s)
+    secs=$(( now - start_epoch ))
+    elapsed=" · $(( secs / 60 ))m$(( secs % 60 ))s"
+  fi
+
+  printf "  ${C_CYAN:-}→${C_NC:-}  %s  •  Phase %s%s  •  %s tokens%s\n" \
+    "$feat_id" "${phase:-?}" "$task_seg" "$tokens" "$elapsed"
 }

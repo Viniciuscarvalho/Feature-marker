@@ -13,13 +13,14 @@
 #   - router_route_task() for stack-aware agent selection (router.sh)
 #   - cycle_gate_check() before advancing to next feature (cycle_gate.sh)
 
-# _orchestrator_watcher_start <sentinel> <watch_dir> [interval_s]
-# Launches a background heartbeat process that prints [progress] lines to stdout
-# every interval_s seconds. Tracks newly-written files under watch_dir by name.
+# _orchestrator_watcher_start <sentinel> <watch_dir> [interval_s] [feat_id]
+# Launches a background heartbeat process that prints live-phase status lines
+# every interval_s seconds. When feat_id is provided, reads status.json + cost.json
+# for richer phase/task/token context. Falls back to plain elapsed-time output.
 # PID stored at <sentinel>.pid so _orchestrator_watcher_stop can kill it.
 # Set PROGRESS_INTERVAL=0 to disable entirely.
 _orchestrator_watcher_start() {
-  local sentinel="$1" watch_dir="$2" interval="${3:-45}"
+  local sentinel="$1" watch_dir="$2" interval="${3:-45}" feat_id="${4:-}"
   [ "${interval}" -le 0 ] 2>/dev/null && return 0
   local ref="${sentinel}.ref" pid_file="${sentinel}.pid"
   local start_ts
@@ -29,13 +30,17 @@ _orchestrator_watcher_start() {
     while [ -f "$sentinel" ]; do
       sleep "$interval"
       [ -f "$sentinel" ] || break
-      elapsed=$(( $(date +%s) - start_ts ))
-      changed=$(find "$watch_dir" -newer "$ref" -type f 2>/dev/null | sort | while IFS= read -r f; do basename "$f"; done | tr '\n' ' ')
       touch "$ref"
-      if [ -n "$changed" ]; then
-        printf '  [progress] %ds elapsed — files written: %s\n' "$elapsed" "$changed"
+      if [ -n "$feat_id" ] && declare -f display_live_phase &>/dev/null; then
+        display_live_phase "$feat_id" "$start_ts"
       else
-        printf '  [progress] %ds elapsed — Claude working (no new files in last %ds)\n' "$elapsed" "$interval"
+        elapsed=$(( $(date +%s) - start_ts ))
+        changed=$(find "$watch_dir" -newer "$ref" -type f 2>/dev/null | sort | while IFS= read -r f; do basename "$f"; done | tr '\n' ' ')
+        if [ -n "$changed" ]; then
+          printf '  [progress] %ds elapsed — files written: %s\n' "$elapsed" "$changed"
+        else
+          printf '  [progress] %ds elapsed — Claude working (no new files in last %ds)\n' "$elapsed" "$interval"
+        fi
       fi
     done
   ) &
@@ -484,7 +489,8 @@ EOPRD
     _orchestrator_watcher_start \
       "$STATE_DIR/$feat_id/.watcher-active" \
       "$wt_path/tasks/prd-$feat_id" \
-      "${PROGRESS_INTERVAL:-45}"
+      "${PROGRESS_INTERVAL:-45}" \
+      "$feat_id"
   fi
 
   (cd "$wt_path" && op_timeout "${SKILL_TIMEOUT_SECONDS:-1800}" \
@@ -767,7 +773,8 @@ run_phase3_tests() {
         _orchestrator_watcher_start \
           "$STATE_DIR/$feat_id/.fix-watcher-active" \
           "$wt_path" \
-          "${PROGRESS_INTERVAL:-45}"
+          "${PROGRESS_INTERVAL:-45}" \
+          "$feat_id"
       fi
       (cd "$wt_path" && printf '%b' "$fix_prompt" | claude $model_flag $fix_perm_flag --print) 2>/dev/null || fix_exit=$?
       _orchestrator_watcher_stop "$STATE_DIR/$feat_id/.fix-watcher-active"

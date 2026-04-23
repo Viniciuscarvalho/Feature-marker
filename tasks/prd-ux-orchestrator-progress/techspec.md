@@ -185,10 +185,129 @@ This makes it unambiguous that `Avg` refers only to features processed in this r
 
 ---
 
+## Change 6: Color Module `scripts/lib/ui.sh`
+
+**New file:** `scripts/lib/ui.sh`
+
+TTY-gated ANSI exports. Sourced by `orchestrate.sh`, `orchestrator.sh`, and `display.sh`.
+
+```bash
+#!/bin/bash
+# lib/ui.sh — ANSI color tokens for orchestrator output
+if [[ -t 1 ]] || [[ "${FM_FORCE_COLOR:-}" == "1" ]]; then
+  C_RED='\033[0;31m'; C_GREEN='\033[0;32m'; C_YELLOW='\033[0;33m'
+  C_BLUE='\033[0;34m'; C_CYAN='\033[0;36m'; C_DIM='\033[2m'
+  C_BOLD='\033[1m'; C_NC='\033[0m'
+else
+  C_RED=''; C_GREEN=''; C_YELLOW=''; C_BLUE=''; C_CYAN=''; C_DIM=''; C_BOLD=''; C_NC=''
+fi
+export C_RED C_GREEN C_YELLOW C_BLUE C_CYAN C_DIM C_BOLD C_NC
+```
+
+Replace inline `log/info/err/banner` in `scripts/orchestrate.sh:53–61` with:
+
+```bash
+source "$SCRIPT_DIR/lib/ui.sh"
+log()    { echo -e "${C_CYAN}▶${C_NC} [orchestrate] $*"; }
+info()   { echo -e "${C_DIM}  [orchestrate] $*${C_NC}"; }
+err()    { echo -e "${C_RED}✗${C_NC} [orchestrate] $*" >&2; }
+banner() { echo -e "\n${C_BOLD}${C_CYAN}═══════════════════════════════════════════════════${C_NC}"; echo -e "${C_BOLD}  $*${C_NC}"; echo -e "${C_BOLD}${C_CYAN}═══════════════════════════════════════════════════${C_NC}"; }
+```
+
+Apply same to `scripts/orchestrator.sh` where it re-defines these helpers.
+
+---
+
+## Change 7: Colored Status Icons in `display.sh`
+
+Update the `icon()` function inside `display_backlog_table` (L64–70 of `display.sh`) to emit ANSI-colored strings. Since the surrounding code is a `node -e` heredoc, inject the ANSI vars as shell variables before the node call:
+
+```bash
+display_backlog_table() {
+  local active_feat="${1:-}"
+  [ ! -d "$STATE_DIR" ] && return
+  local c_green="${C_GREEN:-}" c_red="${C_RED:-}" c_yellow="${C_YELLOW:-}" \
+        c_cyan="${C_CYAN:-}" c_dim="${C_DIM:-}" c_bold="${C_BOLD:-}" c_nc="${C_NC:-}"
+  node -e "
+    const g='$c_green', r='$c_red', y='$c_yellow', cy='$c_cyan',
+          d='$c_dim',   bo='$c_bold', nc='$c_nc';
+    ...
+    const icon = f => {
+      if (f.id===active||f.status==='in-progress') return cy+'→'+nc;
+      if (f.status==='done'||f.status==='pr-created') return g+'✓'+nc;
+      if (f.status==='failed') return r+'✗'+nc;
+      if (f.status==='paused') return y+'⏸'+nc;
+      return d+'·'+nc;
+    };
+    const hdr = bo+cy+'  BACKLOG  ['+doneN+'/'+features.length+' done]'+nc
+              + (totalTok?' — ~'+fmtTok(totalTok)+' tokens':'');
+    ...
+  "
+}
+```
+
+Apply same colored-icon pattern to `display_next_steps` (feat_id → done line) and `display_paused_handoff` (⏸ prefix).
+
+---
+
+## Change 8: `display_live_phase()` in `display.sh`
+
+**New function in `display.sh`:**
+
+```bash
+# display_live_phase <feat_id> <start_epoch>
+# Reads $STATE_DIR/$feat_id/status.json and cost.json.
+# Prints a one-line status line suitable for repeated overwrite.
+display_live_phase() {
+  local feat_id="$1" start_epoch="${2:-0}"
+  local status_file="$STATE_DIR/$feat_id/status.json"
+  local cost_file="$STATE_DIR/$feat_id/cost.json"
+
+  local phase="?" task_idx="" total_tasks="" tokens="?" elapsed=""
+
+  if [ -f "$status_file" ]; then
+    phase=$(node -p "try{const s=JSON.parse(require('fs').readFileSync('$status_file','utf-8')); s.phase||'?'}catch(e){'?'}" 2>/dev/null || echo "?")
+    task_idx=$(node -p "try{const s=JSON.parse(require('fs').readFileSync('$status_file','utf-8')); s.task_index||''}catch(e){''}" 2>/dev/null || echo "")
+    total_tasks=$(node -p "try{const s=JSON.parse(require('fs').readFileSync('$status_file','utf-8')); s.total_tasks||''}catch(e){''}" 2>/dev/null || echo "")
+  fi
+
+  if [ -f "$cost_file" ]; then
+    local raw_tok
+    raw_tok=$(node -p "try{Math.round(JSON.parse(require('fs').readFileSync('$cost_file','utf-8')).cumulative_tokens/1000)+'k'}catch(e){'?'}" 2>/dev/null || echo "?")
+    tokens="~${raw_tok}"
+  fi
+
+  if [ "$start_epoch" -gt 0 ] 2>/dev/null; then
+    local now; now=$(date +%s)
+    local secs=$(( now - start_epoch ))
+    elapsed="$(( secs / 60 ))m$(( secs % 60 ))s"
+  fi
+
+  local task_seg=""
+  [ -n "$task_idx" ] && [ -n "$total_tasks" ] && task_seg=" · task ${task_idx}/${total_tasks}"
+
+  echo -e "  ${C_CYAN:-}→${C_NC:-}  ${feat_id}  •  Phase ${phase}${task_seg}  •  ${tokens} tokens  •  ${elapsed}"
+}
+```
+
+**Call site in `runner.sh`:** locate the `[progress]` heartbeat emitter (search for `"[progress]"` or `sleep 45` region in the watcher background loop) and replace the plain `info "[progress] …"` line with:
+
+```bash
+display_live_phase "$feat_id" "$start_time"
+```
+
+Keep the 45s cadence; `display_live_phase` gracefully falls back when files are absent.
+
+---
+
 ## Testing
 
-1. Run stub-project with 5 features in full_auto → verify backlog table appears at each feature start
-2. Kill run mid-backlog → re-run → verify "next steps" block shows correct next feature
-3. Force cycle-gate block → verify new messaging with copy-paste command appears
-4. Single-feature run (1 feature done, 0 remaining) → verify "all features complete" block
-5. `Avg` = `Total ÷ ran_count` for any subset of features processed
+1. Run stub-project with 5 features in full_auto → verify backlog table appears at each feature start (already works)
+2. Kill run mid-backlog → re-run → verify "next steps" block shows correct next feature (already works)
+3. Force cycle-gate block → verify new messaging with copy-paste command appears (already works)
+4. Single-feature run (1 feature done, 0 remaining) → verify "all features complete" block (already works)
+5. `Avg` = `Total ÷ ran_count` for any subset of features processed (already works)
+6. Run in a TTY → expect colored `▶`, `✓`, `✗`, `⏸`, `→` glyphs; header lines bold/cyan
+7. Pipe output (`| cat`) without `FM_FORCE_COLOR` → no escape bytes
+8. `FM_FORCE_COLOR=1 … | cat` → colors retained
+9. Mid-run heartbeat → `display_live_phase` line shows `Phase N · task k/m · ~Xk tokens · Nm Ns`
