@@ -457,6 +457,26 @@ EOPRD
 
   _orchestrator_watcher_stop "$STATE_DIR/$feat_id/.watcher-active"
 
+  # ADR-011 PR-E: validate spec references against project inventory (pre-Phase 3)
+  if [ "$exit_code" -eq 0 ] && [ -f "${LIB_DIR}/../validate_spec_references.sh" ]; then
+    bash "${LIB_DIR}/../validate_spec_references.sh" "$wt_path" "$task_dir" 2>&1 || {
+      warn "validate_spec_references: unresolved references — continuing (advisory)"
+    }
+  fi
+
+  # ADR-011 PR-E: verify build before Phase 3 tests
+  if [ "$exit_code" -eq 0 ] && [ -f "${LIB_DIR}/../verify_build.sh" ]; then
+    local build_exit=0
+    bash "${LIB_DIR}/../verify_build.sh" "$wt_path" 2>&1 || build_exit=$?
+    if [ "$build_exit" -eq 1 ]; then
+      warn "verify_build: build broken — pausing $feat_id"
+      wt_update_status "$feat_id" "paused" "build-broken"
+      _runner_record_pause "$feat_id" "human" "build-broken"
+      return 0
+    fi
+    # exit 2 = soft skip (no build cmd) — continue normally
+  fi
+
   # ── ADR-008 PR-A: Phase 3 scripted tests ────────────────────────
   # supervised handles tests interactively inside the Claude session; skip scripted runner.
   if [ "$exit_code" -eq 0 ] && [ "$AUTONOMY" != "supervised" ]; then
@@ -690,6 +710,17 @@ run_phase3_tests() {
     else
       info "Phase 3: Claude CLI not found — cannot attempt fix"
       return 1
+    fi
+
+    # ADR-011 PR-E: verify build compiles after each fix attempt
+    if [ -f "${LIB_DIR}/../verify_build.sh" ]; then
+      local _build_exit=0
+      bash "${LIB_DIR}/../verify_build.sh" "$wt_path" 2>/dev/null || _build_exit=$?
+      if [ "$_build_exit" -eq 1 ]; then
+        info "Phase 3: build broken after fix attempt $fix_attempts — continuing to next attempt"
+        test_exit=1
+        continue
+      fi
     fi
 
     # Re-run tests after fix attempt
