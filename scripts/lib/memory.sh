@@ -35,21 +35,35 @@ mem_build_context() {
     echo ""
     echo "## Cross-Feature Context"
     if [ -f "$CONTEXT_DIR/global-context.md" ]; then
-      cat "$CONTEXT_DIR/global-context.md"
+      # ADR-011 PR-B: sanitize each chunk from global-context before injecting
+      if declare -f sanitize_context_chunk &>/dev/null; then
+        sanitize_context_chunk "$(cat "$CONTEXT_DIR/global-context.md")" 50 2>/dev/null \
+          || cat "$CONTEXT_DIR/global-context.md"
+      else
+        cat "$CONTEXT_DIR/global-context.md"
+      fi
     else
       echo "No prior context."
     fi
     echo ""
-    # Inject error patterns for avoidance
+    # Inject error patterns for avoidance — migrated from node -e to python3 + sanitize
     if [ -f "$CONTEXT_DIR/error-patterns.json" ]; then
       local count
-      count=$(node -p "JSON.parse(require('fs').readFileSync('$CONTEXT_DIR/error-patterns.json','utf-8')).length" 2>/dev/null || echo "0")
+      count=$(python3 -c "import json,sys; print(len(json.load(open(sys.argv[1]))))" \
+        "$CONTEXT_DIR/error-patterns.json" 2>/dev/null || echo "0")
       if [ "$count" -gt 0 ]; then
         echo "## Known Error Patterns (avoid these)"
-        node -e "
-          const p = JSON.parse(require('fs').readFileSync('$CONTEXT_DIR/error-patterns.json','utf-8'));
-          p.forEach(e => console.log('- [' + e.feature_id + '] ' + e.phase + ': ' + e.error));
-        " 2>/dev/null || true
+        local raw_patterns
+        raw_patterns=$(python3 -c "
+import json, sys
+for e in json.load(open(sys.argv[1])):
+    print('- [' + str(e.get('feature_id','')) + '] ' + str(e.get('phase','')) + ': ' + str(e.get('error','')))
+" "$CONTEXT_DIR/error-patterns.json" 2>/dev/null || true)
+        if declare -f sanitize_context_chunk &>/dev/null; then
+          sanitize_context_chunk "$raw_patterns" 20 2>/dev/null || echo "$raw_patterns"
+        else
+          echo "$raw_patterns"
+        fi
       fi
     fi
   } > "$context_file"

@@ -1,0 +1,5 @@
+Add pagination to the user list endpoint
+
+The endpoint should support page and limit query parameters.
+Default page size is 20. Maximum is 100.
+Include total count in the response headers.
