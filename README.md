@@ -11,9 +11,6 @@
   <a href="https://www.npmjs.com/package/@viniciuscarvalho/feature-marker">
     <img src="https://img.shields.io/npm/v/@viniciuscarvalho/feature-marker.svg" alt="npm version">
   </a>
-  <a href="https://github.com/Viniciuscarvalho/homebrew-tap">
-    <img src="https://img.shields.io/badge/homebrew-tap-orange.svg" alt="Homebrew Tap">
-  </a>
   <a href="https://github.com/Viniciuscarvalho/Feature-marker/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
   </a>
@@ -34,7 +31,7 @@
 ## Quick Start
 
 ```bash
-npx skills add Viniciuscarvalho/Feature-marker
+npx @viniciuscarvalho/feature-marker
 ```
 
 Then in Claude Code:
@@ -99,16 +96,18 @@ Each phase writes a checkpoint. Re-run with the same name to resume exactly wher
 ## Installation
 
 ```bash
-# Recommended
-npx skills add Viniciuscarvalho/Feature-marker
+npx @viniciuscarvalho/feature-marker
+```
 
-# Homebrew
-brew tap viniciuscarvalho/tap && brew install feature-marker
+**Update to the latest version:**
 
-# NPX
-npx @viniciuscarvalho/feature-marker install
+```bash
+npx @viniciuscarvalho/feature-marker@latest
+```
 
-# Manual
+**Manual install:**
+
+```bash
 git clone https://github.com/Viniciuscarvalho/Feature-marker.git
 cd Feature-marker && ./feature-marker-dist/feature-marker/install.sh
 ```
