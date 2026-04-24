@@ -1,4 +1,0 @@
-.env
-orchestration-backlog.json
-.orchestrator/
-.worktrees/
