@@ -35,12 +35,12 @@ After installation, use in Claude Code:
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `npx feature-marker install` | Install skill to ~/.claude |
+| Command                        | Description                 |
+| ------------------------------ | --------------------------- |
+| `npx feature-marker install`   | Install skill to ~/.claude  |
 | `npx feature-marker uninstall` | Remove skill from ~/.claude |
-| `npx feature-marker status` | Check installation status |
-| `npx feature-marker help` | Show help |
+| `npx feature-marker status`    | Check installation status   |
+| `npx feature-marker help`      | Show help                   |
 
 ## Features
 
@@ -48,16 +48,18 @@ After installation, use in Claude Code:
 - **4-Phase Workflow** — Analysis → Implementation → Tests → Commit & PR
 - **Checkpoint/Resume** — Pause anytime, resume where you left off
 - **Platform Detection** — Auto-detects GitHub, Azure DevOps, GitLab for PR creation
-- **Multiple Modes** — Full workflow, tasks-only, Ralph Loop, or Spec-Driven
+- **Multiple Modes** — Full workflow, tasks-only, spec-driven, or test-only
 
 ## Requirements
 
 Commands in `~/.claude/commands/`:
+
 - `create-prd.md`
 - `generate-spec.md`
 - `generate-tasks.md`
 
 Templates in `~/.claude/docs/specs/`:
+
 - `prd-template.md`
 - `techspec-template.md`
 - `tasks-template.md`

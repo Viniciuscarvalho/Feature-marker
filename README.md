@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  <strong>AI-powered feature development skill for Claude Code.<br>PRD → Tech Spec → Tasks → Implementation → Tests → PR — automated, with checkpoint/resume and autonomous multi-feature orchestration.</strong>
+  <strong>AI-powered feature development skill for Claude Code.<br>PRD → Tech Spec → Tasks → Implementation → Tests → PR — automated, with checkpoint/resume across multiple execution modes.</strong>
 </p>
 
 <p align="center">
@@ -67,11 +67,7 @@ Building a feature end-to-end means context-switching between planning, coding, 
 
 ## How It Works
 
-Two entry points, one pipeline. Run it **inside Claude Code** for a single feature, or use the **terminal orchestrator** to process a full backlog. → [Full walkthrough](assets/HOW_IT_WORKS.md)
-
-<p align="center">
-  <img src="assets/img_two_paths.png" alt="Two paths: in-Claude skill vs terminal orchestrator" width="700">
-</p>
+Invoke the skill once — feature-marker reads your project state and presents a single confirmation prompt, then runs the pipeline. → [Full walkthrough](assets/HOW_IT_WORKS.md)
 
 ```
 /feature-marker my-feature
@@ -94,8 +90,7 @@ Each phase writes a checkpoint. Re-run with the same name to resume exactly wher
 - **Checkpoint / resume** — pause at any phase, pick up later with the same command
 - **Per-task validation** — lint + related tests after each task; auto-fix on failure
 - **Stack detection** — auto-detects iOS, Node.js, Rust, Python, Go for correct test and lint commands
-- **Multi-feature orchestrator** — reads a backlog (Markdown, GitHub, Linear, Jira), creates isolated worktrees, processes features autonomously
-- **Cross-feature context** — decisions and error patterns from previous features inform the next one
+- **Multiple execution modes** — Full, Tasks-Only, Spec-Driven, Test-Only
 - **Safety guardrails** — breaking change detection, schema migration review, configurable file-change limits
 - **Custom review personas** — domain-specific agents for Firebase, iOS, API Security, Payments, and Migrations
 
@@ -107,7 +102,7 @@ Each phase writes a checkpoint. Re-run with the same name to resume exactly wher
 # Recommended
 npx skills add Viniciuscarvalho/Feature-marker
 
-# Homebrew (includes orchestrator CLI)
+# Homebrew
 brew tap viniciuscarvalho/tap && brew install feature-marker
 
 # NPX
@@ -117,8 +112,6 @@ npx @viniciuscarvalho/feature-marker install
 git clone https://github.com/Viniciuscarvalho/Feature-marker.git
 cd Feature-marker && ./feature-marker-dist/feature-marker/install.sh
 ```
-
-The orchestrator CLI requires the Claude Code CLI (`claude --version`) and a platform CLI (`gh`, `glab`, or `az`) for PR creation.
 
 ---
 
