@@ -40,8 +40,8 @@ Installs to `~/.claude/skills/feature-marker/`
 | --------------- | ----------------------------------------------------------------- |
 | **Full**        | Generate missing docs (PRD, TechSpec, Tasks) + execute all phases |
 | **Tasks Only**  | Use existing docs, skip generation                                |
-| **Ralph Loop**  | Autonomous execution with self-correction                         |
 | **Spec Driven** | Generate from requirements with multi-agent review                |
+| **Test Only**   | Run tests phase exclusively                                       |
 
 ## Platform Support
 
