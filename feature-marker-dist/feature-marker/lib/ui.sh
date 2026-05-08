@@ -140,9 +140,10 @@ separator() {
 
 # Print feature-marker banner
 banner() {
+  local _ver="${FEATURE_MARKER_VERSION:-7.8.0}"
   echo ""
   echo -e "${BOLD}╔═══════════════════════════════════════╗${NC}"
-  echo -e "${BOLD}║        feature-marker v7.0.0          ║${NC}"
+  echo -e "${BOLD}║     feature-marker v${_ver}          ║${NC}"
   echo -e "${BOLD}╚═══════════════════════════════════════╝${NC}"
   echo ""
 }

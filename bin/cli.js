@@ -35,7 +35,7 @@ try {
 } catch (_) {}
 
 try {
-  execFileSync(installSh, { stdio: 'inherit' });
+  execFileSync(installSh, { stdio: 'inherit', env: { ...process.env, FEATURE_MARKER_VERSION: newVersion } });
 } catch (_) {
   console.error('Installation failed.');
   process.exit(1);

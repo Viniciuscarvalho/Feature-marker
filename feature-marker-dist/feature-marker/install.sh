@@ -53,8 +53,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+_FM_VER="${FEATURE_MARKER_VERSION:-7.8.0}"
 echo "╔═══════════════════════════════════════╗"
-echo "║   Installing feature-marker v7.0.0   ║"
+echo "║   Installing feature-marker v${_FM_VER}   ║"
 echo "╚═══════════════════════════════════════╝"
 echo ""
 
