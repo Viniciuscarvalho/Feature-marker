@@ -17,11 +17,13 @@ Phase instructions live at `~/.claude/skills/feature-marker/agents/phases/`.
 
 Read `.claude/feature-state/{slug}/checkpoint.json` if it exists.
 
-**Checkpoint found** — read `current_phase` and `phase_status`. Show:
+**Checkpoint found** — read `current_phase`, `phase_status`, and `mode`. Show:
 
 > Checkpoint found for `{slug}`: currently at **{current_phase}** ({phase_status}). Resume here? **[yes / start fresh]**
 
 On "start fresh": delete the checkpoint file and proceed as new.
+
+**Mode precedence**: `EXECUTION_MODE` env var (set by `--mode` flag or menu selection) always wins. If `EXECUTION_MODE` is unset, use `checkpoint.mode` as the default. `phase_status=completed` still gates within-mode phases regardless of which source set the mode.
 
 **No checkpoint** — scan for the first matching signal:
 
@@ -36,7 +38,7 @@ On "start fresh": delete the checkpoint file and proceed as new.
 Show one message: what was detected + suggested entry point.
 Ask: "Proceed? **[yes / change path]**"
 
-On "change path": ask one open question — no menu, accept a free-form response.
+On "change path": ask one open question — accept a free-form response. (An opt-in menu is available via `feature-marker.sh --menu <slug>` or `-i`; the agent never invokes it automatically.)
 
 ---
 
@@ -56,9 +58,19 @@ Read `./CLAUDE.md` if present. Use its contents as project conventions throughou
 
 ## 3. Execute Phases
 
-Phases in order: **plan → implement → test → pr**
+**Before entering the loop**, read `~/.claude/skills/feature-marker/lib/modes.json` and find the entry matching `EXECUTION_MODE` (default `"full"`). Derive the run list:
 
-For each phase:
+```
+run_list = [plan, implement, test, pr]
+           starting at entry field
+           minus skipped array
+```
+
+Example: `prd-only` → `entry="plan"`, `skipped=["implement","test","pr"]` → `run_list=["plan"]`.
+
+This filter happens once, before any phase file is loaded. Never load a phase file for a phase outside `run_list`.
+
+**For each phase in run_list**:
 
 1. Check checkpoint — if status is `completed`, skip it
 2. If status is `error`, show the saved `error_state` message. Ask: "Retry this phase or skip it?"
@@ -68,15 +80,6 @@ For each phase:
    ```
 4. Follow those instructions for the feature slug `{slug}`
 5. On completion, update checkpoint: `current_phase={phase}`, `phase_status=completed`
-
-**Entry point overrides** based on detected state or user choice:
-
-| Mode           | Entry point | Skipped phases                         |
-| -------------- | ----------- | -------------------------------------- |
-| tasks-only     | implement   | plan                                   |
-| test-only      | test        | plan, implement                        |
-| spec-driven    | plan        | none (plan runs with spec_driven=true) |
-| full (default) | plan        | none                                   |
 
 **Spec-driven lazy install**: before running plan with spec-driven, verify that
 `~/.claude/skills/spec-orchestrator/SKILL.md` and `~/.claude/skills/spec-executor/SKILL.md`

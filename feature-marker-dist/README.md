@@ -27,8 +27,8 @@ Installs to `~/.claude/skills/feature-marker/`
 # Start workflow
 /feature-marker my-feature-name
 
-# Interactive mode selection
-/feature-marker --interactive my-feature-name
+# Interactive mode selection menu (requires TTY)
+/feature-marker --menu my-feature-name   # or -i
 
 # Direct mode
 /feature-marker --mode full my-feature-name
@@ -42,6 +42,7 @@ Installs to `~/.claude/skills/feature-marker/`
 | **Tasks Only**  | Use existing docs, skip generation                                |
 | **Spec Driven** | Generate from requirements with multi-agent review                |
 | **Test Only**   | Run tests phase exclusively                                       |
+| **PRD Only**    | Draft PRD and exit; no TechSpec/Tasks/impl/PR                     |
 
 ## Platform Support
 
