@@ -34,7 +34,7 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     --version|-V)
-      echo "feature-marker v7.8.0"
+      echo "feature-marker v7.8.1"
       exit 0
       ;;
     --mode|-m)
