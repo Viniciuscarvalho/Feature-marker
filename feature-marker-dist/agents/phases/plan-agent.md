@@ -16,7 +16,19 @@ Check each file in `./tasks/{slug}/`. Generate only what is missing — never ov
 
 If a template is missing, stop and show the expected path. Do not proceed without all three files present.
 
+**PRD review gate** — if `prd.md` was just generated (did not exist before this run): show the full contents of `prd.md` to the user and stop. Do not invoke `/generate-spec` or `/generate-tasks` until the user explicitly replies "looks good" (or equivalent approval). If the user requests edits, apply them to `prd.md` and show the updated file again. Repeat until approved.
+
 **Plan context** — check `~/.claude/plans/` for the most recently modified `.md` file. If found, present its contents when invoking `/create-prd` with this framing: "The following plan covers problem definition, constraints, and scope. Use it as pre-answered context and reduce clarifying questions to only items not covered." This is non-blocking if absent.
+
+---
+
+## PRD-Only Variant
+
+When `EXECUTION_MODE=prd-only` (check `~/.claude/skills/feature-marker/lib/modes.json` — `skipped` includes `implement`, `test`, `pr`):
+
+1. Run only the `prd.md` row of the Inputs Gate (invoke `/create-prd`).
+2. Skip TechSpec, Tasks, Spec-Driven, Product-Manager check, and Analysis sections below.
+3. Update checkpoint: `current_phase=plan`, `phase_status=completed`, `"mode": "prd-only"`.
 
 ---
 

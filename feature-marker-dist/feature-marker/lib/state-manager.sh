@@ -21,6 +21,7 @@ init_feature_state() {
   "version": "7.0.0",
   "feature_name": "${feature_name}",
   "project_path": "$(pwd)",
+  "mode": null,
   "current_phase": "plan",
   "phase_status": "pending",
   "spec_driven": false,
@@ -35,6 +36,31 @@ init_feature_state() {
 }
 EOF
     echo "Created checkpoint: $checkpoint"
+  fi
+}
+
+# Set the execution mode in checkpoint (called when mode is first established)
+set_checkpoint_mode() {
+  local feature_name="$1"
+  local mode="$2"
+  local checkpoint="${STATE_PATH}/${feature_name}/checkpoint.json"
+
+  if [[ -f "$checkpoint" ]]; then
+    local tmp=$(mktemp)
+    jq --arg mode "$mode" --arg now "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" '
+      .mode = $mode |
+      .last_updated = $now
+    ' "$checkpoint" > "$tmp" && mv "$tmp" "$checkpoint"
+  fi
+}
+
+# Get the execution mode stored in checkpoint (empty string if not set)
+get_checkpoint_mode() {
+  local feature_name="$1"
+  local checkpoint="${STATE_PATH}/${feature_name}/checkpoint.json"
+
+  if [[ -f "$checkpoint" ]]; then
+    jq -r '.mode // empty' "$checkpoint"
   fi
 }
 
@@ -154,6 +180,8 @@ show_checkpoint_summary() {
 
   if [[ -f "$checkpoint" ]]; then
     echo "Checkpoint found for: $feature_name"
+    local mode=$(jq -r '.mode // empty' "$checkpoint")
+    [[ -n "$mode" ]] && echo "  Mode: $mode"
     echo "  Current phase: $(jq -r '.current_phase' "$checkpoint")"
     echo "  Status: $(jq -r '.phase_status' "$checkpoint")"
     echo "  Last updated: $(jq -r '.last_updated' "$checkpoint")"

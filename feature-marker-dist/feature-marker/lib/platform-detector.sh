@@ -2,10 +2,11 @@
 # platform-detector.sh - Git platform detection for feature-marker
 set -euo pipefail
 
-# Detect git platform from remote URL
+# Detect git platform from remote URL.
+# Set FEATURE_MARKER_GIT_REMOTE to inject a fake URL in tests.
 detect_git_platform() {
   local remote_url
-  remote_url=$(git remote get-url origin 2>/dev/null || echo "")
+  remote_url="${FEATURE_MARKER_GIT_REMOTE:-$(git remote get-url origin 2>/dev/null || echo "")}"
 
   if [[ -z "$remote_url" ]]; then
     echo "unknown"

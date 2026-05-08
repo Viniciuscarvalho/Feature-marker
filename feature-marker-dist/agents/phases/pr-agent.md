@@ -16,17 +16,11 @@ Check if `~/.claude/commands/commit.md` exists.
 
 ## PR Creation
 
-Detect the git platform from the remote URL:
+Resolve the PR skill using this priority order:
 
-| Remote URL pattern | Skill         |
-| ------------------ | ------------- |
-| `github.com`       | `checking-pr` |
-| `dev.azure.com`    | `azure-pr`    |
-| `gitlab.com`       | `checking-pr` |
-| `bitbucket.org`    | `checking-pr` |
-| anything else      | `checking-pr` |
-
-Check `.feature-marker.json` for a `pr_skill` override. If set, use that instead.
+1. `pr_skill` field in `.feature-marker.json` — highest priority override
+2. `PR_SKILL` env var — exported by `feature-marker.sh` after platform detection
+3. Re-detect from git remote URL using `~/.claude/skills/feature-marker/lib/platform-detector.sh`
 
 If `skip_pr` is `true` in `.feature-marker.json`, skip PR creation and log instructions for manual creation.
 
@@ -36,8 +30,11 @@ Invoke the selected skill. If the skill is unavailable, commit only and show the
 
 ## Outputs
 
-Save the PR URL to `.claude/feature-state/{slug}/pr-url.txt`.
+After invoking the PR skill, read `.claude/feature-state/{slug}/pr-url.txt`.
 
-Update checkpoint: `current_phase=pr`, `phase_status=completed`.
+If the file is missing or its content does not start with `https://`: the PR creation failed. Show the raw skill output to the user. Do **not** update the checkpoint. Ask: "Retry PR creation or create the PR manually?"
 
-Show the PR URL to the user and confirm the feature is complete.
+If the URL is valid:
+
+- Update checkpoint: `current_phase=pr`, `phase_status=completed`.
+- Show the PR URL to the user and confirm the feature is complete.
