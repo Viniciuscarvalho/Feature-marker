@@ -1,6 +1,6 @@
 {
   "name": "@viniciuscarvalho/feature-marker",
-  "version": "7.0.0",
+  "version": "7.8.0",
   "description": "Automate your complete feature development lifecycle: PRD → Tech Spec → Tasks → Implementation → Tests → PR. AI-powered skill for Claude Code with TUI and menubar apps. Integrates with Linear, GitHub, Notion. Structured outputs: JSON specs, task templates, test cases, PR descriptions.",
   "displayName": "Feature Marker",
   "author": "Vinicius Carvalho",
