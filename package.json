@@ -1,6 +1,6 @@
 {
   "name": "@viniciuscarvalho/feature-marker",
-  "version": "7.8.1",
+  "version": "8.0.0",
   "description": "Skill-first Feature Marker installer for Claude, Codex, and Gemini: PRD, TechSpec, Tasks, verification, local commit, and branch handoff.",
   "displayName": "Feature Marker",
   "author": "Vinicius Carvalho",
