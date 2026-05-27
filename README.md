@@ -23,26 +23,37 @@ while Claude, Codex, and Gemini act as runtime adapters for phase execution.
 - Branch-only delivery with a local commit and exact push/PR handoff commands.
 - Deterministic tests that validate mode handling, checkpoint resume, worktree safety, platform detection, and adapter installation.
 
-## Install
+## Use in any project
 
-Use the package directly:
+You do not need a global install. Run feature-marker through `npx` from any git
+repo:
 
 ```bash
-npx @viniciuscarvalho/feature-marker install --runtime all
+npx -y @viniciuscarvalho/feature-marker install --runtime all
+npx -y @viniciuscarvalho/feature-marker run my-feature --mode full --runtime codex
+npx -y @viniciuscarvalho/feature-marker status my-feature
 ```
 
-Install one adapter:
+Install only one runtime adapter when you do not need all three:
 
 ```bash
-feature-marker install --runtime claude
-feature-marker install --runtime codex
-feature-marker install --runtime gemini
+npx -y @viniciuscarvalho/feature-marker install --runtime claude
+npx -y @viniciuscarvalho/feature-marker install --runtime codex
+npx -y @viniciuscarvalho/feature-marker install --runtime gemini
 ```
 
-Check the runtime capability contract:
+Prefer the short `feature-marker` command only if you install the package
+globally:
 
 ```bash
-feature-marker capabilities
+npm install -g @viniciuscarvalho/feature-marker
+feature-marker run my-feature --mode full --runtime codex
+```
+
+Check the runtime capability contract with either form:
+
+```bash
+npx -y @viniciuscarvalho/feature-marker capabilities
 ```
 
 ## Quick start
@@ -50,32 +61,32 @@ feature-marker capabilities
 Run a complete workflow with Codex:
 
 ```bash
-feature-marker run native-adapters --mode full --runtime codex
+npx -y @viniciuscarvalho/feature-marker run native-adapters --mode full --runtime codex
 ```
 
 Resume a feature from its checkpoint:
 
 ```bash
-feature-marker resume native-adapters
+npx -y @viniciuscarvalho/feature-marker resume native-adapters
 ```
 
 Inspect status as text or JSON:
 
 ```bash
-feature-marker status native-adapters
-feature-marker status native-adapters --json
+npx -y @viniciuscarvalho/feature-marker status native-adapters
+npx -y @viniciuscarvalho/feature-marker status native-adapters --json
 ```
 
 Run from inside an LLM prompt:
 
 ```text
 Use feature-marker to implement this feature:
-feature-marker run billing-observability --runtime codex --mode full
+npx -y @viniciuscarvalho/feature-marker run billing-observability --runtime codex --mode full
 ```
 
 ```text
 Use feature-marker to resume the workflow:
-feature-marker resume billing-observability
+npx -y @viniciuscarvalho/feature-marker resume billing-observability
 ```
 
 ## Command reference
@@ -89,6 +100,9 @@ feature-marker resume billing-observability
 | `capabilities` | none | Prints the runtime and mode capability manifest as JSON. |
 | `--help` | none | Prints CLI usage. |
 | `--version` | none | Prints the installed feature-marker version. |
+
+All commands in the table work with either `feature-marker ...` after a global
+install or `npx -y @viniciuscarvalho/feature-marker ...` without one.
 
 ## Modes
 
@@ -168,7 +182,7 @@ npm pack --dry-run --json
 Adapter matrix smoke without model calls:
 
 ```bash
-FEATURE_MARKER_ADAPTER_MOCK=1 feature-marker run demo --mode full --runtime codex
+FEATURE_MARKER_ADAPTER_MOCK=1 npx -y @viniciuscarvalho/feature-marker run demo --mode full --runtime codex
 ```
 
 See [feature-marker-dist/HEALTH.md](feature-marker-dist/HEALTH.md) for the

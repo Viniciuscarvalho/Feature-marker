@@ -3,14 +3,21 @@
 This distribution contains native adapter assets for Claude, Codex, and Gemini.
 The `feature-marker` CLI is the workflow authority.
 
-## Commands
+## Use with npx
 
 ```bash
-feature-marker install --runtime claude|codex|gemini|all
-feature-marker run <slug> --mode full|tasks-only|test-only|prd-only --runtime claude|codex|gemini
-feature-marker status <slug>
-feature-marker resume <slug>
-feature-marker capabilities
+npx -y @viniciuscarvalho/feature-marker install --runtime claude|codex|gemini|all
+npx -y @viniciuscarvalho/feature-marker run <slug> --mode full|tasks-only|test-only|prd-only --runtime claude|codex|gemini
+npx -y @viniciuscarvalho/feature-marker status <slug>
+npx -y @viniciuscarvalho/feature-marker resume <slug>
+npx -y @viniciuscarvalho/feature-marker capabilities
+```
+
+Global install is optional:
+
+```bash
+npm install -g @viniciuscarvalho/feature-marker
+feature-marker run <slug> --mode full --runtime codex
 ```
 
 ## Runtime State
