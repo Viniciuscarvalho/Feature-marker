@@ -4,6 +4,7 @@
 
 [![npm package](https://img.shields.io/npm/v/@viniciuscarvalho/feature-marker?logo=npm&logoColor=white&style=flat-square)](https://www.npmjs.com/package/@viniciuscarvalho/feature-marker)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+[![Donate](https://img.shields.io/badge/Donate-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white&style=flat-square)](https://github.com/sponsors/Viniciuscarvalho)
 [![node >=18](https://img.shields.io/badge/node-%3E%3D18.0.0-2ea44f?logo=node.js&logoColor=white&style=flat-square)](https://nodejs.org/)
 [![Claude Code](https://img.shields.io/badge/runtime-Claude_Code-6f42c1?style=flat-square)](https://www.anthropic.com/claude-code)
 [![Codex](https://img.shields.io/badge/runtime-Codex-111111?style=flat-square)](https://openai.com/codex/)
