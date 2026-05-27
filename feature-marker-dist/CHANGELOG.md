@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.8.1] - 2026-05-27
+
+### Changed
+
+- Restored the distribution to a skill-first contract for Claude, Codex, and
+  Gemini.
+- Kept npm/npx as an installer for skill files only.
+- Documented branch-first handoff with local commits and no automatic push or
+  PR creation.
+
+### Removed
+
+- Removed current support for package-owned workflow commands such as `run`,
+  `resume`, `status`, and `capabilities`.
+
 ## [7.0.0] - 2026-04-13
 
 ### Added

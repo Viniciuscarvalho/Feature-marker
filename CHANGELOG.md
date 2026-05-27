@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.8.1] - 2026-05-27
+
+### Changed
+
+- Restored Feature Marker as a skill-first workflow. The npm package now acts
+  as an installer for Claude, Codex, and Gemini skill files instead of running
+  feature workflows from JavaScript.
+- Replaced workflow CLI documentation with npx install instructions and LLM
+  invocation examples.
+
+### Removed
+
+- Removed workflow command support for `run`, `resume`, `status`, and
+  `capabilities`; users now invoke the installed skill inside their LLM.
+
 ## [7.7.0] - 2026-04-21
 
 ### Added

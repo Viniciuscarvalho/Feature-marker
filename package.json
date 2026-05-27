@@ -1,7 +1,7 @@
 {
   "name": "@viniciuscarvalho/feature-marker",
   "version": "7.8.1",
-  "description": "Native-adapter feature workflow CLI for Claude, Codex, and Gemini: PRD, TechSpec, Tasks, isolated worktrees, checkpoint resume, tests, and clean branch handoff.",
+  "description": "Skill-first Feature Marker installer for Claude, Codex, and Gemini: PRD, TechSpec, Tasks, verification, local commit, and branch handoff.",
   "displayName": "Feature Marker",
   "author": "Vinicius Carvalho",
   "license": "MIT",
@@ -48,9 +48,17 @@
   "files": [
     "bin/",
     "lib/",
-    "feature-marker-dist/",
-    "schemas/",
+    "feature-marker-dist/README.md",
+    "feature-marker-dist/HEALTH.md",
+    "feature-marker-dist/feature-marker/SKILL.md",
+    "feature-marker-dist/feature-marker/feature-marker.sh",
+    "feature-marker-dist/feature-marker/install.sh",
+    "feature-marker-dist/adapters/codex/SKILL.md",
+    "feature-marker-dist/adapters/gemini/SKILL.md",
+    "feature-marker-dist/agents/feature-marker.md",
     "README.md",
+    "CONTEXT.md",
+    "docs/adr/012-skill-first-workflow.md",
     "LICENSE",
     "CHANGELOG.md"
   ]

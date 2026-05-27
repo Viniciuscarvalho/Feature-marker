@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Compatibility installer for the native-adapter CLI.
+# Compatibility installer for the skill-first package.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,7 +23,7 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     --with-tui|--verbose|-v)
-      echo "$1 is no longer used by native-adapter v1; ignoring." >&2
+      echo "$1 is no longer used by the skill-first installer; ignoring." >&2
       shift
       ;;
     *)

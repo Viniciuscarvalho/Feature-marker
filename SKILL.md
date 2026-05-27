@@ -1,30 +1,72 @@
 ---
 name: feature-marker
 description: >
-  End-to-end feature workflow orchestrator with native adapters for Claude,
-  Codex, and Gemini. The CLI owns mode validation, isolated worktrees,
-  runtime-neutral checkpoints, platform detection, test handoff, and clean
-  branch-only delivery.
+  Skill-first feature workflow for PRD, TechSpec, Tasks, implementation,
+  verification, local commit, and branch handoff across Claude, Codex, and
+  Gemini. The npm package installs skill files only; the LLM skill owns the
+  workflow.
 tools: Read, Write, Edit, Grep, Glob, Bash
 ---
 
 # feature-marker
 
-Use the CLI as the source of truth:
+Use this skill when the user asks to plan, build, test, or hand off a feature
+through `PRD -> TechSpec -> Tasks -> branch handoff`.
+
+The workflow is skill-first. Do not use the old CLI workflow commands; those
+are not product commands. The npm package is only an installer for this skill.
+
+## Operating Contract
+
+1. Start by reading repo state: current branch, git status, project files, and
+   any existing `tasks/{slug}/prd.md`, `tasks/{slug}/techspec.md`, and
+   `tasks/{slug}/tasks.md`.
+2. Keep artifact state in `tasks/{slug}/`. Generate missing artifacts in order:
+   PRD first, then TechSpec, then Tasks. Reuse existing artifacts unless the
+   user explicitly asks to revise them.
+3. Use branch-first isolation. If the current branch is `main`, `master`,
+   `develop`, or `trunk`, create a feature branch named `feature-marker/{slug}`
+   unless the user gives another branch name. If the checkout has unrelated
+   uncommitted changes, ask whether to create a git worktree or continue on the
+   existing branch after the user cleans up.
+4. Implement only the tasks in `tasks/{slug}/tasks.md`. Keep changes scoped to
+   the feature and preserve unrelated local edits.
+5. Run the project-appropriate verification commands. If a command cannot run,
+   report the exact blocker and do not claim it passed.
+6. Finish with a local commit when the implementation is complete and the user
+   has not prohibited commits. Do not push or open a PR automatically.
+7. Print exact handoff commands, including:
 
 ```bash
-feature-marker install --runtime claude|codex|gemini|all
-feature-marker run <slug> --mode full|tasks-only|test-only|prd-only --runtime claude|codex|gemini
-feature-marker resume <slug>
-feature-marker status <slug>
+git push -u origin <branch>
+gh pr create --base <base-branch> --head <branch>
 ```
 
-The workflow keeps user-facing artifacts in `tasks/{slug}/` and stores
-checkpoints, logs, runtime results, platform context, and branch handoff data in
-`.feature-marker/features/{slug}/`.
+## Artifact State
 
-Every feature uses an isolated git worktree under `.feature-marker/worktrees/`
-and a branch named `feature-marker/{slug}` unless project config overrides it.
+The canonical state lives in:
 
-`spec-driven` and `ralph-loop` are not v1 native-adapter modes. Treat them as
-unsupported until they are rebuilt on the neutral CLI state machine.
+```text
+tasks/{slug}/
+  prd.md
+  techspec.md
+  tasks.md
+```
+
+Optional notes such as verification output may also live under `tasks/{slug}/`
+when they help future continuation, but do not create checkpoint JSON as the
+source of truth.
+
+## Modes by Prompt
+
+There are no CLI modes. Treat these as prompt intents:
+
+- `full`: create or update PRD, TechSpec, and Tasks, then implement, test, and
+  hand off the branch.
+- `tasks-only`: use existing artifacts and implement the tasks.
+- `test-only`: run verification for the existing feature branch and summarize
+  results.
+- `prd-only`: stop after the PRD artifact.
+
+`spec-driven` and `ralph-loop` are out of scope for this skill-first v1 unless
+they are rebuilt as explicit skill instructions.
