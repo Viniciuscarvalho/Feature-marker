@@ -1,125 +1,44 @@
 ---
 name: feature-marker
 description: >
-  End-to-end feature development orchestrator. Generates PRD, TechSpec, and Tasks,
-  then executes a 4-phase workflow: Plan → Implement → Test → PR. Supports
-  checkpoint/resume, context-aware entry, and auto-detects GitHub, Azure DevOps,
-  or GitLab for PR creation. Platform-agnostic: iOS/Swift, Node.js/TypeScript,
-  Rust, Python, Go.
-
-  ALWAYS use this skill when the user says "implement this feature", "build
-  feature X", "start a new feature", "create a PRD", "generate tech spec",
-  "break down tasks", "feature workflow", "plan this feature", "implement
-  from spec", "run the full workflow", "resume feature", "continue where I
-  left off", asks to go from requirements to implementation, wants to automate
-  feature development end-to-end, mentions PRD-to-PR pipelines, or says
-  "/feature-marker". Also trigger when the user mentions "spec-driven mode",
-  "checkpoint", or asks to generate tasks from a PRD or tech spec.
-tools: Read, Write, Edit, Grep, Glob, Bash, TodoWrite, Skill
+  Native Claude adapter for the feature-marker CLI state machine. Use for
+  feature workflows that need PRD, TechSpec, Tasks, isolated git worktrees,
+  checkpoint/resume, tests, and clean branch-only delivery.
+tools: Read, Write, Edit, Grep, Glob, Bash
 ---
 
 # feature-marker
 
-Automates feature development with a 4-phase workflow:
-
-1. **Plan** — Validates/generates PRD, TechSpec, Tasks; creates implementation plan.
-2. **Implement** — Executes tasks with progress tracking and per-task checkpoints.
-3. **Test** — Runs platform-appropriate test suites and build validation.
-4. **PR** — Commits with the enhanced `/commit` command and creates a Pull Request.
-
-## Platform Support
-
-| Stack     | Detection                             | Test              | Lint              |
-| --------- | ------------------------------------- | ----------------- | ----------------- |
-| iOS/Swift | `*.xcodeproj`, `Package.swift`        | `swift test`      | `swiftlint`       |
-| Node.js   | `package.json`                        | `jest` / `vitest` | `{pm} run lint`   |
-| Rust      | `Cargo.toml`                          | `cargo test`      | `cargo clippy`    |
-| Python    | `pyproject.toml` / `requirements.txt` | `pytest`          | `ruff` / `flake8` |
-| Go        | `go.mod`                              | `go test ./...`   | `go vet`          |
+The `feature-marker` CLI is the workflow authority. It owns runtime-neutral
+state in `.feature-marker/features/{slug}`, creates an isolated worktree for
+each feature, invokes runtime phase prompts, and ends with a clean committed
+branch plus push/PR handoff commands.
 
 ## Usage
 
-```
-/feature-marker <feature-slug>
-```
-
-The skill reads project state on every invocation and presents a single confirmation:
-
-- Checkpoint found → offers to resume from saved phase
-- Tasks exist → suggests implement → test → pr
-- PRD/TechSpec exist → suggests generating missing files first
-- Nothing found → starts from PRD generation
-
-For programmatic use: `/feature-marker --mode <mode> <feature-slug>`
-where mode is one of: `full` · `tasks-only` · `spec-driven` · `test-only` · `prd-only`
-
-## Prerequisites
-
-Commands in `~/.claude/commands/`:
-
-- `create-prd.md`
-- `generate-spec.md`
-- `generate-tasks.md`
-
-Templates in `~/.claude/docs/specs/`:
-
-- `prd-template.md`
-- `techspec-template.md`
-- `tasks-template.md`
-
-## Project Structure
-
-**Feature documents** (generated in project):
-
-```
-./tasks/{feature-slug}/
-├── prd.md
-├── techspec.md
-├── tasks.md
-└── {num}_task.md   (individual task files)
+```bash
+feature-marker run <feature-slug> --runtime claude --mode full
+feature-marker resume <feature-slug>
+feature-marker status <feature-slug>
 ```
 
-**State directory** (checkpoint & progress):
+Supported modes:
 
-```
-.claude/feature-state/{feature-slug}/
-├── checkpoint.json
-├── platform-context.json
-├── analysis.md
-├── plan.md
-├── progress.md
-├── test-results.md
-└── pr-url.txt
-```
+- `full` - plan, implement, test, branch handoff
+- `tasks-only` - implement existing PRD/TechSpec/Tasks, test, branch handoff
+- `test-only` - run verification only
+- `prd-only` - draft PRD only
 
-## Auto-Installed Dependencies
+`spec-driven` and `ralph-loop` are not v1 native-adapter modes. Do not claim
+they are supported unless rebuilt on the CLI state machine.
 
-**product-manager skill** (Plan phase): advanced PRD analysis. Installed via `npx` if missing; non-blocking.
+## State Contract
 
-**commit command** (PR phase): conventional commits with pre-commit validation. Copied from bundled `resources/commit.md` if missing; non-blocking.
+- Artifacts: `tasks/{slug}/prd.md`, `techspec.md`, `tasks.md`
+- Checkpoints: `.feature-marker/features/{slug}/checkpoint.json`
+- Logs/prompts: `.feature-marker/features/{slug}/logs/`
+- Worktrees: `.feature-marker/worktrees/{slug}`
+- Branches: `feature-marker/{slug}` by default
 
-**spec-workflow skills** (spec-driven mode only): lazy-installed from bundled resources on first use.
-
-## Checkpoint & Resume
-
-If interrupted, re-invoke with the same feature slug:
-
-```
-/feature-marker prd-user-authentication
-```
-
-The skill detects the checkpoint and offers to resume from the saved phase and task index.
-
-## Configuration
-
-Override defaults with `.feature-marker.json` at the repo root:
-
-```json
-{
-  "pr_skill": "custom-pr-skill",
-  "skip_pr": false,
-  "test_command": "npm run test:ci",
-  "docs_path": "./tasks",
-  "state_path": ".claude/feature-state"
-}
-```
+Do not write checkpoint state directly. If a phase prompt asks Claude to work,
+keep changes inside the feature worktree and let the CLI update the checkpoint.

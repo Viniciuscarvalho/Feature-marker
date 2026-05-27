@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "feature-marker runtime result",
+  "type": "object",
+  "required": ["runtime", "phase", "status"],
+  "additionalProperties": true,
+  "properties": {
+    "runtime": { "enum": ["claude", "codex", "gemini"] },
+    "phase": { "enum": ["plan", "implement", "test", "branch"] },
+    "status": { "enum": ["mocked", "completed", "failed"] },
+    "output": { "type": "string" },
+    "error": { "type": "string" }
+  }
+}

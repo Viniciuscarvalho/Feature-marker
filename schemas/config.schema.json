@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "feature-marker project config",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "base_branch": { "type": ["string", "null"] },
+    "worktrees_path": { "type": "string" },
+    "branch_prefix": { "type": "string" },
+    "default_runtime": { "enum": ["claude", "codex", "gemini"] },
+    "mode_defaults": { "type": "object" },
+    "capabilities": { "type": "object" },
+    "docs_path": { "type": "string" },
+    "state_path": { "type": "string" }
+  }
+}

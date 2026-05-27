@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "runtimes": {
+    "claude": {
+      "command": "claude",
+      "required": ["headless-exec"],
+      "optional": ["native-skill-install"]
+    },
+    "codex": {
+      "command": "codex",
+      "required": ["headless-exec"],
+      "optional": ["native-skill-install"]
+    },
+    "gemini": {
+      "command": "gemini",
+      "required": ["headless-exec"],
+      "optional": ["native-skill-install"]
+    }
+  },
+  "modes": {
+    "full": ["plan", "implement", "test", "branch"],
+    "tasks-only": ["implement", "test", "branch"],
+    "test-only": ["test"],
+    "prd-only": ["plan"]
+  }
+}

@@ -1,109 +1,77 @@
-# feature-marker v7 Health Report
+# feature-marker Native Adapter Health Report
 
-> **Instructions:** Run the execution recipe in `scripts/` against a throwaway repo, then fill in each section.
-> See plan at `.claude/plans/i-need-to-check-curried-grove.md` for the full recipe.
+## Run Metadata
 
----
+| Field | Value |
+| --- | --- |
+| Date | 2026-05-27 |
+| Repo SHA | `164e6dd` plus working tree native-adapter remediation |
+| Claude Code version | `2.1.152` |
+| Codex CLI version | `codex-cli 0.130.0` |
+| Gemini CLI version | `0.31.0` |
+| Test mode | Deterministic adapter mock via `FEATURE_MARKER_ADAPTER_MOCK=1` |
 
-## 1. Run Metadata
+## Mode Matrix
 
-| Field               | Value                                                   |
-| ------------------- | ------------------------------------------------------- |
-| Date                | —                                                       |
-| Fixture description | Add `--mode prd-only` flag parsing to feature-marker.sh |
-| Repo SHA            | —                                                       |
-| Claude Code version | —                                                       |
-| Codex CLI version   | —                                                       |
-| Gemini CLI version  | —                                                       |
+Pass means the CLI created/resumed neutral state, used an isolated worktree, and
+completed the expected phase list in a throwaway git repo.
 
----
+| Runtime | `full` | `tasks-only` | `test-only` | `prd-only` |
+| --- | --- | --- | --- | --- |
+| Claude | Pass | Pass | Pass | Pass |
+| Codex | Pass | Pass | Pass | Pass |
+| Gemini | Pass | Pass | Pass | Pass |
 
-## 2. Mode Matrix
+## Deterministic Tests
 
-Pass / Fail / Skipped / N/A per phase per mode.
-
-| Mode        | Plan — PRD | Plan — Spec | Plan — Tasks | Implement | Test    | PR      |
-| ----------- | ---------- | ----------- | ------------ | --------- | ------- | ------- |
-| full        | —          | —           | —            | —         | —       | —       |
-| tasks-only  | N/A        | N/A         | N/A          | —         | —       | —       |
-| spec-driven | —          | —           | —            | —         | —       | —       |
-| test-only   | N/A        | N/A         | N/A          | N/A       | —       | —       |
-| prd-only    | —          | Skipped     | Skipped      | Skipped   | Skipped | Skipped |
-
----
-
-## 3. Token Usage
-
-Run `scripts/scrape-tokens.sh <session-id> <project-path>` for each mode.
-
-| Mode        | Session ID | Input tokens | Output tokens | Total | Δ vs full |
-| ----------- | ---------- | ------------ | ------------- | ----- | --------- |
-| full        | —          | —            | —             | —     | baseline  |
-| tasks-only  | —          | —            | —             | —     | —         |
-| spec-driven | —          | —            | —             | —     | —         |
-| test-only   | —          | —            | —             | —     | —         |
-| prd-only    | —          | —            | —             | —     | —         |
-
-**Pass criterion:** prd-only total < 50% of full total.
-**Partial pass:** prd-only total between 50%–75% of full (document in §6).
-
----
-
-## 4. Artifact Portability
-
-Run `scripts/lint-artifacts.sh <mode-artifacts-dir>` for each mode.
-
-| Mode        | Lint result                  | Leaked patterns (if any) |
-| ----------- | ---------------------------- | ------------------------ |
-| full        | —                            | —                        |
-| tasks-only  | —                            | —                        |
-| spec-driven | —                            | —                        |
-| test-only   | N/A (no artifacts generated) | —                        |
-| prd-only    | —                            | —                        |
-
----
-
-## 5. Codex + Gemini Smoke
-
-Artifacts used: `full` mode (only mode guaranteed to produce all three docs from one drafter run).
-
-Invocation:
+Command:
 
 ```bash
-cat prd.md techspec.md tasks.md scripts/smoke-prompt.txt | codex exec -
-cat prd.md techspec.md tasks.md scripts/smoke-prompt.txt | gemini -p -
+npm test
 ```
 
-### Codex CLI
+Result:
 
-- Version: —
-- Response:
-
-```
-(paste verbatim)
-```
-
-- Result: Pass / Fail / Skipped (CLI not installed)
-
-### Gemini CLI
-
-- Version: —
-- Response:
-
-```
-(paste verbatim)
+```text
+1..9
+# tests 9
+# pass 9
+# fail 0
 ```
 
-- Result: Pass / Fail / Skipped (CLI not installed)
+Covered scenarios:
 
-**Pass criterion:** both runtimes return exactly three numbered lines matching `tasks.md`'s top-level task order.
+- mode validation rejects `spec-driven` and `ralph-loop`
+- neutral checkpoint creation
+- worktree creation and resume
+- `tasks-only` artifact preflight and worktree sync
+- dirty existing worktree refusal
+- platform-context generation
+- runtime capability preflight
+- Claude, Codex, and Gemini adapter asset installation
 
----
+## Adapter Matrix Smoke
 
-## 6. Known Gaps
+Command shape:
 
-<!-- Add any failures, partial passes, or observed regressions here. -->
+```bash
+FEATURE_MARKER_ADAPTER_MOCK=1 feature-marker run <slug> --mode <mode> --runtime <runtime>
+feature-marker status <slug> --json
+```
 
-- [ ] Ralph-Loop option removed from menu (option 3 dropped; would require restoring agent mode table to re-enable).
-- [ ] Spec-driven lazy install requires `~/.claude/skills/feature-marker/resources/spec-workflow/skills/` to exist — pre-flight before running mode #3.
-- [ ] JSONL schema for session transcripts is undocumented — scraper fails loudly if shape changes.
+Result:
+
+```text
+smoke-ok
+```
+
+The smoke matrix covered all combinations of:
+
+- runtimes: `claude`, `codex`, `gemini`
+- modes: `full`, `tasks-only`, `test-only`, `prd-only`
+
+## Known Limits
+
+- The matrix verifies CLI state-machine behavior with mocked adapter execution; it does not spend real Claude/Codex/Gemini model calls.
+- `spec-driven` and `ralph-loop` are intentionally unsupported in native-adapter v1.
+- Branch handoff stops after a local commit and prints push/PR commands. It does not push or create a remote PR automatically.
