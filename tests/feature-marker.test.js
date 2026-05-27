@@ -42,9 +42,12 @@ test('install copies canonical skill assets into runtime-specific homes', () => 
 
   assert.deepEqual(results.map((result) => result.runtime), ['claude', 'codex', 'gemini']);
   assert.equal(fs.existsSync(path.join(home, '.claude', 'skills', 'feature-marker', 'SKILL.md')), true);
+  assert.equal(fs.existsSync(path.join(home, '.claude', 'skills', 'feature-marker', 'agents', 'openai.yaml')), true);
   assert.equal(fs.existsSync(path.join(home, '.claude', 'agents', 'feature-marker.md')), true);
   assert.equal(fs.existsSync(path.join(home, '.codex', 'skills', 'feature-marker', 'SKILL.md')), true);
+  assert.equal(fs.existsSync(path.join(home, '.codex', 'skills', 'feature-marker', 'agents', 'openai.yaml')), true);
   assert.equal(fs.existsSync(path.join(home, '.gemini', 'skills', 'feature-marker', 'SKILL.md')), true);
+  assert.equal(fs.existsSync(path.join(home, '.gemini', 'skills', 'feature-marker', 'agents', 'openai.yaml')), true);
 
   const codexSkill = fs.readFileSync(path.join(home, '.codex', 'skills', 'feature-marker', 'SKILL.md'), 'utf8');
   assert.match(codexSkill, /Use this skill from inside Codex prompts/);
@@ -109,9 +112,14 @@ test('package dry-run includes installer, skills, README, and docs', () => {
 
   assert(files.includes('bin/cli.js'));
   assert(files.includes('lib/feature-marker.js'));
+  assert(files.includes('SKILL.md'));
+  assert(files.includes('agents/openai.yaml'));
   assert(files.includes('feature-marker-dist/feature-marker/SKILL.md'));
+  assert(files.includes('feature-marker-dist/feature-marker/agents/openai.yaml'));
   assert(files.includes('feature-marker-dist/adapters/codex/SKILL.md'));
+  assert(files.includes('feature-marker-dist/adapters/codex/agents/openai.yaml'));
   assert(files.includes('feature-marker-dist/adapters/gemini/SKILL.md'));
+  assert(files.includes('feature-marker-dist/adapters/gemini/agents/openai.yaml'));
   assert(files.includes('README.md'));
   assert(files.includes('CONTEXT.md'));
   assert(files.includes('docs/adr/012-skill-first-workflow.md'));

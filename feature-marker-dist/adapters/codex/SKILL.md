@@ -3,7 +3,6 @@ name: feature-marker
 description: >
   Codex-ready install target for the feature-marker skill-first workflow.
   Use from a Codex prompt; the npm package is only the installer.
-tools: Read, Write, Edit, Grep, Glob, Bash
 ---
 
 # feature-marker for Codex

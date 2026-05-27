@@ -5,7 +5,6 @@ description: >
   verification, local commit, and branch handoff across Claude, Codex, and
   Gemini. The npm package installs skill files only; the LLM skill owns the
   workflow.
-tools: Read, Write, Edit, Grep, Glob, Bash
 ---
 
 # feature-marker
