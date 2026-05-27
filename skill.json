@@ -1,7 +1,7 @@
 {
   "name": "feature-marker",
   "displayName": "Feature Marker",
-  "version": "2.0.0",
+  "version": "7.8.1",
   "author": "Vinicius Carvalho",
   "license": "MIT",
   "homepage": "https://github.com/Viniciuscarvalho/Feature-marker",
@@ -9,30 +9,24 @@
     "type": "git",
     "url": "https://github.com/Viniciuscarvalho/Feature-marker.git"
   },
-  "description": "Automate complete feature development lifecycle: PRD → Tech Spec → Tasks → Implementation → Tests → PR. AI-powered skill for Claude Code with TUI and macOS menubar apps. Structured outputs: JSON specs, task templates, test cases, PR descriptions. Integrates with Linear, GitHub, Notion.",
-  "longDescription": "Feature Marker is a comprehensive feature development workflow automation tool that guides teams through the complete lifecycle of feature development:\n\n**Workflow Phases:**\n1. PRD (Product Requirements Document) — Define what to build\n2. Tech Spec — Technical architecture and design\n3. Tasks — Break down into actionable work items\n4. Implementation — Write the code\n5. Tests — Unit and integration testing\n6. PR — Create pull requests with generated descriptions\n\n**Key Features:**\n- AI-powered guidance at each phase\n- Project-aware: learns from existing specs and patterns\n- Structured JSON outputs for automation\n- Task generation with estimates\n- Test case generation\n- Auto-generated PR descriptions\n- Linear integration for issue creation\n- GitHub integration for PR management\n- Notion database support\n- TUI (Terminal UI) for interactive workflows\n- macOS menubar app for quick access\n\n**Use Cases:**\n- Product teams: Standardized feature documentation\n- Engineering: Reduce overhead in feature planning\n- Collaboration: Single source of truth for feature specs\n- Quality: Built-in test planning and coverage\n- Velocity: 60%+ faster feature cycles",
+  "description": "Native-adapter feature workflow CLI for Claude, Codex, and Gemini with isolated worktrees, neutral checkpoints, tests, and branch-only handoff.",
+  "longDescription": "Feature Marker runs a CLI-owned feature workflow across Claude, Codex, and Gemini adapters. It keeps PRD, TechSpec, and Tasks under tasks/{slug}, stores checkpoints and logs under .feature-marker/features/{slug}, creates isolated worktrees under .feature-marker/worktrees/{slug}, and finishes with a clean committed branch plus handoff commands instead of pushing or opening PRs automatically.",
   "categories": [
-    "product-management",
     "feature-development",
     "automation",
     "documentation",
     "devtools",
-    "workflow",
-    "team-collaboration"
+    "workflow"
   ],
   "tags": [
-    "feature-management",
+    "feature-marker",
     "prd",
     "tech-spec",
-    "automation",
-    "workflow",
-    "documentation",
-    "testing",
-    "integration",
-    "linear",
-    "github",
-    "notion",
-    "product-management"
+    "codex",
+    "gemini",
+    "claude-code",
+    "worktree",
+    "checkpoint"
   ],
   "keywords": [
     "feature-marker",
@@ -40,73 +34,29 @@
     "prd",
     "tech-spec",
     "task-automation",
-    "documentation",
     "claude-code",
-    "linear",
-    "github",
-    "notion",
+    "codex",
+    "gemini",
     "automation"
   ],
   "engines": {
-    "node": ">=18.0.0",
-    "claude": ">=2024.0.0"
+    "node": ">=18.0.0"
   },
   "installation": {
-    "npm": "npm install -g @viniciuscarvalho/feature-marker",
-    "homebrew": "brew tap viniciuscarvalho/tap && brew install feature-marker",
+    "npm": "npx @viniciuscarvalho/feature-marker install --runtime all",
     "github": "https://github.com/Viniciuscarvalho/Feature-marker"
   },
   "triggers": [
-    "/feature-marker prd-[feature-name]",
-    "Create feature spec for",
-    "Feature lifecycle",
+    "feature-marker run",
     "PRD to implementation",
     "Generate tech spec",
     "Create task list for",
-    "Feature planning",
-    "Automated documentation"
+    "Feature planning"
   ],
   "platforms": [
     "claude-code",
-    "cli",
-    "tui",
-    "macos-menubar"
-  ],
-  "integrations": [
-    "linear",
-    "github",
-    "notion",
-    "slack"
-  ],
-  "relatedSkills": [
-    "swift-code-reviewer",
-    "test-generation",
-    "documentation-generator"
-  ],
-  "pricing": {
-    "model": "open-source",
-    "tiers": [
-      {
-        "name": "Community",
-        "price": "free",
-        "description": "Full access to CLI, TUI, and Claude Code integration"
-      },
-      {
-        "name": "Pro",
-        "price": "coming-soon",
-        "description": "Priority support, custom templates, team collaboration features"
-      }
-    ]
-  },
-  "metrics": {
-    "github_stars": "https://img.shields.io/github/stars/Viniciuscarvalho/Feature-marker",
-    "npm_downloads": "https://img.shields.io/npm/dm/@viniciuscarvalho/feature-marker",
-    "license": "https://img.shields.io/badge/license-MIT-blue.svg"
-  },
-  "testimonials": [
-    {
-      "author": "Product Teams",
-      "text": "Feature Marker reduces our feature planning cycle by 60%"
-    }
+    "codex",
+    "gemini",
+    "cli"
   ]
 }

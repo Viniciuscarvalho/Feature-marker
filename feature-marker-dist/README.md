@@ -1,97 +1,73 @@
-# Feature-Marker
+# Feature-Marker Distribution
 
-Workflow automation for feature development with checkpoints and resume capability.
+This distribution contains skill install assets for Claude, Codex, and Gemini.
+The package installer copies skill files into each runtime. The workflow itself
+runs inside the LLM after the user asks to use `feature-marker`.
 
-## Versions
-
-| Version | Type                   | Description                        |
-| ------- | ---------------------- | ---------------------------------- |
-| **CLI** | `feature-marker-dist/` | Command-line skill for Claude Code |
-
-## Installation
-
-### CLI (Skill)
+## Install
 
 ```bash
-cd feature-marker-dist
-./install.sh
+npx -y @viniciuscarvalho/feature-marker install --runtime claude
+npx -y @viniciuscarvalho/feature-marker install --runtime all
+npx -y @viniciuscarvalho/feature-marker install --runtime codex
+npx -y @viniciuscarvalho/feature-marker install --runtime gemini
 ```
 
-Installs to `~/.claude/skills/feature-marker/`
-
-## Usage
-
-### CLI
+Preview targets:
 
 ```bash
-# Start workflow
-/feature-marker my-feature-name
-
-# Interactive mode selection menu (requires TTY)
-/feature-marker --menu my-feature-name   # or -i
-
-# Direct mode
-/feature-marker --mode full my-feature-name
+npx -y @viniciuscarvalho/feature-marker install --runtime all --dry-run
 ```
 
-## Workflow Modes
+## Invoke
 
-| Mode            | Description                                                       |
-| --------------- | ----------------------------------------------------------------- |
-| **Full**        | Generate missing docs (PRD, TechSpec, Tasks) + execute all phases |
-| **Tasks Only**  | Use existing docs, skip generation                                |
-| **Spec Driven** | Generate from requirements with multi-agent review                |
-| **Test Only**   | Run tests phase exclusively                                       |
-| **PRD Only**    | Draft PRD and exit; no TechSpec/Tasks/impl/PR                     |
+Use the installed skill from your LLM prompt. Interactive mode is not required
+and is not the v1 path.
 
-## Platform Support
+Claude prompt:
 
-Works with any tech stack — agnostic by default:
-
-| Platform      | Test                    | Lint            |
-| ------------- | ----------------------- | --------------- |
-| 🍎 iOS/Swift  | `swift test --parallel` | `swiftlint`     |
-| 🟨 Node.js/TS | `jest` / `vitest run`   | `{pm} run lint` |
-| 🦀 Rust       | `cargo test`            | `cargo clippy`  |
-| 🐍 Python     | `pytest -v`             | `ruff check .`  |
-| 🐹 Go         | `go test ./...`         | `go vet ./...`  |
-
-iOS projects also get XcodeBuildMCP simulator validation (optional).
-
-## Workflow Phases
-
-```
-Phase 0: Inputs Gate     → Validate/generate PRD, TechSpec, Tasks
-Phase 1: Analysis        → Create implementation plan
-Phase 2: Implementation  → Execute tasks with progress tracking
-Phase 3: Tests           → Run platform-appropriate tests + lint
-Phase 4: Commit & PR     → Create commit and pull request
+```text
+Use feature-marker to implement billing-observability.
 ```
 
-## Requirements
+Codex or Gemini prompt:
 
-### CLI
-
-- Claude Code with skills support
-- Commands in `~/.claude/commands/`: `create-prd.md`, `generate-spec.md`, `generate-tasks.md`
-- Templates in `~/.claude/docs/specs/`: `prd-template.md`, `techspec-template.md`, `tasks-template.md`
-
-## Resume
-
-If interrupted, re-run with same feature name to resume from checkpoint.
-
-## Configuration
-
-Optional `.feature-marker.json` in project root:
-
-```json
-{
-  "test_command": "npm run test:ci",
-  "docs_path": "./tasks",
-  "skip_pr": false
-}
+```text
+Use feature-marker to plan and implement billing-observability.
 ```
 
-## License
+```text
+Use feature-marker in tasks-only mode for billing-observability.
+```
 
-MIT
+## Runtime Targets
+
+- Claude: `~/.claude/skills/feature-marker` and `~/.claude/agents/feature-marker.md`
+- Codex: `~/.codex/skills/feature-marker`
+- Gemini: `~/.gemini/skills/feature-marker`
+
+## State
+
+feature-marker uses artifact state, not a package-owned workflow database:
+
+```text
+tasks/{slug}/
+  prd.md
+  techspec.md
+  tasks.md
+```
+
+These files are created from installed templates in `templates/`:
+`prd-template.md`, `techspec-template.md`, and `tasks-template.md`. The skill
+fills `{slug}` and `{feature_title}` before implementation.
+
+The skill works branch-first. It creates or requires a feature branch, uses a
+worktree only when the current checkout is dirty or the user asks, runs through
+PRD -> TechSpec -> Tasks -> implementation grill -> implementation ->
+verification, commits locally, and prints exact push/PR commands. The grill
+pass finds gaps before coding and asks the user only when a finding changes
+scope or requires a product decision. It stops for true ambiguity, unrelated
+dirty work, or blocked verification. It does not push or open PRs automatically.
+
+`spec-driven` and `ralph-loop` are out of scope for this skill-first v1 unless
+they are rebuilt as explicit skill instructions.

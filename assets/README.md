@@ -1,70 +1,45 @@
 # Assets
 
-This folder contains images and GIFs for the README.
+This folder contains README visuals.
 
-## Required Assets
+## Current Public Assets
 
-Create the following files to complete the README visuals:
+- `banner.svg`: header banner.
+- `skill-first-flow.svg`: usage diagram for the current skill-first workflow.
 
-### 1. `banner.png` (800x200 recommended)
+These are the assets that should be referenced from the README.
 
-A header banner for the project. Suggested design:
-- Dark gradient background (purple/blue)
-- "feature-marker" text with a rocket or automation icon
-- Tagline: "Automate your feature development workflow"
+## Demo Guidance
 
-**Tools:** Figma, Canva, or any design tool
+Any future GIF or screenshot must show the current v1 path:
 
-### 2. `logo.png` (100x100 recommended)
+1. Install once:
 
-A small logo for the footer. Options:
-- Simple rocket icon
-- "FM" monogram
-- Workflow/automation symbol
+   ```bash
+   npx -y @viniciuscarvalho/feature-marker install --runtime all
+   ```
 
-### 3. `demo.gif` (700px width recommended)
+2. Invoke from inside the LLM prompt:
 
-A GIF showing the skill in action. To record:
+   ```text
+   Use feature-marker to implement billing-observability.
+   ```
 
-```bash
-# Option 1: Use asciinema + gif converter
-asciinema rec demo.cast
-# Then convert to GIF using https://github.com/asciinema/agg
+3. Show the generated artifact state:
 
-# Option 2: Use a screen recorder
-# - macOS: Built-in screen recording (Cmd+Shift+5)
-# - Cross-platform: OBS Studio
-# Then convert to GIF using:
-ffmpeg -i demo.mp4 -vf "fps=10,scale=700:-1:flags=lanczos" -c:v gif demo.gif
-```
+   ```text
+   tasks/{slug}/prd.md
+   tasks/{slug}/techspec.md
+   tasks/{slug}/tasks.md
+   ```
 
-**What to show in the demo:**
-1. Invoking `/feature-marker prd-example`
-2. The inputs gate validating files
-3. Phase progression (1-4)
-4. Final PR creation message
+4. Show the local branch handoff:
 
-### 4. Optional Screenshots
+   ```bash
+   git push -u origin feature-marker/billing-observability
+   gh pr create --base main --head feature-marker/billing-observability
+   ```
 
-- `inputs-gate.png` - Showing file validation
-- `implementation.png` - Task tracking in progress
-- `commit-pr.png` - Platform detection and PR creation
-
-## Quick Placeholder
-
-If you want to test the README without real images, you can use placeholder services:
-
-```markdown
-![Banner](https://via.placeholder.com/800x200/6B46C1/FFFFFF?text=feature-marker)
-![Logo](https://via.placeholder.com/100x100/6B46C1/FFFFFF?text=FM)
-```
-
-## Color Palette Suggestion
-
-| Color | Hex | Usage |
-|-------|-----|-------|
-| Primary | `#6B46C1` | Purple (Claude/AI theme) |
-| Secondary | `#3B82F6` | Blue (actions) |
-| Success | `#10B981` | Green (completed) |
-| Background | `#1F2937` | Dark gray |
-| Text | `#FFFFFF` | White |
+Do not show `/feature-marker`, an interactive menu, checkpoint JSON,
+mandatory worktrees, automatic push, automatic PR creation, Ralph Loop, or
+spec-driven mode as supported v1 behavior.

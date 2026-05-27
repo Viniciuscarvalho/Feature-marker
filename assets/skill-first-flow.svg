@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-label="feature-marker skill-first workflow">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F172A"/>
+      <stop offset="0.58" stop-color="#172554"/>
+      <stop offset="1" stop-color="#064E3B"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.13"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.06"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <g opacity="0.14">
+    <path d="M0 120 H1280 M0 240 H1280 M0 360 H1280 M0 480 H1280 M0 600 H1280" stroke="#FFFFFF"/>
+    <path d="M160 0 V720 M320 0 V720 M480 0 V720 M640 0 V720 M800 0 V720 M960 0 V720 M1120 0 V720" stroke="#FFFFFF"/>
+  </g>
+
+  <text x="70" y="84" fill="#FFFFFF" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="52" font-weight="800">feature-marker</text>
+  <text x="70" y="124" fill="#D1D5DB" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="24" font-weight="500">A skill-first feature workflow for Claude, Codex, and Gemini</text>
+
+  <g transform="translate(70 172)">
+    <rect width="1140" height="118" rx="16" fill="#020617" opacity="0.94" stroke="#334155"/>
+    <circle cx="32" cy="30" r="7" fill="#F87171"/>
+    <circle cx="56" cy="30" r="7" fill="#FBBF24"/>
+    <circle cx="80" cy="30" r="7" fill="#34D399"/>
+    <text x="30" y="72" fill="#BFDBFE" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="22" font-weight="700">$ npx -y @viniciuscarvalho/feature-marker install --runtime all</text>
+    <text x="30" y="101" fill="#CBD5E1" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="18" font-weight="600">Installer only. The workflow runs from your LLM prompt inside any git project.</text>
+  </g>
+
+  <g transform="translate(70 338)">
+    <rect width="244" height="180" rx="14" fill="url(#card)" stroke="#60A5FA"/>
+    <text x="22" y="38" fill="#A7F3D0" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="17" font-weight="800" letter-spacing="1">STEP 1</text>
+    <text x="22" y="75" fill="#FFFFFF" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="25" font-weight="800">Prompt LLM</text>
+    <text x="22" y="112" fill="#E5E7EB" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="18" font-weight="600">Use feature-marker</text>
+    <text x="22" y="139" fill="#E5E7EB" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="18" font-weight="600">to implement</text>
+    <text x="22" y="166" fill="#E5E7EB" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="18" font-weight="600">billing-observability.</text>
+  </g>
+
+  <path d="M330 428 H380" stroke="#A7F3D0" stroke-width="5" stroke-linecap="round"/>
+  <path d="M368 414 L386 428 L368 442" fill="none" stroke="#A7F3D0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g transform="translate(400 338)">
+    <rect width="244" height="180" rx="14" fill="url(#card)" stroke="#34D399"/>
+    <text x="22" y="38" fill="#A7F3D0" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="17" font-weight="800" letter-spacing="1">STEP 2</text>
+    <text x="22" y="75" fill="#FFFFFF" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="25" font-weight="800">Artifacts</text>
+    <text x="22" y="110" fill="#C4B5FD" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700">tasks/{slug}/prd.md</text>
+    <text x="22" y="137" fill="#C4B5FD" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700">tasks/{slug}/techspec.md</text>
+    <text x="22" y="164" fill="#C4B5FD" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700">tasks/{slug}/tasks.md</text>
+  </g>
+
+  <path d="M660 428 H710" stroke="#A7F3D0" stroke-width="5" stroke-linecap="round"/>
+  <path d="M698 414 L716 428 L698 442" fill="none" stroke="#A7F3D0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g transform="translate(730 338)">
+    <rect width="244" height="180" rx="14" fill="url(#card)" stroke="#FBBF24"/>
+    <text x="22" y="38" fill="#A7F3D0" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="17" font-weight="800" letter-spacing="1">STEP 3</text>
+    <text x="22" y="75" fill="#FFFFFF" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="25" font-weight="800">Grill + Build</text>
+    <text x="22" y="112" fill="#E5E7EB" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="18" font-weight="600">Find gaps before</text>
+    <text x="22" y="139" fill="#E5E7EB" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="18" font-weight="600">coding, then</text>
+    <text x="22" y="166" fill="#E5E7EB" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="18" font-weight="600">implement and test.</text>
+  </g>
+
+  <path d="M990 428 H1040" stroke="#A7F3D0" stroke-width="5" stroke-linecap="round"/>
+  <path d="M1028 414 L1046 428 L1028 442" fill="none" stroke="#A7F3D0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g transform="translate(1060 338)">
+    <rect width="150" height="180" rx="14" fill="url(#card)" stroke="#A78BFA"/>
+    <text x="18" y="38" fill="#A7F3D0" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="17" font-weight="800" letter-spacing="1">STEP 4</text>
+    <text x="18" y="75" fill="#FFFFFF" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="24" font-weight="800">Handoff</text>
+    <text x="18" y="112" fill="#E5E7EB" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="17" font-weight="600">Commit</text>
+    <text x="18" y="139" fill="#E5E7EB" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="17" font-weight="600">locally.</text>
+    <text x="18" y="166" fill="#E5E7EB" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="17" font-weight="600">Print PR cmds.</text>
+  </g>
+
+  <g transform="translate(70 574)">
+    <rect width="1140" height="88" rx="14" fill="#022C22" opacity="0.84" stroke="#34D399"/>
+    <text x="28" y="36" fill="#FFFFFF" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="28" font-weight="800">Simple contract: skill owns the flow, artifacts own the state, you own the PR.</text>
+    <text x="28" y="66" fill="#D1FAE5" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="18" font-weight="600">No interactive menu. No workflow CLI. No automatic push. No automatic PR creation.</text>
+  </g>
+</svg>

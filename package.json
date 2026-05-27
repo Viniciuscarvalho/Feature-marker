@@ -1,7 +1,7 @@
 {
   "name": "@viniciuscarvalho/feature-marker",
   "version": "7.8.1",
-  "description": "Automate your complete feature development lifecycle: PRD → Tech Spec → Tasks → Implementation → Tests → PR. AI-powered skill for Claude Code with TUI and menubar apps. Integrates with Linear, GitHub, Notion. Structured outputs: JSON specs, task templates, test cases, PR descriptions.",
+  "description": "Skill-first Feature Marker installer for Claude, Codex, and Gemini: PRD, TechSpec, Tasks, verification, local commit, and branch handoff.",
   "displayName": "Feature Marker",
   "author": "Vinicius Carvalho",
   "license": "MIT",
@@ -21,6 +21,8 @@
     "task-automation",
     "documentation",
     "claude-code",
+    "codex",
+    "gemini",
     "skill",
     "linear",
     "github",
@@ -37,13 +39,36 @@
   "bin": {
     "feature-marker": "./bin/cli.js"
   },
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
   "files": [
     "bin/",
-    "feature-marker-dist/",
+    "lib/",
+    "feature-marker-dist/README.md",
+    "feature-marker-dist/HEALTH.md",
+    "feature-marker-dist/feature-marker/SKILL.md",
+    "feature-marker-dist/feature-marker/agents/openai.yaml",
+    "feature-marker-dist/feature-marker/templates/prd-template.md",
+    "feature-marker-dist/feature-marker/templates/techspec-template.md",
+    "feature-marker-dist/feature-marker/templates/tasks-template.md",
+    "feature-marker-dist/feature-marker/feature-marker.sh",
+    "feature-marker-dist/feature-marker/install.sh",
+    "feature-marker-dist/adapters/codex/SKILL.md",
+    "feature-marker-dist/adapters/codex/agents/openai.yaml",
+    "feature-marker-dist/adapters/gemini/SKILL.md",
+    "feature-marker-dist/adapters/gemini/agents/openai.yaml",
+    "feature-marker-dist/agents/feature-marker.md",
     "README.md",
+    "SKILL.md",
+    "agents/openai.yaml",
+    "CONTEXT.md",
+    "docs/adr/012-skill-first-workflow.md",
+    "assets/banner.svg",
+    "assets/skill-first-flow.svg",
     "LICENSE",
     "CHANGELOG.md"
   ]

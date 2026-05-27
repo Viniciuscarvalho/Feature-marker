@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature Marker"
+  short_description: "Plan and hand off feature branches"
+  default_prompt: "Use $feature-marker to plan and implement a scoped feature."

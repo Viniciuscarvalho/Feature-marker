@@ -1,136 +1,185 @@
-<!-- Banner -->
-<p align="center">
-  <img src="assets/banner.svg" alt="feature-marker — AI-powered feature development skill for Claude Code" width="800">
-</p>
+# feature-marker - Skill-first feature workflow for Claude, Codex, and Gemini
 
-<p align="center">
-  <strong>AI-powered feature development skill for Claude Code.<br>PRD → Tech Spec → Tasks → Implementation → Tests → PR — automated, with checkpoint/resume across multiple execution modes.</strong>
-</p>
+![feature-marker Banner](assets/banner.svg)
 
-<p align="center">
-  <a href="https://www.npmjs.com/package/@viniciuscarvalho/feature-marker">
-    <img src="https://img.shields.io/npm/v/@viniciuscarvalho/feature-marker.svg" alt="npm version">
-  </a>
-  <a href="https://github.com/Viniciuscarvalho/Feature-marker/blob/main/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
-  </a>
-  <a href="https://github.com/Viniciuscarvalho/Feature-marker">
-    <img src="https://img.shields.io/badge/platform-Claude%20Code-purple.svg" alt="Platform: Claude Code">
-  </a>
-  <a href="https://github.com/sponsors/Viniciuscarvalho">
-    <img src="https://img.shields.io/badge/sponsor-♥-ea4aaa.svg" alt="Sponsor">
-  </a>
-</p>
+[![npm package](https://img.shields.io/npm/v/@viniciuscarvalho/feature-marker?logo=npm&logoColor=white&style=flat-square)](https://www.npmjs.com/package/@viniciuscarvalho/feature-marker)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+[![node >=18](https://img.shields.io/badge/node-%3E%3D18.0.0-2ea44f?logo=node.js&logoColor=white&style=flat-square)](https://nodejs.org/)
+[![Claude Code](https://img.shields.io/badge/runtime-Claude_Code-6f42c1?style=flat-square)](https://www.anthropic.com/claude-code)
+[![Codex](https://img.shields.io/badge/runtime-Codex-111111?style=flat-square)](https://openai.com/codex/)
+[![Gemini](https://img.shields.io/badge/runtime-Gemini-4285f4?style=flat-square)](https://gemini.google.com/)
 
-<p align="center">
-  <code>claude code skill</code> · <code>feature workflow automation</code> · <code>PRD to PR pipeline</code> · <code>checkpoint resume</code> · <code>AI development orchestrator</code> · <code>multi-agent</code>
-</p>
+feature-marker is a portable LLM skill for turning one feature request into a
+clear flow: PRD, TechSpec, Tasks, implementation, verification, local commit,
+and branch handoff.
 
----
+The npm package is only an installer for skill files. It does not run the
+workflow, own feature state, push branches, or open pull requests.
 
-## Quick Start
+![feature-marker skill-first workflow](assets/skill-first-flow.svg)
 
-```bash
-npx @viniciuscarvalho/feature-marker
-```
+## Why Star This Repo
 
-Then in Claude Code:
+- Works where you already code: Claude, Codex, and Gemini.
+- Keeps the workflow simple: install once, then invoke the skill from a prompt.
+- Produces plain repo artifacts your team can review and keep.
+- Adds an implementation grill before coding so weak specs, missing tests, and
+  handoff gaps are found early.
+- Stops at a clean local branch handoff. You stay in control of push and PR
+  creation.
 
-```
-/feature-marker my-feature-name
-```
+## Install With npx
 
-feature-marker generates your PRD, Tech Spec, and task list — then implements, tests, and opens a pull request, pausing at every phase checkpoint so you stay in control.
-
-<p align="center">
-  <img src="assets/feature-marker-demo.gif" alt="feature-marker Demo" width="700">
-</p>
-
----
-
-## Why feature-marker
-
-Building a feature end-to-end means context-switching between planning, coding, testing, and PR creation. feature-marker collapses that into a single command — describe the feature once, get a pull request out.
-
-| Metric                         | Without | With feature-marker     |
-| ------------------------------ | ------- | ----------------------- |
-| Features per session           | 1       | **5+**                  |
-| Manual touchpoints per feature | ~10     | **0** (checkpoint mode) |
-| Context-aware completion rate  | ~60%    | **85%+**                |
-| Cross-feature conflicts        | Unknown | **<10%**                |
-| Backlog to PR                  | Manual  | **<10 min per feature** |
-
----
-
-## How It Works
-
-Invoke the skill once — feature-marker reads your project state and presents a single confirmation prompt, then runs the pipeline. → [Full walkthrough](assets/HOW_IT_WORKS.md)
-
-```
-/feature-marker my-feature
-        │
-        ▼
-Phase 0: Inputs Gate     → Validate or generate PRD, Tech Spec, Tasks
-Phase 1: Analysis        → Create implementation plan
-Phase 2: Implementation  → Execute tasks with per-task lint + test
-Phase 3: Tests           → Run platform-appropriate test suite
-Phase 4: Commit & PR     → Commit, push, open pull request
-```
-
-Each phase writes a checkpoint. Re-run with the same name to resume exactly where you left off.
-
----
-
-## Key Capabilities
-
-- **Artifact generation** — PRD, Tech Spec, and Tasks from a one-line description
-- **Checkpoint / resume** — pause at any phase, pick up later with the same command
-- **Per-task validation** — lint + related tests after each task; auto-fix on failure
-- **Stack detection** — auto-detects iOS, Node.js, Rust, Python, Go for correct test and lint commands
-- **Multiple execution modes** — Full, Tasks-Only, Spec-Driven, Test-Only
-- **Safety guardrails** — breaking change detection, schema migration review, configurable file-change limits
-- **Custom review personas** — domain-specific agents for Firebase, iOS, API Security, Payments, and Migrations
-
----
-
-## Installation
+Install for Claude:
 
 ```bash
-npx @viniciuscarvalho/feature-marker
+npx -y @viniciuscarvalho/feature-marker install --runtime claude
 ```
 
-**Update to the latest version:**
+Install the skill into all supported runtimes:
 
 ```bash
-npx @viniciuscarvalho/feature-marker@latest
+npx -y @viniciuscarvalho/feature-marker install --runtime all
 ```
 
-**Manual install:**
+Install only one runtime:
 
 ```bash
-git clone https://github.com/Viniciuscarvalho/Feature-marker.git
-cd Feature-marker && ./feature-marker-dist/feature-marker/install.sh
+npx -y @viniciuscarvalho/feature-marker install --runtime codex
+npx -y @viniciuscarvalho/feature-marker install --runtime gemini
 ```
 
----
+Use `--dry-run` to preview install targets:
 
-## Contributing
+```bash
+npx -y @viniciuscarvalho/feature-marker install --runtime all --dry-run
+```
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-change`)
-3. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/)
-4. Open a pull request
+Global npm install is optional and only shortens the installer command:
 
----
+```bash
+npm install -g @viniciuscarvalho/feature-marker
+feature-marker install --runtime codex
+```
+
+## Use In Your LLM
+
+After installation, open any git project in Claude, Codex, or Gemini and invoke
+the skill from the prompt. Interactive mode is not required and is not the v1
+path.
+
+Claude prompt:
+
+```text
+Use feature-marker to implement billing-observability.
+```
+
+Codex or Gemini prompt:
+
+```text
+Use feature-marker to plan and implement billing-observability.
+```
+
+```text
+Use feature-marker in tasks-only mode for billing-observability.
+```
+
+```text
+Use feature-marker to create only the PRD for import-csv.
+```
+
+The skill reads the repository, creates or uses artifacts under `tasks/{slug}/`,
+runs through PRD -> TechSpec -> Tasks -> implementation grill ->
+implementation -> verification, commits locally, and prints exact push/PR
+handoff commands. The grill pass finds gaps before coding; it asks the user only
+when a finding changes scope or requires a product decision.
+
+PRD, TechSpec, and Tasks are created from bundled templates installed with the
+skill. The agent fills `{slug}` and `{feature_title}` and writes:
+`tasks/{slug}/prd.md`, `tasks/{slug}/techspec.md`, and
+`tasks/{slug}/tasks.md`.
+
+## Installer Commands
+
+| Command | What it does |
+| --- | --- |
+| `install --runtime claude\|codex\|gemini\|all` | Installs skill assets for the selected runtime. |
+| `install --runtime all --dry-run` | Shows install targets without writing files. |
+| `--help` | Prints installer usage. |
+| `--version` | Prints the package version. |
+
+Workflow commands such as `run`, `resume`, `status`, and `capabilities` are not
+supported. Invoke feature-marker inside your LLM instead.
+
+## Workflow Contract
+
+feature-marker keeps user-facing state in plain artifacts:
+
+```text
+tasks/{slug}/
+  prd.md
+  techspec.md
+  tasks.md
+```
+
+The skill is branch-first:
+
+- Create or require a feature branch before implementation.
+- Use a worktree only when the current checkout is dirty or the user asks.
+- Continue from PRD to TechSpec to Tasks to an implementation grill by default.
+- Resolve grill findings in the artifacts before coding.
+- Stop only for true ambiguity, unrelated dirty work, or blocked verification.
+- Preserve unrelated local changes.
+- Finish with a local commit and exact handoff commands.
+- Do not push or open a PR automatically.
+
+Example handoff:
+
+```bash
+git push -u origin feature-marker/billing-observability
+gh pr create --base main --head feature-marker/billing-observability
+```
+
+## Prompt Intents
+
+There are no CLI workflow modes. Use these words in your LLM prompt when useful:
+
+| Intent | What the skill does |
+| --- | --- |
+| `full` | Runs PRD, TechSpec, Tasks, implementation grill, implementation, tests, and branch handoff. |
+| `tasks-only` | Uses existing artifacts, implements tasks, tests, and hands off. |
+| `test-only` | Runs verification on the current feature branch and reports results. |
+| `prd-only` | Creates or revises only `tasks/{slug}/prd.md`. |
+
+`spec-driven` and `ralph-loop` are out of scope for this skill-first v1 unless
+they are rebuilt as explicit skill instructions.
+
+## Runtime Install Targets
+
+- Claude: `~/.claude/skills/feature-marker` and `~/.claude/agents/feature-marker.md`
+- Codex: `~/.codex/skills/feature-marker`
+- Gemini: `~/.gemini/skills/feature-marker`
+
+## Verification
+
+Run the deterministic suite:
+
+```bash
+npm test
+```
+
+Package smoke:
+
+```bash
+npm pack --dry-run --json
+```
+
+## Learn More
+
+- Distribution notes: [feature-marker-dist/README.md](feature-marker-dist/README.md)
+- Project context: [CONTEXT.md](CONTEXT.md)
+- Architecture decision: [docs/adr/012-skill-first-workflow.md](docs/adr/012-skill-first-workflow.md)
 
 ## License
 
-MIT © [Vinicius Carvalho](https://github.com/Viniciuscarvalho)
-
----
-
-<p align="center">
-  <img src="assets/logo.svg" alt="feature-marker logo" width="100">
-  <br>
-  Built with 🤖 for the AI-assisted development community
-</p>
+MIT

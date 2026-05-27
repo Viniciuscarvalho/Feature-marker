@@ -1,109 +1,41 @@
-# feature-marker v7 Health Report
+# feature-marker Skill-First Health Report
 
-> **Instructions:** Run the execution recipe in `scripts/` against a throwaway repo, then fill in each section.
-> See plan at `.claude/plans/i-need-to-check-curried-grove.md` for the full recipe.
+## Run Metadata
 
----
+| Field | Value |
+| --- | --- |
+| Date | 2026-05-27 |
+| Scope | Installer-only remediation on `codex/native-adapter-remediation` |
+| Test mode | Deterministic local installer and package checks |
 
-## 1. Run Metadata
+## Installer Matrix
 
-| Field               | Value                                                   |
-| ------------------- | ------------------------------------------------------- |
-| Date                | —                                                       |
-| Fixture description | Add `--mode prd-only` flag parsing to feature-marker.sh |
-| Repo SHA            | —                                                       |
-| Claude Code version | —                                                       |
-| Codex CLI version   | —                                                       |
-| Gemini CLI version  | —                                                       |
+| Runtime | `install --dry-run` | temp `HOME` install |
+| --- | --- | --- |
+| Claude | Pass | Pass |
+| Codex | Pass | Pass |
+| Gemini | Pass | Pass |
+| All | Pass | Pass |
 
----
+## Deterministic Tests
 
-## 2. Mode Matrix
-
-Pass / Fail / Skipped / N/A per phase per mode.
-
-| Mode        | Plan — PRD | Plan — Spec | Plan — Tasks | Implement | Test    | PR      |
-| ----------- | ---------- | ----------- | ------------ | --------- | ------- | ------- |
-| full        | —          | —           | —            | —         | —       | —       |
-| tasks-only  | N/A        | N/A         | N/A          | —         | —       | —       |
-| spec-driven | —          | —           | —            | —         | —       | —       |
-| test-only   | N/A        | N/A         | N/A          | N/A       | —       | —       |
-| prd-only    | —          | Skipped     | Skipped      | Skipped   | Skipped | Skipped |
-
----
-
-## 3. Token Usage
-
-Run `scripts/scrape-tokens.sh <session-id> <project-path>` for each mode.
-
-| Mode        | Session ID | Input tokens | Output tokens | Total | Δ vs full |
-| ----------- | ---------- | ------------ | ------------- | ----- | --------- |
-| full        | —          | —            | —             | —     | baseline  |
-| tasks-only  | —          | —            | —             | —     | —         |
-| spec-driven | —          | —            | —             | —     | —         |
-| test-only   | —          | —            | —             | —     | —         |
-| prd-only    | —          | —            | —             | —     | —         |
-
-**Pass criterion:** prd-only total < 50% of full total.
-**Partial pass:** prd-only total between 50%–75% of full (document in §6).
-
----
-
-## 4. Artifact Portability
-
-Run `scripts/lint-artifacts.sh <mode-artifacts-dir>` for each mode.
-
-| Mode        | Lint result                  | Leaked patterns (if any) |
-| ----------- | ---------------------------- | ------------------------ |
-| full        | —                            | —                        |
-| tasks-only  | —                            | —                        |
-| spec-driven | —                            | —                        |
-| test-only   | N/A (no artifacts generated) | —                        |
-| prd-only    | —                            | —                        |
-
----
-
-## 5. Codex + Gemini Smoke
-
-Artifacts used: `full` mode (only mode guaranteed to produce all three docs from one drafter run).
-
-Invocation:
+Command:
 
 ```bash
-cat prd.md techspec.md tasks.md scripts/smoke-prompt.txt | codex exec -
-cat prd.md techspec.md tasks.md scripts/smoke-prompt.txt | gemini -p -
+npm test
 ```
 
-### Codex CLI
+Expected covered scenarios:
 
-- Version: —
-- Response:
+- dry-run install targets for Claude, Codex, Gemini, and all
+- temp `HOME` installs into runtime-specific skill directories
+- unsupported workflow command errors for `run`, `resume`, `status`, and `capabilities`
+- static docs checks for npx install and LLM invocation examples
+- package dry-run includes installer, skill assets, README, context, and ADR docs
 
-```
-(paste verbatim)
-```
+## Known Limits
 
-- Result: Pass / Fail / Skipped (CLI not installed)
-
-### Gemini CLI
-
-- Version: —
-- Response:
-
-```
-(paste verbatim)
-```
-
-- Result: Pass / Fail / Skipped (CLI not installed)
-
-**Pass criterion:** both runtimes return exactly three numbered lines matching `tasks.md`'s top-level task order.
-
----
-
-## 6. Known Gaps
-
-<!-- Add any failures, partial passes, or observed regressions here. -->
-
-- [ ] Ralph-Loop option removed from menu (option 3 dropped; would require restoring agent mode table to re-enable).
-- [ ] Spec-driven lazy install requires `~/.claude/skills/feature-marker/resources/spec-workflow/skills/` to exist — pre-flight before running mode #3.
-- [ ] JSONL schema for session transcripts is undocumented — scraper fails loudly if shape changes.
+- The package does not run live Claude, Codex, or Gemini model calls.
+- Workflow execution is intentionally delegated to the installed LLM skill.
+- `spec-driven` and `ralph-loop` are out of scope for skill-first v1 unless rebuilt as explicit skill instructions.
+- Branch handoff stops after a local commit and printed push/PR commands. It does not push or create a remote PR automatically.

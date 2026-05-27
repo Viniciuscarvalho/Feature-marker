@@ -1,1 +1,0 @@
-You are reading a PRD, a Tech Spec, and a Tasks document for one feature. List the first 3 tasks in execution order. Reply with exactly three numbered lines and nothing else.

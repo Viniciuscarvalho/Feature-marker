@@ -39,4 +39,5 @@ homebrew-tap/
 orchestration-backlog.json
 .worktrees/
 .orchestrator/
+.feature-marker/
 state/*/
