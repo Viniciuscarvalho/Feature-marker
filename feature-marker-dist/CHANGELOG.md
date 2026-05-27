@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clarified Claude usage as a plain prompt-invoked run-through flow with an
   implementation grill pass before coding. Interactive mode is not required and
   is not the v1 path.
+- Added bundled PRD, TechSpec, and Tasks templates for correct
+  `tasks/{slug}/` artifact creation.
 
 ### Removed
 

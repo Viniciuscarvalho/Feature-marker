@@ -17,6 +17,8 @@ Run the complete flow by default:
 
 - Create or reuse `tasks/{slug}/prd.md`, `tasks/{slug}/techspec.md`, and
   `tasks/{slug}/tasks.md`.
+- Use the bundled templates in `templates/` for PRD, TechSpec, and Tasks; fill
+  `{slug}` and `{feature_title}` and leave no unresolved placeholders.
 - Create or require a feature branch before implementation.
 - Use a git worktree only when the checkout is dirty or the user asks.
 - Run an implementation grill pass before coding to find artifact, task, test,

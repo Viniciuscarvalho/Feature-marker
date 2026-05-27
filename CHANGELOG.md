@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   invocation examples.
 - Clarified Claude usage as a prompt-invoked run-through flow with an
   implementation grill pass before coding.
+- Added bundled PRD, TechSpec, and Tasks templates for creating correct
+  `tasks/{slug}/` artifacts.
 
 ### Removed
 

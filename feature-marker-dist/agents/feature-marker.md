@@ -18,6 +18,9 @@ the feature workflow. Interactive mode is not required and is not the v1 path.
 When invoked, follow the skill contract:
 
 - Store PRD, TechSpec, and Tasks artifacts under `tasks/{slug}/`.
+- Use the installed templates in `templates/` to create `prd.md`,
+  `techspec.md`, and `tasks.md`; fill slug/title placeholders and leave no
+  unresolved template markers.
 - Use a feature branch before implementation.
 - Use a worktree only for dirty checkouts or when the user requests one.
 - After PRD, TechSpec, and Tasks exist, run an implementation grill pass before

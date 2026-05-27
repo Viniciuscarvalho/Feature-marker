@@ -43,11 +43,20 @@ test('install copies canonical skill assets into runtime-specific homes', () => 
   assert.deepEqual(results.map((result) => result.runtime), ['claude', 'codex', 'gemini']);
   assert.equal(fs.existsSync(path.join(home, '.claude', 'skills', 'feature-marker', 'SKILL.md')), true);
   assert.equal(fs.existsSync(path.join(home, '.claude', 'skills', 'feature-marker', 'agents', 'openai.yaml')), true);
+  assert.equal(fs.existsSync(path.join(home, '.claude', 'skills', 'feature-marker', 'templates', 'prd-template.md')), true);
+  assert.equal(fs.existsSync(path.join(home, '.claude', 'skills', 'feature-marker', 'templates', 'techspec-template.md')), true);
+  assert.equal(fs.existsSync(path.join(home, '.claude', 'skills', 'feature-marker', 'templates', 'tasks-template.md')), true);
   assert.equal(fs.existsSync(path.join(home, '.claude', 'agents', 'feature-marker.md')), true);
   assert.equal(fs.existsSync(path.join(home, '.codex', 'skills', 'feature-marker', 'SKILL.md')), true);
   assert.equal(fs.existsSync(path.join(home, '.codex', 'skills', 'feature-marker', 'agents', 'openai.yaml')), true);
+  assert.equal(fs.existsSync(path.join(home, '.codex', 'skills', 'feature-marker', 'templates', 'prd-template.md')), true);
+  assert.equal(fs.existsSync(path.join(home, '.codex', 'skills', 'feature-marker', 'templates', 'techspec-template.md')), true);
+  assert.equal(fs.existsSync(path.join(home, '.codex', 'skills', 'feature-marker', 'templates', 'tasks-template.md')), true);
   assert.equal(fs.existsSync(path.join(home, '.gemini', 'skills', 'feature-marker', 'SKILL.md')), true);
   assert.equal(fs.existsSync(path.join(home, '.gemini', 'skills', 'feature-marker', 'agents', 'openai.yaml')), true);
+  assert.equal(fs.existsSync(path.join(home, '.gemini', 'skills', 'feature-marker', 'templates', 'prd-template.md')), true);
+  assert.equal(fs.existsSync(path.join(home, '.gemini', 'skills', 'feature-marker', 'templates', 'techspec-template.md')), true);
+  assert.equal(fs.existsSync(path.join(home, '.gemini', 'skills', 'feature-marker', 'templates', 'tasks-template.md')), true);
 
   const codexSkill = fs.readFileSync(path.join(home, '.codex', 'skills', 'feature-marker', 'SKILL.md'), 'utf8');
   assert.match(codexSkill, /Use this skill from inside Codex prompts/);
@@ -104,6 +113,10 @@ test('README and skill docs describe npx install plus LLM invocation', () => {
   assert.match(docs, /PRD -> TechSpec -> Tasks -> implementation grill ->\s+implementation -> verification/);
   assert.match(docs, /Run an implementation grill pass before coding/);
   assert.match(docs, /Resolve grill findings in .*before implementation/);
+  assert.match(docs, /templates\/prd-template\.md` -> `tasks\/\{slug\}\/prd\.md/);
+  assert.match(docs, /templates\/techspec-template\.md` -> `tasks\/\{slug\}\/techspec\.md/);
+  assert.match(docs, /templates\/tasks-template\.md` -> `tasks\/\{slug\}\/tasks\.md/);
+  assert.match(docs, /Replace `\{slug\}` and `\{feature_title\}`/);
   assert.match(docs, /Stop only for true ambiguity, unrelated dirty work, or blocked verification/i);
   assert.match(docs, /asks? the user only\s+when a finding changes scope or requires a product decision/i);
   assert.doesNotMatch(docs, /without stopping for artifact approval/i);
@@ -130,6 +143,9 @@ test('package dry-run includes installer, skills, README, and docs', () => {
   assert(files.includes('agents/openai.yaml'));
   assert(files.includes('feature-marker-dist/feature-marker/SKILL.md'));
   assert(files.includes('feature-marker-dist/feature-marker/agents/openai.yaml'));
+  assert(files.includes('feature-marker-dist/feature-marker/templates/prd-template.md'));
+  assert(files.includes('feature-marker-dist/feature-marker/templates/techspec-template.md'));
+  assert(files.includes('feature-marker-dist/feature-marker/templates/tasks-template.md'));
   assert(files.includes('feature-marker-dist/adapters/codex/SKILL.md'));
   assert(files.includes('feature-marker-dist/adapters/codex/agents/openai.yaml'));
   assert(files.includes('feature-marker-dist/adapters/gemini/SKILL.md'));
@@ -141,6 +157,23 @@ test('package dry-run includes installer, skills, README, and docs', () => {
   assert.equal(files.some((file) => file.startsWith('feature-marker-dist/feature-marker/resources/')), false);
   assert.equal(files.some((file) => file.startsWith('feature-marker-dist/agents/phases/')), false);
   assert.equal(files.some((file) => file.startsWith('feature-marker-dist/scripts/')), false);
+});
+
+test('artifact templates provide slug-aware PRD, TechSpec, and Tasks structure', () => {
+  const prd = read('feature-marker-dist/feature-marker/templates/prd-template.md');
+  const techspec = read('feature-marker-dist/feature-marker/templates/techspec-template.md');
+  const tasks = read('feature-marker-dist/feature-marker/templates/tasks-template.md');
+
+  for (const template of [prd, techspec, tasks]) {
+    assert.match(template, /\{slug\}/);
+    assert.match(template, /\{feature_title\}/);
+  }
+
+  assert.match(prd, /## Acceptance Criteria/);
+  assert.match(techspec, /## Implementation Grill Findings/);
+  assert.match(tasks, /## Implementation Grill/);
+  assert.match(tasks, /tasks\/\{slug\}\/prd\.md/);
+  assert.match(tasks, /tasks\/\{slug\}\/techspec\.md/);
 });
 
 test('unsupportedWorkflowMessage points to install and LLM prompt', () => {

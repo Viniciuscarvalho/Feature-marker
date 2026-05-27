@@ -38,10 +38,12 @@ installer only installs this skill.
    `develop`, or `trunk`, create `feature-marker/{slug}` unless the user gave a
    branch name. Use a git worktree only when the checkout is dirty or the user
    asks for one.
-5. Create or reuse artifacts in `tasks/{slug}/`:
-   - `prd.md`: user problem, goals, scope, acceptance criteria.
-   - `techspec.md`: implementation approach, touched areas, risks, tests.
-   - `tasks.md`: ordered implementation checklist.
+5. Create or reuse artifacts in `tasks/{slug}/` using the bundled templates:
+   - `templates/prd-template.md` -> `tasks/{slug}/prd.md`
+   - `templates/techspec-template.md` -> `tasks/{slug}/techspec.md`
+   - `templates/tasks-template.md` -> `tasks/{slug}/tasks.md`
+   Replace `{slug}` and `{feature_title}`, fill every relevant section, and do
+   not leave unresolved template placeholders in committed artifacts.
 6. Run an implementation grill pass before coding. Challenge the artifacts for
    missing acceptance criteria, weak task order, risky files, data/migration
    impact, missing tests, unclear edge cases, and handoff gaps.

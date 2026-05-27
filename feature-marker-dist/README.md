@@ -57,6 +57,10 @@ tasks/{slug}/
   tasks.md
 ```
 
+These files are created from installed templates in `templates/`:
+`prd-template.md`, `techspec-template.md`, and `tasks-template.md`. The skill
+fills `{slug}` and `{feature_title}` before implementation.
+
 The skill works branch-first. It creates or requires a feature branch, uses a
 worktree only when the current checkout is dirty or the user asks, runs through
 PRD -> TechSpec -> Tasks -> implementation grill -> implementation ->

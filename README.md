@@ -82,6 +82,11 @@ implementation -> verification, commits locally, and prints exact push/PR
 handoff commands. The grill pass finds gaps before coding; it asks the user only
 when a finding changes scope or requires a product decision.
 
+PRD, TechSpec, and Tasks are created from bundled templates installed with the
+skill. The agent fills `{slug}` and `{feature_title}` and writes:
+`tasks/{slug}/prd.md`, `tasks/{slug}/techspec.md`, and
+`tasks/{slug}/tasks.md`.
+
 ## Installer Commands
 
 | Command | What it does |
