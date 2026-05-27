@@ -9,10 +9,6 @@ prompt inside the user's git project.
 - `banner.svg`: project banner.
 - `skill-first-flow.svg`: current usage diagram for the README.
 
-Older GIF/PNG assets in this folder are historical references from the removed
-CLI/orchestrator direction. Do not use them in public docs unless they are
-rebuilt to show the skill-first flow below.
-
 ## Quick Start
 
 ```bash
