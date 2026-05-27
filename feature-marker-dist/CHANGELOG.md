@@ -14,8 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Kept npm/npx as an installer for skill files only.
 - Documented branch-first handoff with local commits and no automatic push or
   PR creation.
-- Clarified Claude usage as a plain prompt-invoked run-through flow. Interactive
-  mode is not required and is not the v1 path.
+- Clarified Claude usage as a plain prompt-invoked run-through flow with an
+  implementation grill pass before coding. Interactive mode is not required and
+  is not the v1 path.
 
 ### Removed
 

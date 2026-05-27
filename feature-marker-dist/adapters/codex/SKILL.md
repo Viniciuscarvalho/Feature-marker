@@ -19,7 +19,10 @@ Run the complete flow by default:
   `tasks/{slug}/tasks.md`.
 - Create or require a feature branch before implementation.
 - Use a git worktree only when the checkout is dirty or the user asks.
-- Continue from artifacts to implementation without stopping for approval.
+- Run an implementation grill pass before coding to find artifact, task, test,
+  risk, and handoff gaps.
+- Resolve grill findings in the artifacts, asking the user only when a finding
+  changes scope or requires a product decision.
 - Stop only for true ambiguity, unrelated dirty work, or blocked verification.
 - Run verification, commit locally, and print exact push/PR handoff commands.
 - Do not push, open a PR, create checkpoint JSON, or use an interactive menu.

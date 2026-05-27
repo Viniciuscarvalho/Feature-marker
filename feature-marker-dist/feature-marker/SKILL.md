@@ -42,17 +42,19 @@ installer only installs this skill.
    - `prd.md`: user problem, goals, scope, acceptance criteria.
    - `techspec.md`: implementation approach, touched areas, risks, tests.
    - `tasks.md`: ordered implementation checklist.
-6. Do not stop for artifact approval in the default run-through path. Continue
-   from PRD to TechSpec to Tasks to implementation unless one of the blockers in
-   step 3 applies or the user explicitly requested `prd-only`, `tasks-only`, or
-   `test-only`.
-7. Implement only the tasks in `tasks/{slug}/tasks.md`. Keep changes scoped to
+6. Run an implementation grill pass before coding. Challenge the artifacts for
+   missing acceptance criteria, weak task order, risky files, data/migration
+   impact, missing tests, unclear edge cases, and handoff gaps.
+7. Resolve grill findings in `tasks/{slug}/` before implementation. Ask the
+   user only when a finding changes scope or requires a product decision.
+   Otherwise continue without a generic artifact approval gate.
+8. Implement only the tasks in `tasks/{slug}/tasks.md`. Keep changes scoped to
    the feature and preserve unrelated local edits.
-8. Run project-appropriate verification. If a command fails, fix the issue when
+9. Run project-appropriate verification. If a command fails, fix the issue when
    it is in scope; otherwise report the exact blocker and stop.
-9. Commit the feature locally when implementation and verification are complete,
+10. Commit the feature locally when implementation and verification are complete,
    unless the user prohibited commits. Do not push or open a PR automatically.
-10. Print the branch handoff with exact commands:
+11. Print the branch handoff with exact commands:
 
 ```bash
 git push -u origin <branch>
@@ -77,8 +79,8 @@ future continuation, but checkpoint JSON is not the source of truth.
 
 There are no CLI workflow modes. Treat these as prompt intents:
 
-- `full`: run the complete PRD -> TechSpec -> Tasks -> implementation -> tests
-  -> branch handoff flow.
+- `full`: run the complete PRD -> TechSpec -> Tasks -> implementation grill ->
+  implementation -> tests -> branch handoff flow.
 - `tasks-only`: use existing artifacts and implement the task list.
 - `test-only`: run verification on the current feature branch and report
   results.

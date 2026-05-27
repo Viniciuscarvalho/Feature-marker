@@ -101,9 +101,12 @@ test('README and skill docs describe npx install plus LLM invocation', () => {
   assert.match(readme, /Use feature-marker to implement billing-observability/);
   assert.match(readme, /Use feature-marker to plan and implement/);
   assert.match(docs, /Interactive mode is not required and is not the v1 path/);
-  assert.match(docs, /PRD -> TechSpec -> Tasks -> implementation -> verification/);
+  assert.match(docs, /PRD -> TechSpec -> Tasks -> implementation grill ->\s+implementation -> verification/);
+  assert.match(docs, /Run an implementation grill pass before coding/);
+  assert.match(docs, /Resolve grill findings in .*before implementation/);
   assert.match(docs, /Stop only for true ambiguity, unrelated dirty work, or blocked verification/i);
-  assert.match(docs, /Continue from PRD to TechSpec to Tasks to implementation/);
+  assert.match(docs, /asks? the user only\s+when a finding changes scope or requires a product decision/i);
+  assert.doesNotMatch(docs, /without stopping for artifact approval/i);
   assert.doesNotMatch(docs, /CLI owns the state machine/i);
   assert.doesNotMatch(docs, /feature-marker run\s/);
   assert.doesNotMatch(docs, /\.feature-marker\/features/);

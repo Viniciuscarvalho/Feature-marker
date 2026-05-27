@@ -59,10 +59,11 @@ tasks/{slug}/
 
 The skill works branch-first. It creates or requires a feature branch, uses a
 worktree only when the current checkout is dirty or the user asks, runs through
-PRD -> TechSpec -> Tasks -> implementation -> verification without artifact
-approval gates, commits locally, and prints exact push/PR commands. It stops
-only for true ambiguity, unrelated dirty work, or blocked verification. It does
-not push or open PRs automatically.
+PRD -> TechSpec -> Tasks -> implementation grill -> implementation ->
+verification, commits locally, and prints exact push/PR commands. The grill
+pass finds gaps before coding and asks the user only when a finding changes
+scope or requires a product decision. It stops for true ambiguity, unrelated
+dirty work, or blocked verification. It does not push or open PRs automatically.
 
 `spec-driven` and `ralph-loop` are out of scope for this skill-first v1 unless
 they are rebuilt as explicit skill instructions.

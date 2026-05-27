@@ -20,8 +20,13 @@ When invoked, follow the skill contract:
 - Store PRD, TechSpec, and Tasks artifacts under `tasks/{slug}/`.
 - Use a feature branch before implementation.
 - Use a worktree only for dirty checkouts or when the user requests one.
-- Continue through PRD, TechSpec, Tasks, implementation, and verification
-  without stopping for artifact approval.
+- After PRD, TechSpec, and Tasks exist, run an implementation grill pass before
+  coding: challenge assumptions, missing acceptance criteria, risky files,
+  test gaps, migration/data risks, and unclear handoff expectations.
+- Resolve grill findings in the artifacts before implementation. Ask the user
+  only when a finding changes scope or requires a product decision.
+- Continue through implementation and verification after the grill findings are
+  resolved.
 - Stop only for true ambiguity, unrelated dirty work, or blocked verification.
 - Stop at a local commit and print exact push/PR handoff commands.
 

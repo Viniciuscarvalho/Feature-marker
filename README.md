@@ -77,10 +77,10 @@ Use feature-marker to create only the PRD for import-csv.
 ```
 
 The skill reads the repository, creates or uses artifacts under `tasks/{slug}/`,
-runs through PRD -> TechSpec -> Tasks -> implementation -> verification,
-commits locally, and prints exact push/PR handoff commands. It does not stop
-for artifact approval unless the user asks for a narrower intent such as
-`prd-only`.
+runs through PRD -> TechSpec -> Tasks -> implementation grill ->
+implementation -> verification, commits locally, and prints exact push/PR
+handoff commands. The grill pass finds gaps before coding; it asks the user only
+when a finding changes scope or requires a product decision.
 
 ## Installer Commands
 
@@ -109,7 +109,8 @@ The skill is branch-first:
 
 - Create or require a feature branch before implementation.
 - Use a worktree only when the current checkout is dirty or the user asks.
-- Continue from PRD to TechSpec to Tasks to implementation by default.
+- Continue from PRD to TechSpec to Tasks to an implementation grill by default.
+- Resolve grill findings in the artifacts before coding.
 - Stop only for true ambiguity, unrelated dirty work, or blocked verification.
 - Preserve unrelated local changes.
 - Finish with a local commit and exact handoff commands.
@@ -128,7 +129,7 @@ There are no CLI workflow modes. Use these words in your LLM prompt when useful:
 
 | Intent | What the skill does |
 | --- | --- |
-| `full` | Runs PRD, TechSpec, Tasks, implementation, tests, and branch handoff without artifact approval gates. |
+| `full` | Runs PRD, TechSpec, Tasks, implementation grill, implementation, tests, and branch handoff. |
 | `tasks-only` | Uses existing artifacts, implements tasks, tests, and hands off. |
 | `test-only` | Runs verification on the current feature branch and reports results. |
 | `prd-only` | Creates or revises only `tasks/{slug}/prd.md`. |
