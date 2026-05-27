@@ -67,6 +67,8 @@
     "agents/openai.yaml",
     "CONTEXT.md",
     "docs/adr/012-skill-first-workflow.md",
+    "assets/banner.svg",
+    "assets/skill-first-flow.svg",
     "LICENSE",
     "CHANGELOG.md"
   ]

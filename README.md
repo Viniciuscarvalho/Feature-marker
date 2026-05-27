@@ -16,6 +16,18 @@ and branch handoff.
 The npm package is only an installer for skill files. It does not run the
 workflow, own feature state, push branches, or open pull requests.
 
+![feature-marker skill-first workflow](assets/skill-first-flow.svg)
+
+## Why Star This Repo
+
+- Works where you already code: Claude, Codex, and Gemini.
+- Keeps the workflow simple: install once, then invoke the skill from a prompt.
+- Produces plain repo artifacts your team can review and keep.
+- Adds an implementation grill before coding so weak specs, missing tests, and
+  handoff gaps are found early.
+- Stops at a clean local branch handoff. You stay in control of push and PR
+  creation.
+
 ## Install With npx
 
 Install for Claude:

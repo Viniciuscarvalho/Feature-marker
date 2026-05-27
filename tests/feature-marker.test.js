@@ -95,6 +95,8 @@ test('installer command works through runCli', () => {
 
 test('README and skill docs describe npx install plus LLM invocation', () => {
   const readme = read('README.md');
+  const assetsReadme = read('assets/README.md');
+  const assetsHowItWorks = read('assets/HOW_IT_WORKS.md');
   const rootSkill = read('SKILL.md');
   const distSkill = read('feature-marker-dist/feature-marker/SKILL.md');
   const codexSkill = read('feature-marker-dist/adapters/codex/SKILL.md');
@@ -102,10 +104,23 @@ test('README and skill docs describe npx install plus LLM invocation', () => {
   const distReadme = read('feature-marker-dist/README.md');
   const claudeAgent = read('feature-marker-dist/agents/feature-marker.md');
   const wrapper = read('feature-marker-dist/feature-marker/feature-marker.sh');
-  const docs = [readme, rootSkill, distSkill, codexSkill, geminiSkill, distReadme, claudeAgent, wrapper].join('\n');
+  const docs = [
+    readme,
+    assetsReadme,
+    assetsHowItWorks,
+    rootSkill,
+    distSkill,
+    codexSkill,
+    geminiSkill,
+    distReadme,
+    claudeAgent,
+    wrapper
+  ].join('\n');
 
   assert.match(readme, /npx -y @viniciuscarvalho\/feature-marker install --runtime all/);
   assert.match(readme, /npx -y @viniciuscarvalho\/feature-marker install --runtime claude/);
+  assert.match(readme, /assets\/skill-first-flow\.svg/);
+  assert.match(readme, /Why Star This Repo/);
   assert.match(readme, /Claude prompt:/);
   assert.match(readme, /Use feature-marker to implement billing-observability/);
   assert.match(readme, /Use feature-marker to plan and implement/);
@@ -124,6 +139,8 @@ test('README and skill docs describe npx install plus LLM invocation', () => {
   assert.doesNotMatch(docs, /feature-marker run\s/);
   assert.doesNotMatch(docs, /\.feature-marker\/features/);
   assert.doesNotMatch(docs, /interactive mode is required/i);
+  assert.doesNotMatch(readme, /feature-marker-demo\.gif/);
+  assert.doesNotMatch(readme, /(^|\s)\/feature-marker(\s|$)/);
   assert.match(docs, /spec-driven` and `ralph-loop` are out of scope/);
 });
 
@@ -151,6 +168,8 @@ test('package dry-run includes installer, skills, README, and docs', () => {
   assert(files.includes('feature-marker-dist/adapters/gemini/SKILL.md'));
   assert(files.includes('feature-marker-dist/adapters/gemini/agents/openai.yaml'));
   assert(files.includes('README.md'));
+  assert(files.includes('assets/banner.svg'));
+  assert(files.includes('assets/skill-first-flow.svg'));
   assert(files.includes('CONTEXT.md'));
   assert(files.includes('docs/adr/012-skill-first-workflow.md'));
   assert.equal(files.some((file) => file.startsWith('feature-marker-dist/feature-marker/lib/')), false);

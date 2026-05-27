@@ -36,7 +36,7 @@
 
   <!-- Subtitle -->
   <text x="120" y="220" fill="#E5E7EB" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="26" font-weight="500">
-    Automate your feature workflow with checkpoints, generation, and PR creation
+    Install once. Prompt your LLM. Ship a clean local feature branch.
   </text>
 
   <!-- Rocket mark (simple) -->
