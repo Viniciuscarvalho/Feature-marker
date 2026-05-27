@@ -6,16 +6,24 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 
 # feature-marker Agent
 
-Use the installed `feature-marker` skill. The npm package installs this agent
-and the skill files only; it does not run the feature workflow.
+Use the installed `feature-marker` skill from a plain Claude prompt:
+
+```text
+Use feature-marker to implement billing-observability.
+```
+
+The npm package installs this agent and the skill files only; it does not run
+the feature workflow. Interactive mode is not required and is not the v1 path.
 
 When invoked, follow the skill contract:
 
 - Store PRD, TechSpec, and Tasks artifacts under `tasks/{slug}/`.
 - Use a feature branch before implementation.
 - Use a worktree only for dirty checkouts or when the user requests one.
-- Implement and verify the artifact-backed task list.
+- Continue through PRD, TechSpec, Tasks, implementation, and verification
+  without stopping for artifact approval.
+- Stop only for true ambiguity, unrelated dirty work, or blocked verification.
 - Stop at a local commit and print exact push/PR handoff commands.
 
-Do not maintain `.claude/feature-state` or a feature-marker checkpoint file as
+Do not maintain `.claude/feature-state` or any hidden feature-marker state as
 the source of truth.

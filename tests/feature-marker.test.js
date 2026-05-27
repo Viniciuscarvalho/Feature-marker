@@ -90,13 +90,24 @@ test('README and skill docs describe npx install plus LLM invocation', () => {
   const distSkill = read('feature-marker-dist/feature-marker/SKILL.md');
   const codexSkill = read('feature-marker-dist/adapters/codex/SKILL.md');
   const geminiSkill = read('feature-marker-dist/adapters/gemini/SKILL.md');
-  const docs = [readme, rootSkill, distSkill, codexSkill, geminiSkill].join('\n');
+  const distReadme = read('feature-marker-dist/README.md');
+  const claudeAgent = read('feature-marker-dist/agents/feature-marker.md');
+  const wrapper = read('feature-marker-dist/feature-marker/feature-marker.sh');
+  const docs = [readme, rootSkill, distSkill, codexSkill, geminiSkill, distReadme, claudeAgent, wrapper].join('\n');
 
   assert.match(readme, /npx -y @viniciuscarvalho\/feature-marker install --runtime all/);
+  assert.match(readme, /npx -y @viniciuscarvalho\/feature-marker install --runtime claude/);
+  assert.match(readme, /Claude prompt:/);
+  assert.match(readme, /Use feature-marker to implement billing-observability/);
   assert.match(readme, /Use feature-marker to plan and implement/);
+  assert.match(docs, /Interactive mode is not required and is not the v1 path/);
+  assert.match(docs, /PRD -> TechSpec -> Tasks -> implementation -> verification/);
+  assert.match(docs, /Stop only for true ambiguity, unrelated dirty work, or blocked verification/i);
+  assert.match(docs, /Continue from PRD to TechSpec to Tasks to implementation/);
   assert.doesNotMatch(docs, /CLI owns the state machine/i);
-  assert.doesNotMatch(docs, /feature-marker run/);
+  assert.doesNotMatch(docs, /feature-marker run\s/);
   assert.doesNotMatch(docs, /\.feature-marker\/features/);
+  assert.doesNotMatch(docs, /interactive mode is required/i);
   assert.match(docs, /spec-driven` and `ralph-loop` are out of scope/);
 });
 
@@ -123,6 +134,10 @@ test('package dry-run includes installer, skills, README, and docs', () => {
   assert(files.includes('README.md'));
   assert(files.includes('CONTEXT.md'));
   assert(files.includes('docs/adr/012-skill-first-workflow.md'));
+  assert.equal(files.some((file) => file.startsWith('feature-marker-dist/feature-marker/lib/')), false);
+  assert.equal(files.some((file) => file.startsWith('feature-marker-dist/feature-marker/resources/')), false);
+  assert.equal(files.some((file) => file.startsWith('feature-marker-dist/agents/phases/')), false);
+  assert.equal(files.some((file) => file.startsWith('feature-marker-dist/scripts/')), false);
 });
 
 test('unsupportedWorkflowMessage points to install and LLM prompt', () => {

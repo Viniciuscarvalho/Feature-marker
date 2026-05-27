@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   feature workflows from JavaScript.
 - Replaced workflow CLI documentation with npx install instructions and LLM
   invocation examples.
+- Clarified Claude usage as a prompt-invoked run-through flow with no
+  interactive menu or artifact approval gates by default.
 
 ### Removed
 

@@ -1,26 +1,28 @@
 ---
 name: feature-marker
 description: >
-  Codex-ready install target for the feature-marker skill-first workflow.
+  Codex-ready install target for the feature-marker run-through skill workflow.
   Use from a Codex prompt; the npm package is only the installer.
 ---
 
 # feature-marker for Codex
 
-Use this skill from inside Codex prompts, for example:
+Use this skill from inside Codex prompts:
 
 ```text
-Use feature-marker to plan and implement billing-observability.
+Use feature-marker to implement billing-observability.
 ```
 
-Follow the portable feature-marker contract:
+Run the complete flow by default:
 
-- Keep workflow artifacts in `tasks/{slug}/prd.md`,
-  `tasks/{slug}/techspec.md`, and `tasks/{slug}/tasks.md`.
-- Work branch-first. Create or require a feature branch before implementation.
-- Use a git worktree only when the current checkout is dirty or the user asks.
-- Implement, verify, and finish with a local commit plus exact push/PR commands.
-- Do not push, open a PR, or create checkpoint JSON automatically.
+- Create or reuse `tasks/{slug}/prd.md`, `tasks/{slug}/techspec.md`, and
+  `tasks/{slug}/tasks.md`.
+- Create or require a feature branch before implementation.
+- Use a git worktree only when the checkout is dirty or the user asks.
+- Continue from artifacts to implementation without stopping for approval.
+- Stop only for true ambiguity, unrelated dirty work, or blocked verification.
+- Run verification, commit locally, and print exact push/PR handoff commands.
+- Do not push, open a PR, create checkpoint JSON, or use an interactive menu.
 
 `spec-driven` and `ralph-loop` are out of scope for this skill-first v1 unless
 they are rebuilt as explicit skill instructions.

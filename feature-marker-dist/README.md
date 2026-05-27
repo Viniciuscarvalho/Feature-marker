@@ -7,8 +7,8 @@ runs inside the LLM after the user asks to use `feature-marker`.
 ## Install
 
 ```bash
-npx -y @viniciuscarvalho/feature-marker install --runtime all
 npx -y @viniciuscarvalho/feature-marker install --runtime claude
+npx -y @viniciuscarvalho/feature-marker install --runtime all
 npx -y @viniciuscarvalho/feature-marker install --runtime codex
 npx -y @viniciuscarvalho/feature-marker install --runtime gemini
 ```
@@ -21,7 +21,16 @@ npx -y @viniciuscarvalho/feature-marker install --runtime all --dry-run
 
 ## Invoke
 
-Use the installed skill from your LLM prompt:
+Use the installed skill from your LLM prompt. Interactive mode is not required
+and is not the v1 path.
+
+Claude prompt:
+
+```text
+Use feature-marker to implement billing-observability.
+```
+
+Codex or Gemini prompt:
 
 ```text
 Use feature-marker to plan and implement billing-observability.
@@ -49,9 +58,11 @@ tasks/{slug}/
 ```
 
 The skill works branch-first. It creates or requires a feature branch, uses a
-worktree only when the current checkout is dirty or the user asks, commits
-locally, and prints exact push/PR commands. It does not push or open PRs
-automatically.
+worktree only when the current checkout is dirty or the user asks, runs through
+PRD -> TechSpec -> Tasks -> implementation -> verification without artifact
+approval gates, commits locally, and prints exact push/PR commands. It stops
+only for true ambiguity, unrelated dirty work, or blocked verification. It does
+not push or open PRs automatically.
 
 `spec-driven` and `ralph-loop` are out of scope for this skill-first v1 unless
 they are rebuilt as explicit skill instructions.

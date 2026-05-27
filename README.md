@@ -18,6 +18,12 @@ workflow, own feature state, push branches, or open pull requests.
 
 ## Install With npx
 
+Install for Claude:
+
+```bash
+npx -y @viniciuscarvalho/feature-marker install --runtime claude
+```
+
 Install the skill into all supported runtimes:
 
 ```bash
@@ -27,7 +33,6 @@ npx -y @viniciuscarvalho/feature-marker install --runtime all
 Install only one runtime:
 
 ```bash
-npx -y @viniciuscarvalho/feature-marker install --runtime claude
 npx -y @viniciuscarvalho/feature-marker install --runtime codex
 npx -y @viniciuscarvalho/feature-marker install --runtime gemini
 ```
@@ -48,7 +53,16 @@ feature-marker install --runtime codex
 ## Use In Your LLM
 
 After installation, open any git project in Claude, Codex, or Gemini and invoke
-the skill from the prompt:
+the skill from the prompt. Interactive mode is not required and is not the v1
+path.
+
+Claude prompt:
+
+```text
+Use feature-marker to implement billing-observability.
+```
+
+Codex or Gemini prompt:
 
 ```text
 Use feature-marker to plan and implement billing-observability.
@@ -63,8 +77,10 @@ Use feature-marker to create only the PRD for import-csv.
 ```
 
 The skill reads the repository, creates or uses artifacts under `tasks/{slug}/`,
-implements the tasks, runs verification, commits locally, and prints exact
-push/PR handoff commands.
+runs through PRD -> TechSpec -> Tasks -> implementation -> verification,
+commits locally, and prints exact push/PR handoff commands. It does not stop
+for artifact approval unless the user asks for a narrower intent such as
+`prd-only`.
 
 ## Installer Commands
 
@@ -93,6 +109,8 @@ The skill is branch-first:
 
 - Create or require a feature branch before implementation.
 - Use a worktree only when the current checkout is dirty or the user asks.
+- Continue from PRD to TechSpec to Tasks to implementation by default.
+- Stop only for true ambiguity, unrelated dirty work, or blocked verification.
 - Preserve unrelated local changes.
 - Finish with a local commit and exact handoff commands.
 - Do not push or open a PR automatically.
@@ -110,7 +128,7 @@ There are no CLI workflow modes. Use these words in your LLM prompt when useful:
 
 | Intent | What the skill does |
 | --- | --- |
-| `full` | PRD, TechSpec, Tasks, implementation, tests, branch handoff. |
+| `full` | Runs PRD, TechSpec, Tasks, implementation, tests, and branch handoff without artifact approval gates. |
 | `tasks-only` | Uses existing artifacts, implements tasks, tests, and hands off. |
 | `test-only` | Runs verification on the current feature branch and reports results. |
 | `prd-only` | Creates or revises only `tasks/{slug}/prd.md`. |

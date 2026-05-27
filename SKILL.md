@@ -1,40 +1,58 @@
 ---
 name: feature-marker
 description: >
-  Skill-first feature workflow for PRD, TechSpec, Tasks, implementation,
-  verification, local commit, and branch handoff across Claude, Codex, and
-  Gemini. The npm package installs skill files only; the LLM skill owns the
-  workflow.
+  Skill-first run-through feature workflow for Claude, Codex, and Gemini.
+  Use when the user asks to implement a feature through PRD, TechSpec, Tasks,
+  verification, local commit, and branch handoff. The npm package installs
+  skill files only; the LLM skill performs the workflow.
 ---
 
 # feature-marker
 
-Use this skill when the user asks to plan, build, test, or hand off a feature
-through `PRD -> TechSpec -> Tasks -> branch handoff`.
+Use this skill when the user asks to implement, plan, test, or hand off a
+feature with Feature Marker.
 
-The workflow is skill-first. Do not use the old CLI workflow commands; those
-are not product commands. The npm package is only an installer for this skill.
+The normal invocation is a plain LLM prompt:
 
-## Operating Contract
+```text
+Use feature-marker to implement <feature-slug>.
+```
 
-1. Start by reading repo state: current branch, git status, project files, and
+Run through the feature by default. Do not use an interactive menu, old CLI
+workflow commands, checkpoint JSON, or a JavaScript workflow engine. The package
+installer only installs this skill.
+
+## Run-Through Procedure
+
+1. Identify the feature slug from the prompt. If the slug is missing, derive a
+   short kebab-case slug from the feature request.
+2. Read repo state: current branch, base branch, git status, project files, and
    any existing `tasks/{slug}/prd.md`, `tasks/{slug}/techspec.md`, and
    `tasks/{slug}/tasks.md`.
-2. Keep artifact state in `tasks/{slug}/`. Generate missing artifacts in order:
-   PRD first, then TechSpec, then Tasks. Reuse existing artifacts unless the
-   user explicitly asks to revise them.
-3. Use branch-first isolation. If the current branch is `main`, `master`,
-   `develop`, or `trunk`, create a feature branch named `feature-marker/{slug}`
-   unless the user gives another branch name. If the checkout has unrelated
-   uncommitted changes, ask whether to create a git worktree or continue on the
-   existing branch after the user cleans up.
-4. Implement only the tasks in `tasks/{slug}/tasks.md`. Keep changes scoped to
+3. Stop before implementation only when:
+   - the feature request is too ambiguous to produce useful artifacts;
+   - the checkout has unrelated uncommitted work and the user has not approved
+     a worktree or cleanup path;
+   - required verification or project setup is blocked.
+4. Use branch-first isolation. If the current branch is `main`, `master`,
+   `develop`, or `trunk`, create `feature-marker/{slug}` unless the user gave a
+   branch name. Use a git worktree only when the checkout is dirty or the user
+   asks for one.
+5. Create or reuse artifacts in `tasks/{slug}/`:
+   - `prd.md`: user problem, goals, scope, acceptance criteria.
+   - `techspec.md`: implementation approach, touched areas, risks, tests.
+   - `tasks.md`: ordered implementation checklist.
+6. Do not stop for artifact approval in the default run-through path. Continue
+   from PRD to TechSpec to Tasks to implementation unless one of the blockers in
+   step 3 applies or the user explicitly requested `prd-only`, `tasks-only`, or
+   `test-only`.
+7. Implement only the tasks in `tasks/{slug}/tasks.md`. Keep changes scoped to
    the feature and preserve unrelated local edits.
-5. Run the project-appropriate verification commands. If a command cannot run,
-   report the exact blocker and do not claim it passed.
-6. Finish with a local commit when the implementation is complete and the user
-   has not prohibited commits. Do not push or open a PR automatically.
-7. Print exact handoff commands, including:
+8. Run project-appropriate verification. If a command fails, fix the issue when
+   it is in scope; otherwise report the exact blocker and stop.
+9. Commit the feature locally when implementation and verification are complete,
+   unless the user prohibited commits. Do not push or open a PR automatically.
+10. Print the branch handoff with exact commands:
 
 ```bash
 git push -u origin <branch>
@@ -43,7 +61,7 @@ gh pr create --base <base-branch> --head <branch>
 
 ## Artifact State
 
-The canonical state lives in:
+The canonical state is user-facing markdown:
 
 ```text
 tasks/{slug}/
@@ -52,20 +70,19 @@ tasks/{slug}/
   tasks.md
 ```
 
-Optional notes such as verification output may also live under `tasks/{slug}/`
-when they help future continuation, but do not create checkpoint JSON as the
-source of truth.
+Optional verification notes may also live under `tasks/{slug}/` when they help
+future continuation, but checkpoint JSON is not the source of truth.
 
-## Modes by Prompt
+## Prompt Intents
 
-There are no CLI modes. Treat these as prompt intents:
+There are no CLI workflow modes. Treat these as prompt intents:
 
-- `full`: create or update PRD, TechSpec, and Tasks, then implement, test, and
-  hand off the branch.
-- `tasks-only`: use existing artifacts and implement the tasks.
-- `test-only`: run verification for the existing feature branch and summarize
+- `full`: run the complete PRD -> TechSpec -> Tasks -> implementation -> tests
+  -> branch handoff flow.
+- `tasks-only`: use existing artifacts and implement the task list.
+- `test-only`: run verification on the current feature branch and report
   results.
-- `prd-only`: stop after the PRD artifact.
+- `prd-only`: create or revise only `tasks/{slug}/prd.md`.
 
 `spec-driven` and `ralph-loop` are out of scope for this skill-first v1 unless
 they are rebuilt as explicit skill instructions.
