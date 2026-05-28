@@ -29,9 +29,36 @@ workflow, own feature state, push branches, or open pull requests.
 - Stops at a clean local branch handoff. You stay in control of push and PR
   creation.
 
-## Install With npx
+## Quick Start
 
-Install for Claude:
+Install the skill files:
+
+```bash
+npx -y @viniciuscarvalho/feature-marker install --runtime all
+```
+
+Open any git project in Claude, Codex, or Gemini and ask:
+
+```text
+Use feature-marker to implement my-feature.
+```
+
+feature-marker will create or reuse:
+
+```text
+tasks/my-feature/prd.md
+tasks/my-feature/techspec.md
+tasks/my-feature/tasks.md
+```
+
+Then it works through the feature, verifies it, commits locally, and prints the
+exact commands you can run to push and open a PR.
+
+## Install
+
+Use `npx` when you want the latest npm installer without a global install.
+
+Install only Claude:
 
 ```bash
 npx -y @viniciuscarvalho/feature-marker install --runtime claude
@@ -56,11 +83,19 @@ Use `--dry-run` to preview install targets:
 npx -y @viniciuscarvalho/feature-marker install --runtime all --dry-run
 ```
 
-Global npm install is optional and only shortens the installer command:
+Global npm install is optional and only shortens the command:
 
 ```bash
 npm install -g @viniciuscarvalho/feature-marker
 feature-marker install --runtime codex
+```
+
+Homebrew is also supported on macOS/Linux:
+
+```bash
+brew tap viniciuscarvalho/tap
+brew install feature-marker
+feature-marker install --runtime all
 ```
 
 ## Use In Your LLM
@@ -99,6 +134,23 @@ PRD, TechSpec, and Tasks are created from bundled templates installed with the
 skill. The agent fills `{slug}` and `{feature_title}` and writes:
 `tasks/{slug}/prd.md`, `tasks/{slug}/techspec.md`, and
 `tasks/{slug}/tasks.md`.
+
+## How It Works
+
+The published package contains a small installer CLI and the skill files. The
+code path is intentionally narrow:
+
+1. `feature-marker install --runtime ...` resolves the package root and the
+   user's home directory.
+2. It copies the selected runtime skill to its native skill folder.
+3. It copies the shared PRD, TechSpec, and Tasks templates into that install.
+4. For Claude, it also installs the companion agent wrapper.
+5. The actual feature workflow runs later inside Claude, Codex, or Gemini when
+   the user asks to use `feature-marker`.
+
+The CLI does not implement the feature workflow. Commands such as `run`,
+`resume`, `status`, and `capabilities` intentionally fail with guidance to
+invoke the installed skill from the LLM prompt.
 
 ## Installer Commands
 
