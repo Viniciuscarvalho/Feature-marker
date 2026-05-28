@@ -119,6 +119,13 @@ test('README and skill docs describe npx install plus LLM invocation', () => {
 
   assert.match(readme, /npx -y @viniciuscarvalho\/feature-marker install --runtime all/);
   assert.match(readme, /npx -y @viniciuscarvalho\/feature-marker install --runtime claude/);
+  assert.match(readme, /## Quick Start/);
+  assert.match(readme, /Use feature-marker to implement my-feature/);
+  assert.match(readme, /tasks\/my-feature\/prd\.md/);
+  assert.match(readme, /brew tap viniciuscarvalho\/tap/);
+  assert.match(readme, /brew install feature-marker/);
+  assert.match(readme, /The published package contains a small installer CLI and the skill files/);
+  assert.match(readme, /Commands such as `run`,\s+`resume`, `status`, and `capabilities` intentionally fail/);
   assert.match(readme, /assets\/skill-first-flow\.svg/);
   assert.match(readme, /Why Star This Repo/);
   assert.match(readme, /Claude prompt:/);
